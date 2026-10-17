@@ -1,0 +1,22 @@
+# Konfiguracja gry Szyb 7 (M0: tylko szkielet; balans z sekcji 5 specu dochodzi w M1+)
+version: "0.0.1"
+resources:
+  - id: ore
+    name: Ruda
+  - id: steam
+    name: Para
+  - id: tokens
+    name: Żetony
+archetypes:
+  - id: gornik
+    name: Górnik
+    stats: { sila: 5, technika: 3, percepcja: 2, wytrwalosc: 4 }
+  - id: inzynier
+    name: Inżynier
+    stats: { sila: 2, technika: 5, percepcja: 3, wytrwalosc: 3 }
+  - id: zwiadowca
+    name: Zwiadowca
+    stats: { sila: 3, technika: 3, percepcja: 5, wytrwalosc: 2 }
+  - id: alchemik
+    name: Alchemik
+    stats: { sila: 2, technika: 4, percepcja: 3, wytrwalosc: 4 }

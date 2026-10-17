@@ -1,0 +1,10 @@
+{
+  "@@locale": "pl",
+  "appTitle": "Szyb 7",
+  "welcome": "Witaj w Głębi",
+  "connect": "Zejdź na dół",
+  "connecting": "Łączenie…",
+  "error": "Nie udało się połączyć z serwerem",
+  "playerId": "Twoje ID: {id}",
+  "@playerId": { "placeholders": { "id": { "type": "String" } } }
+}
