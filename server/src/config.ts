@@ -28,9 +28,19 @@ export const GameConfigSchema = z
     }),
     progression: z.object({ xp_base: pos, xp_exp: pos, max_level: z.number().int().min(2), points_per_level: z.number().int().min(0) }),
     dives: z.object({
+      queue_slots: z.object({ free: z.number().int().min(1), subscriber: z.number().int().min(1) }),
       fail_reward_fraction: z.number().min(0).max(1),
       winded_seconds: z.number().min(0),
       pool_floor_fraction: z.number().min(0.01).max(0.5),
+      economy: z.object({
+        ore_per_min: pos,
+        xp_per_min: pos,
+        short_bonus: z.number().min(0).max(1),
+        reference_minutes: pos,
+        min_route_minutes: pos,
+        spread: z.number().min(0).max(0.9),
+      }),
+      zones: z.record(z.string(), z.object({ name: z.string(), pool_per_player: pos })),
       routes: z
         .array(
           z.object({
@@ -41,10 +51,7 @@ export const GameConfigSchema = z
             seconds: pos,
             steam: pos,
             difficulty: pos,
-            ore: z.tuple([z.number().min(0), z.number().min(0)]),
             tokens: z.tuple([z.number().int().min(0), z.number().int().min(0)]),
-            xp: z.number().min(0),
-            pool_per_player: pos,
           }),
         )
         .min(1),
@@ -74,6 +81,7 @@ export const GameConfigSchema = z
       .min(1),
   })
   .superRefine((cfg, ctx) => {
+    for (const r of cfg.dives.routes) if (!cfg.dives.zones[r.zone]) ctx.addIssue({ code: 'custom', message: `trasa ${r.id}: nieznana strefa ${r.zone}` });
     for (const key of ['resources', 'archetypes', 'buildings'] as const) {
       const ids = cfg[key].map((x) => x.id);
       if (new Set(ids).size !== ids.length) {

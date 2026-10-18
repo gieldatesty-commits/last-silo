@@ -15,6 +15,7 @@ const arg = (n: string, d: number) => Number(process.argv.find((a) => a.startsWi
 const days = Number(process.argv.find((a) => /^\d+$/.test(a)) ?? 14);
 const N = arg('players', cfg.world.expected_players);
 const R = rng(arg('seed', 1));
+const SUB = arg('sub', 0); // odsetek graczy z abonamentem (3 sloty)
 
 type Style = 'hardcore' | 'regularny' | 'okazjonalny';
 const ONLINE_P: Record<Style, number> = { hardcore: 0.5, regularny: 0.06, okazjonalny: 0.011 }; // na 10-min tick w godz. 8–23
@@ -29,7 +30,8 @@ interface P {
   xp: number;
   tokens: number;
   windedUntil: number;
-  dive: { routeId: string; endsAt: number; seed: number } | null;
+  queue: { routeId: string; endsAt: number; seed: number }[];
+  slots: number;
   nextId: number;
   diveOre: number;
   prodOre: number;
@@ -45,11 +47,11 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
   return {
     style, arch,
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
-    pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, dive: null, nextId: 1, diveOre: 0, prodOre: 0,
+    pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
   };
 });
 
-const pools = new Map(cfg.dives.routes.map((r) => [r.zone, { remaining: poolTotal(cfg, r), total: poolTotal(cfg, r) }]));
+const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: poolTotal(cfg, z, N), total: poolTotal(cfg, z, N) }]));
 let seedCounter = 1000;
 
 function act(p: P, nowMs: number) {
@@ -59,10 +61,12 @@ function act(p: P, nowMs: number) {
   p.prodOre += Math.max(0, r.state.oreReal - before);
   p.silo = r.state;
   p.pending = p.pending.filter((u) => !r.done.includes(u));
-  if (p.dive && p.dive.endsAt <= nowMs) {
-    const route = cfg.dives.routes.find((x) => x.id === p.dive!.routeId)!;
+  // rozstrzygnij zjazdy, których czas minął (po kolei)
+  while (p.queue.length && p.queue[0]!.endsAt <= nowMs) {
+    const d = p.queue.shift()!;
+    const route = cfg.dives.routes.find((x) => x.id === d.routeId)!;
     const pool = pools.get(route.zone)!;
-    const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier, p.dive.seed, pool);
+    const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier, d.seed, pool);
     pool.remaining -= out.poolDraw;
     p.silo = { ...p.silo, oreReal: p.silo.oreReal + out.ore };
     p.diveOre += out.ore;
@@ -70,18 +74,18 @@ function act(p: P, nowMs: number) {
     const lv = addXp(cfg, p.level, p.xp, out.xp);
     p.level = lv.level; p.xp = lv.xpInLevel;
     p.stats = { ...p.stats, technika: p.stats.technika + lv.points }; // wszystkie punkty w Technikę
-    if (!out.success) p.windedUntil = p.dive.endsAt + cfg.dives.winded_seconds * 1000;
-    p.dive = null;
+    if (!out.success) p.windedUntil = d.endsAt + cfg.dives.winded_seconds * 1000;
   }
-  // zjazd: najlepsza odblokowana trasa z szansą >= 40%
-  if (!p.dive && nowMs >= p.windedUntil) {
-    const opts = cfg.dives.routes.filter((x) => x.min_level <= p.level && diveChance(p.stats, x.difficulty) >= 0.4);
-    const route = opts[opts.length - 1] ?? cfg.dives.routes[0]!;
+  // uzupełnij kolejkę wg stylu gry
+  const maxSec = p.style === 'hardcore' ? 1800 : p.style === 'regularny' ? 4 * 3600 : 8 * 3600;
+  while (p.queue.length < p.slots && nowMs >= p.windedUntil) {
+    const opts = cfg.dives.routes.filter((x) => x.min_level <= p.level && x.seconds <= maxSec && diveChance(p.stats, x.difficulty) >= 0.3);
+    const route = opts.length ? opts[opts.length - 1]! : cfg.dives.routes[0]!;
     const cost = steamCost(route, p.arch.dive_steam_multiplier);
-    if (route.min_level <= p.level && p.silo.steam >= cost) {
-      p.silo = { ...p.silo, steam: p.silo.steam - cost };
-      p.dive = { routeId: route.id, endsAt: nowMs + route.seconds * 1000, seed: seedCounter++ };
-    }
+    if (route.min_level > p.level || p.silo.steam < cost) break;
+    p.silo = { ...p.silo, steam: p.silo.steam - cost };
+    const startsAt = p.queue.length ? p.queue[p.queue.length - 1]!.endsAt : nowMs;
+    p.queue.push({ routeId: route.id, endsAt: startsAt + route.seconds * 1000, seed: seedCounter++ });
   }
   // ulepszenia: najniższy z (szyb, magazyn, generator), potem reszta
   if (p.pending.length < cfg.upgrades.queue_slots) {
@@ -109,9 +113,15 @@ for (let t = TICK; t <= days * 86_400_000; t += TICK) {
   if (hour >= 8 && hour < 23) for (const p of players) if (R() < ONLINE_P[p.style]) act(p, t0 + t);
   if (t % 86_400_000 === 0) { const d = t / 86_400_000; if ([1, 2, 3, 5, 7, 10, 14, 21].includes(d) || d === days) report(d); }
 }
+console.log('\nWykorzystanie puli stref (wydobyto / pula całkowita):');
+for (const [zone, pl] of pools) {
+  const drawn = pl.total - pl.remaining;
+  console.log(`  ${zone.padEnd(10)} ${String(Math.round(drawn)).padStart(9)} / ${String(Math.round(pl.total)).padStart(9)} (${(100 * drawn / pl.total).toFixed(0)}%)`);
+}
 console.log('\nWg stylu gry (po zakończeniu):');
 for (const s of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
   const g = players.filter((p) => p.style === s);
   const avg = (f: (p: P) => number) => (g.reduce((a, p) => a + f(p), 0) / g.length).toFixed(1);
-  console.log(`  ${s.padEnd(12)} poz. ${avg((p) => p.level).padStart(5)} | szyb L${avg((p) => p.silo.levels.szyb_glowny)} | ruda ze zjazdów ${avg((p) => p.diveOre).padStart(8)} | z szybu ${avg((p) => p.prodOre).padStart(8)}`);
+  const d = g.reduce((a, p) => a + p.diveOre, 0), sh = g.reduce((a, p) => a + p.prodOre, 0);
+  console.log(`  ${s.padEnd(12)} poz. ${avg((p) => p.level).padStart(5)} | szyb L${avg((p) => p.silo.levels.szyb_glowny)} | ze zjazdów ${avg((p) => p.diveOre).padStart(8)} | z szybu ${avg((p) => p.prodOre).padStart(8)} | udział zjazdów ${(100 * d / (d + sh)).toFixed(0)}%`);
 }

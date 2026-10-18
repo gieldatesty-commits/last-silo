@@ -58,14 +58,32 @@ export function resolveDive(c: GameConfig, route: Route, stats: Stats, oreMultip
   const uOre = r();
   const uTok = r();
   const floor = c.dives.pool_floor_fraction;
-  const health = Math.max(floor, pool.remaining / pool.total);
+  const health = pool.total > 0 ? Math.max(floor, pool.remaining / pool.total) : floor;
   const frac = success ? 1 : c.dives.fail_reward_fraction;
-  const baseOre = (route.ore[0] + (route.ore[1] - route.ore[0]) * uOre) * oreMultiplier * frac;
+  const rw = routeRewards(c, route);
+  const baseOre = (rw.oreMin + (rw.oreMax - rw.oreMin) * uOre) * oreMultiplier * frac;
   const ore = Math.round(baseOre * health);
   const aboveFloor = pool.remaining - floor * pool.total;
   const poolDraw = aboveFloor > 0 ? Math.min(ore, aboveFloor) : 0;
   const tokens = success ? Math.round(route.tokens[0] + (route.tokens[1] - route.tokens[0]) * uTok) : 0;
-  return { success, chance, ore, tokens, xp: Math.round(route.xp * frac), poolDraw, poolHealth: health };
+  return { success, chance, ore, tokens, xp: Math.round(rw.xp * frac), poolDraw, poolHealth: health };
 }
 
-export const poolTotal = (c: GameConfig, route: Route) => route.pool_per_player * c.world.expected_players;
+/** Efektywność nagrody: krótkie trasy płacą więcej za minutę (1 + short_bonus przy najkrótszej, 1.0 przy najdłuższej). */
+export function efficiency(c: GameConfig, minutes: number): number {
+  const e = c.dives.economy;
+  const x = Math.log(e.reference_minutes / Math.max(minutes, e.min_route_minutes)) / Math.log(e.reference_minutes / e.min_route_minutes);
+  return 1 + e.short_bonus * Math.min(1, Math.max(0, x));
+}
+
+/** Średnia nagroda trasy (przy pełnej puli, bez bonusów archetypu) */
+export function routeRewards(c: GameConfig, route: Route) {
+  const minutes = route.seconds / 60;
+  const eff = efficiency(c, minutes);
+  const ore = c.dives.economy.ore_per_min * minutes * eff;
+  const sp = c.dives.economy.spread;
+  return { oreAvg: ore, oreMin: ore * (1 - sp), oreMax: ore * (1 + sp), xp: Math.round(c.dives.economy.xp_per_min * minutes * eff), orePerHour: (ore / minutes) * 60 };
+}
+
+/** Całkowita pula strefy dla danej liczby graczy (każdy silos dokłada swój udział). */
+export const poolTotal = (c: GameConfig, zone: string, players: number) => c.dives.zones[zone]!.pool_per_player * players;

@@ -20,6 +20,7 @@ export interface Database {
     silo_lon: number | null;
     depth: Generated<number>;
     config_version: string | null;
+    subscription_until: Date | null;
   };
   wallets: { user_id: string; resource: string; balance: Generated<string> };
   ledger_entries: {
