@@ -9,7 +9,7 @@ const stats = z.object({
   wytrwalosc: z.number().int().min(0),
 });
 
-export const BUILDING_TYPES = ['szyb_glowny', 'generator_pary', 'magazyn', 'warsztat', 'wartownia'] as const;
+export const BUILDING_TYPES = ['szyb_glowny', 'generator_pary', 'magazyn', 'warsztat', 'wartownia', 'laboratorium'] as const;
 export type BuildingType = (typeof BUILDING_TYPES)[number];
 
 const pos = z.number().positive();
@@ -71,6 +71,33 @@ export const GameConfigSchema = z
           tokens: z.number().int().min(0),
           bonus: pos,
           durability: z.number().int().min(1),
+          tech: z.string().optional(),
+        }),
+      ),
+    }),
+    research: z.object({
+      lab_time_step: z.number().min(0).max(0.1),
+      techs: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          branch: z.string(),
+          lab: z.number().int().min(1),
+          ore: z.number().int().min(0),
+          tokens: z.number().int().min(0),
+          seconds: pos,
+          requires: z.array(z.string()).default([]),
+          unlocks: z.array(z.string()).default([]),
+          effect: z
+            .object({
+              dive_ore_pct: z.number().optional(),
+              dive_steam_pct: z.number().optional(),
+              dive_power: z.number().optional(),
+              quality: z.number().optional(),
+              repair_pct: z.number().optional(),
+              upgrade_cost_pct: z.number().optional(),
+            })
+            .default({}),
         }),
       ),
     }),
@@ -109,6 +136,14 @@ export const GameConfigSchema = z
     for (const r of cfg.items.recipes) if (!cfg.items.slots.includes(r.slot)) ctx.addIssue({ code: 'custom', message: `receptura ${r.id}: nieznany slot ${r.slot}` });
     const rids = cfg.items.recipes.map((r) => r.id);
     if (new Set(rids).size !== rids.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id receptur' });
+    const tids = new Set(cfg.research.techs.map((t) => t.id));
+    if (tids.size !== cfg.research.techs.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id badań' });
+    const recipeIds = new Set(cfg.items.recipes.map((r) => r.id));
+    for (const t of cfg.research.techs) {
+      for (const q of t.requires) if (!tids.has(q)) ctx.addIssue({ code: 'custom', message: `badanie ${t.id}: nieznany wymóg ${q}` });
+      for (const u of t.unlocks) if (!recipeIds.has(u)) ctx.addIssue({ code: 'custom', message: `badanie ${t.id}: nieznana receptura ${u}` });
+    }
+    for (const r of cfg.items.recipes) if (r.tech && !tids.has(r.tech)) ctx.addIssue({ code: 'custom', message: `receptura ${r.id}: nieznane badanie ${r.tech}` });
     const have = new Set(cfg.buildings.map((b) => b.id));
     for (const t of BUILDING_TYPES) {
       if (!have.has(t)) ctx.addIssue({ code: 'custom', message: `brak budynku ${t} w configu` });

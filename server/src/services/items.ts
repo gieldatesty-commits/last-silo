@@ -4,6 +4,7 @@ import type { GameConfig } from '../config.js';
 import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
+import { loadEffects } from './gear.js';
 import { randomInt } from 'node:crypto';
 
 type Trx = Transaction<Database>;
@@ -11,20 +12,20 @@ type Trx = Transaction<Database>;
 type Recipe = GameConfig['items']['recipes'][number];
 
 /** Zakres jakości rośnie z poziomem Warsztatu. */
-export function qualityRange(cfg: GameConfig, workshopLevel: number) {
+export function qualityRange(cfg: GameConfig, workshopLevel: number, bonus = 0) {
   const q = cfg.items.quality;
-  return { min: q.min + q.min_step * (workshopLevel - 1), max: q.max + q.max_step * (workshopLevel - 1) };
+  return { min: q.min + q.min_step * (workshopLevel - 1) + bonus, max: q.max + q.max_step * (workshopLevel - 1) + bonus };
 }
 
-export const repairCost = (cfg: GameConfig, rc: Recipe, durability: number, maxDurability: number) =>
-  Math.ceil(rc.ore * cfg.items.repair_cost_fraction * ((maxDurability - durability) / maxDurability));
+export const repairCost = (cfg: GameConfig, rc: Recipe, durability: number, maxDurability: number, mult = 1) =>
+  Math.ceil(rc.ore * cfg.items.repair_cost_fraction * mult * ((maxDurability - durability) / maxDurability));
 
 async function workshopLevel(trx: Trx, userId: string): Promise<number> {
   const b = await trx.selectFrom('buildings').select('level').where('user_id', '=', userId).where('type', '=', 'warsztat').executeTakeFirst();
   return b?.level ?? 1;
 }
 
-const view = (cfg: GameConfig, it: Database['items'] & { id: string }) => {
+const view = (cfg: GameConfig, it: Database['items'] & { id: string }, repairMult = 1) => {
   const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id)!;
   return {
     id: String(it.id),
@@ -37,21 +38,23 @@ const view = (cfg: GameConfig, it: Database['items'] & { id: string }) => {
     maxDurability: it.max_durability,
     broken: it.durability <= 0,
     equipped: Boolean(it.equipped),
-    repairCost: repairCost(cfg, rc, it.durability, it.max_durability),
+    repairCost: repairCost(cfg, rc, it.durability, it.max_durability, repairMult),
   };
 };
 
 export async function listItems(ctx: Ctx, userId: string) {
   const cfg = ctx.config;
+  await ctx.db.transaction().execute((trx) => settle(trx, cfg, userId, ctx.now()));
   const items = await ctx.db.selectFrom('items').selectAll().where('user_id', '=', userId).orderBy('id').execute();
   const wl = (await ctx.db.selectFrom('buildings').select('level').where('user_id', '=', userId).where('type', '=', 'warsztat').executeTakeFirst())?.level ?? 1;
-  const qr = qualityRange(cfg, wl);
+  const fx = await loadEffects(ctx.db, cfg, userId);
+  const qr = qualityRange(cfg, wl, fx.quality);
   return {
-    items: items.map((i) => view(cfg, i as never)),
+    items: items.map((i) => view(cfg, i as never, fx.repair)),
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
     quality: { min: Math.round(qr.min * 100) / 100, max: Math.round(qr.max * 100) / 100 },
-    recipes: cfg.items.recipes.map((r) => ({ id: r.id, name: r.name, slot: r.slot, workshop: r.workshop, ore: r.ore, tokens: r.tokens, bonus: r.bonus, durability: r.durability, locked: wl < r.workshop })),
+    recipes: cfg.items.recipes.map((r) => ({ id: r.id, name: r.name, slot: r.slot, workshop: r.workshop, ore: r.ore, tokens: r.tokens, bonus: r.bonus, durability: r.durability, locked: wl < r.workshop || (!!r.tech && !fx.unlocked.has(r.id)), needsTech: r.tech ?? null })),
   };
 }
 
@@ -62,10 +65,12 @@ export async function craftTx(trx: Trx, ctx: Ctx, userId: string, recipeId: stri
   await settle(trx, cfg, userId, ctx.now());
   const wl = await workshopLevel(trx, userId);
   if (wl < rc.workshop) throw new GameError(409, 'workshop_too_low');
+  const fx = await loadEffects(trx, cfg, userId);
+  if (rc.tech && !fx.unlocked.has(rc.id)) throw new GameError(409, 'recipe_locked');
   const count = await trx.selectFrom('items').select((e) => e.fn.countAll<string>().as('n')).where('user_id', '=', userId).executeTakeFirstOrThrow();
   if (Number(count.n) >= cfg.items.inventory_max) throw new GameError(409, 'inventory_full');
   const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
-  const { min, max } = qualityRange(cfg, wl);
+  const { min, max } = qualityRange(cfg, wl, fx.quality);
   const quality = min + (max - min) * rng(seed)();
   const it = await trx
     .insertInto('items')
@@ -115,7 +120,8 @@ export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
   const it = await lockItem(trx, userId, id);
   const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id)!;
   if (it.durability >= it.max_durability) throw new GameError(409, 'nothing_to_repair');
-  const cost = repairCost(cfg, rc, it.durability, it.max_durability);
+  const fx = await loadEffects(trx, cfg, userId);
+  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair);
   try {
     await applyLedger(trx, userId, [{ resource: 'ore', delta: -cost, reason: 'repair_cost', ref: `repair:${it.id}:${it.durability}` }], cfg.version);
   } catch (e) {
@@ -123,7 +129,7 @@ export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
     throw e;
   }
   const upd = await trx.updateTable('items').set({ durability: it.max_durability }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
-  return { ...view(cfg, upd as never), paid: cost };
+  return { ...view(cfg, upd as never, fx.repair), paid: cost };
 }
 
 export { walletBalance };

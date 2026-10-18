@@ -66,6 +66,7 @@ export interface Database {
     equipped: Generated<boolean>;
     created_at: Generated<Date>;
   };
+  research: { user_id: string; tech_id: string; state: 'active' | 'done'; ends_at: Date };
   world_pools: { zone: string; resource: string; total: number; remaining: number };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {

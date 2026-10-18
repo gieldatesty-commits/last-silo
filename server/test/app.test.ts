@@ -24,7 +24,7 @@ afterAll(async () => {
 
 describe('config', () => {
   it('wczytuje game.yaml', () => {
-    expect(config.buildings).toHaveLength(5);
+    expect(config.buildings).toHaveLength(6);
   });
   it('odrzuca zduplikowane id', () => {
     const y = readFileSync('../config/game.yaml', 'utf8').replace('- { id: magazyn, name: Magazyn, base_cost: 40 }', '- { id: szyb_glowny, name: X, base_cost: 40 }');

@@ -43,7 +43,7 @@ describe('postać i silos', () => {
     const v = res.json();
     expect(v.player).toMatchObject({ nickname: 'Kopacz', archetype: 'gornik', level: 1, stats: { sila: 5, technika: 3, percepcja: 2, wytrwalosc: 4 } });
     expect(v.wallet).toEqual({ ore: 300, steam: 100, tokens: 0 });
-    expect(v.buildings).toHaveLength(5);
+    expect(v.buildings).toHaveLength(6);
     expect(v.buildings.every((b: { level: number }) => b.level === 1)).toBe(true);
     expect(v.silo.lat).toBeGreaterThanOrEqual(-90);
     expect(['bogate', 'srednie', 'ubogie', 'na_wyczerpaniu']).toContain(v.silo.deposit);

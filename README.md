@@ -31,11 +31,14 @@ docker compose up -d --build
 | GET | `/items` | ekwipunek, receptury (zablokowane poziomem Warsztatu), zakres jakości |
 | POST | `/items/craft` | wytworzenie `{recipeId}`; ruda + żetony; `Idempotency-Key` |
 | POST | `/items/:id/equip` · `/unequip` · `/repair` | założenie (1 na slot), zdjęcie, naprawa za rudę; `Idempotency-Key` |
+| GET | `/research` | drzewo badań Laboratorium: stan, wymogi, koszt, czas (skracany poziomem Laboratorium) |
+| POST | `/research/:id/start` | start badania (jedno naraz); `Idempotency-Key` |
 | POST | `/players/stats` | rozdanie wolnych punktów statystyk |
 
 Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
+- [x] Dział nauki: Laboratorium (budynek), 13 badań w gałęziach górnictwo / inżynieria / rdzeniowcy (bonusy do zjazdów, tańsze naprawy i ulepszenia, jakość, odblokowanie receptur); 13 receptur w 4 slotach
 - [x] M2b (serwer): Warsztat, 6 receptur, jakość zależna od poziomu Warsztatu, trwałość (−1 na zjazd), naprawy, bonus do mocy zjazdu; klient nie ruszany
 - [x] M0: szkielet, logowanie gościa, Docker/CI (obraz i klient niesprawdzone, brak Dockera i Fluttera w środowisku autora)
 - [x] M1 (serwer): ledger, postać, statystyki, silos, 5 budynków, ulepszenia z timerami (pg-boss), ukryte złoże lokalne, idempotencja, audyt, symulator. 33 testy.

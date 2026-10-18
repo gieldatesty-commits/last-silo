@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.4.0"
+version: "0.5.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -71,6 +71,7 @@ buildings:
   - { id: magazyn, name: Magazyn, base_cost: 40 }
   - { id: warsztat, name: Warsztat, base_cost: 80 }
   - { id: wartownia, name: Wartownia, base_cost: 70 }
+  - { id: laboratorium, name: Laboratorium, base_cost: 90 }
 
 archetypes:
   - id: gornik
@@ -94,11 +95,36 @@ items:
   inventory_max: 24
   repair_cost_fraction: 0.4        # pełna naprawa = ta część kosztu rudy receptury (proporcjonalnie do ubytku)
   quality: { min: 0.85, max: 1.05, min_step: 0.02, max_step: 0.04 }   # zakres jakości rośnie z poziomem Warsztatu
-  slots: [narzedzie, ochrona, lampa]
-  recipes:
-    - { id: kilof,              name: Kilof,                 slot: narzedzie, workshop: 1, ore: 150,  tokens: 0,  bonus: 0.6, durability: 20 }
-    - { id: wiertlo_udarowe,    name: Wiertło udarowe,       slot: narzedzie, workshop: 4, ore: 1400, tokens: 12, bonus: 1.6, durability: 30 }
-    - { id: kask_gornika,       name: Kask górnika,          slot: ochrona,   workshop: 2, ore: 300,  tokens: 2,  bonus: 0.6, durability: 25 }
+  slots: [narzedzie, ochrona, lampa, sprzet]
+  recipes:   # tech: receptura odblokowana badaniem w Laboratorium
+    - { id: kilof,               name: Kilof,                slot: narzedzie, workshop: 1, ore: 150,  tokens: 0,  bonus: 0.6, durability: 20 }
+    - { id: mlot_pneumatyczny,   name: Młot pneumatyczny,    slot: narzedzie, workshop: 3, ore: 600,  tokens: 4,  bonus: 1.0, durability: 25 }
+    - { id: wiertlo_udarowe,     name: Wiertło udarowe,      slot: narzedzie, workshop: 4, ore: 1400, tokens: 12, bonus: 1.6, durability: 30 }
+    - { id: wiertlo_rdzeniowe,   name: Wiertło rdzeniowe,    slot: narzedzie, workshop: 6, ore: 4500, tokens: 40, bonus: 2.6, durability: 40, tech: wiertla_rdzeniowe }
+    - { id: kask_gornika,        name: Kask górnika,         slot: ochrona,   workshop: 2, ore: 300,  tokens: 2,  bonus: 0.6, durability: 25 }
+    - { id: helm_wzmocniony,     name: Hełm wzmocniony,      slot: ochrona,   workshop: 3, ore: 700,  tokens: 5,  bonus: 1.0, durability: 30, tech: metalurgia }
     - { id: kombinezon_pancerny, name: Kombinezon pancerny,  slot: ochrona,   workshop: 5, ore: 2000, tokens: 18, bonus: 1.5, durability: 35 }
-    - { id: lampa_karbidowa,    name: Lampa karbidowa,       slot: lampa,     workshop: 1, ore: 200,  tokens: 0,  bonus: 0.5, durability: 20 }
-    - { id: lampa_wibracyjna,   name: Lampa wibracyjna,      slot: lampa,     workshop: 3, ore: 800,  tokens: 8,  bonus: 1.2, durability: 30 }
+    - { id: kombinezon_izolowany, name: Kombinezon izolowany, slot: ochrona,  workshop: 7, ore: 5500, tokens: 50, bonus: 2.4, durability: 45, tech: izolacja_rdzenia }
+    - { id: lampa_karbidowa,     name: Lampa karbidowa,      slot: lampa,     workshop: 1, ore: 200,  tokens: 0,  bonus: 0.5, durability: 20 }
+    - { id: lampa_wibracyjna,    name: Lampa wibracyjna,     slot: lampa,     workshop: 3, ore: 800,  tokens: 8,  bonus: 1.2, durability: 30 }
+    - { id: lampa_rezonansowa,   name: Lampa rezonansowa,    slot: lampa,     workshop: 6, ore: 3800, tokens: 35, bonus: 2.0, durability: 40, tech: rezonans_skal }
+    - { id: detektor_zylowy,     name: Detektor żył,         slot: sprzet,    workshop: 2, ore: 450,  tokens: 3,  bonus: 0.7, durability: 25 }
+    - { id: skaner_sejsmiczny,   name: Skaner sejsmiczny,    slot: sprzet,    workshop: 5, ore: 2600, tokens: 22, bonus: 1.6, durability: 35, tech: sejsmika }
+
+# Dział nauki (Laboratorium): jedno badanie naraz; czas skraca się o 5% za każdy poziom Laboratorium (max −50%)
+research:
+  lab_time_step: 0.05
+  techs:
+    - { id: geologia_1,        name: Geologia I,            branch: gornictwo, lab: 1, ore: 200,  tokens: 0,  seconds: 600,   effect: { dive_ore_pct: 3 } }
+    - { id: geologia_2,        name: Geologia II,           branch: gornictwo, lab: 3, ore: 900,  tokens: 6,  seconds: 3600,  requires: [geologia_1], effect: { dive_ore_pct: 4 } }
+    - { id: geologia_3,        name: Geologia III,          branch: gornictwo, lab: 5, ore: 3500, tokens: 25, seconds: 14400, requires: [geologia_2], effect: { dive_ore_pct: 5 } }
+    - { id: sejsmika,          name: Sejsmika,              branch: gornictwo, lab: 3, ore: 800,  tokens: 5,  seconds: 3600,  requires: [geologia_1], effect: { dive_power: 0.3 }, unlocks: [skaner_sejsmiczny] }
+    - { id: hydraulika_1,      name: Hydraulika I,          branch: inzynieria, lab: 1, ore: 250,  tokens: 0,  seconds: 900,   effect: { dive_steam_pct: -4 } }
+    - { id: hydraulika_2,      name: Hydraulika II,         branch: inzynieria, lab: 4, ore: 1500, tokens: 10, seconds: 7200,  requires: [hydraulika_1], effect: { dive_steam_pct: -4 } }
+    - { id: ekonomika_prac_1,  name: Organizacja robót I,   branch: inzynieria, lab: 2, ore: 400,  tokens: 0,  seconds: 1800,  effect: { upgrade_cost_pct: -5 } }
+    - { id: ekonomika_prac_2,  name: Organizacja robót II,  branch: inzynieria, lab: 5, ore: 2500, tokens: 15, seconds: 10800, requires: [ekonomika_prac_1], effect: { upgrade_cost_pct: -5 } }
+    - { id: metalurgia,        name: Metalurgia,            branch: inzynieria, lab: 2, ore: 500,  tokens: 3,  seconds: 1800,  effect: { repair_pct: -10 }, unlocks: [helm_wzmocniony] }
+    - { id: precyzja,          name: Precyzyjna obróbka,    branch: inzynieria, lab: 3, ore: 1000, tokens: 6,  seconds: 5400,  requires: [metalurgia], effect: { quality: 0.04 } }
+    - { id: rezonans_skal,     name: Rezonans skał,         branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, seconds: 9000,  requires: [sejsmika], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }
+    - { id: wiertla_rdzeniowe, name: Wiertła rdzeniowe,     branch: rdzeniowcy, lab: 5, ore: 3200, tokens: 22, seconds: 14400, requires: [metalurgia, rezonans_skal], unlocks: [wiertlo_rdzeniowe] }
+    - { id: izolacja_rdzenia,  name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, seconds: 21600, requires: [metalurgia, rezonans_skal], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }

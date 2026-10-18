@@ -6,6 +6,7 @@ import type { Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
 import { idempotent } from './idempotency.js';
 import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
+import { listResearch, startResearchTx } from './services/research.js';
 import { craftTx, equipTx, listItems, repairTx } from './services/items.js';
 
 declare module '@fastify/jwt' {
@@ -162,6 +163,17 @@ export function buildApp(deps: AppDeps) {
       return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
     });
   }
+
+  app.get('/research', { onRequest: auth }, async (req) => listResearch(ctx, req.user.sub));
+  app.post('/research/:id/start', { onRequest: auth }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().min(1).max(60) }).parse(req.params);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await startResearchTx(trx, ctx, userId, id) }));
+    if (!res.replay) await ctx.scheduler.schedule(userId, new Date((res.body as { endsAt: string }).endsAt)).catch(() => undefined);
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
 
   // Rozdanie wolnych punktów statystyk
   app.post('/players/stats', { onRequest: auth }, async (req) => {

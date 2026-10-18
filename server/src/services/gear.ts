@@ -1,6 +1,14 @@
 import type { Transaction } from 'kysely';
 import type { Database } from '../db.js';
 
+import type { GameConfig } from '../config.js';
+import { computeEffects } from '../game/research.js';
+
+export async function loadEffects(db: Trx, cfg: GameConfig, userId: string) {
+  const rows = await db.selectFrom('research').select('tech_id').where('user_id', '=', userId).where('state', '=', 'done').execute();
+  return computeEffects(cfg, rows.map((r) => r.tech_id));
+}
+
 type Trx = Transaction<Database> | import('kysely').Kysely<Database>;
 
 /** Bonus do mocy zjazdu z założonych, niezepsutych przedmiotów (bonus receptury × jakość). */

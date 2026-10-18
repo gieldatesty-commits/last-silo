@@ -7,7 +7,7 @@ import { rng } from '../game/rng.js';
 import { addXp, diveChance, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
-import { equippedBonus, wearEquipped } from './gear.js';
+import { equippedBonus, loadEffects, wearEquipped } from './gear.js';
 import { randomInt } from 'node:crypto';
 
 export class GameError extends Error {
@@ -148,6 +148,11 @@ export async function settle(trx: Trx, cfg: GameConfig, userId: string, now: Dat
       .values({ user_id: userId, name: 'upgrade_done', props: JSON.stringify({ building: u.type, level: u.toLevel }) })
       .execute();
   }
+  const doneTech = await trx.updateTable('research').set({ state: 'done' }).where('user_id', '=', userId).where('state', '=', 'active').where('ends_at', '<=', now).returning('tech_id').execute();
+  for (const t of doneTech) {
+    await trx.insertInto('notifications').values({ user_id: userId, type: 'research_done', payload: JSON.stringify({ tech: t.tech_id }), sent_at: null, read_at: null }).execute();
+    await trx.insertInto('events_log').values({ user_id: userId, name: 'research_done', props: JSON.stringify({ tech: t.tech_id }) }).execute();
+  }
   const diveOre = await resolveDueDives(trx, cfg, userId, now);
   return { state, oreInt: Math.max(whole, oreInt) + diveOre, done };
 }
@@ -173,8 +178,9 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
     const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
     const pool = await lockPool(trx, cfg, route);
-    const bonus = await equippedBonus(trx, cfg.items.recipes, userId);
-    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus);
+    const fx = await loadEffects(trx, cfg, userId);
+    const bonus = (await equippedBonus(trx, cfg.items.recipes, userId)) + fx.divePower;
+    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus);
     await wearEquipped(trx, userId);
 
     await applyLedger(
@@ -224,6 +230,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
   const jobRow = await trx.selectFrom('jobs').selectAll().where('user_id', '=', userId).where('state', '=', 'pending').orderBy('ends_at').executeTakeFirst();
   const diveRows = await trx.selectFrom('dives').selectAll().where('user_id', '=', userId).where('state', '=', 'active').orderBy('ends_at').execute();
   const siloRow = await trx.selectFrom('silos').select('winded_until').where('user_id', '=', userId).executeTakeFirstOrThrow();
+  const fx = await loadEffects(trx, cfg, userId);
   const lv = st.state.levels;
   const x = Math.max(cfg.economy.deposit.floor_fraction, st.state.depositRemaining / st.state.depositTotal);
   return {
@@ -249,7 +256,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
         name: b.name,
         level,
         maxLevel: cfg.upgrades.max_level,
-        next: level >= cfg.upgrades.max_level ? null : { level: next, cost: upgradeCost(cfg, b.id, next, arch.upgrade_cost_multiplier), seconds: upgradeSeconds(cfg, next) },
+        next: level >= cfg.upgrades.max_level ? null : { level: next, cost: upgradeCost(cfg, b.id, next, arch.upgrade_cost_multiplier * fx.upgradeCost), seconds: upgradeSeconds(cfg, next) },
       };
     }),
     queue: diveRows.map((d) => ({ id: String(d.id), routeId: d.route_id, startsAt: d.started_at, endsAt: d.ends_at, running: d.started_at <= st.state.at })),
@@ -277,7 +284,7 @@ export async function startUpgradeTx(trx: Trx, ctx: Ctx, userId: string, type: B
   if (level >= cfg.upgrades.max_level) throw new GameError(409, 'max_level');
   const toLevel = level + 1;
   const p = await trx.selectFrom('players').select('archetype').where('user_id', '=', userId).executeTakeFirstOrThrow();
-  const mult = cfg.archetypes.find((a) => a.id === p.archetype)!.upgrade_cost_multiplier;
+  const mult = cfg.archetypes.find((a) => a.id === p.archetype)!.upgrade_cost_multiplier * (await loadEffects(trx, cfg, userId)).upgradeCost;
   const cost = upgradeCost(cfg, type, toLevel, mult);
   const endsAt = new Date(now.getTime() + upgradeSeconds(cfg, toLevel) * 1000);
   const job = await trx
@@ -323,7 +330,7 @@ export async function startDiveTx(trx: Trx, ctx: Ctx, userId: string, routeId: s
   const silo = await trx.selectFrom('silos').select(['steam', 'winded_until']).where('user_id', '=', userId).executeTakeFirstOrThrow();
   if (silo.winded_until && silo.winded_until > now) throw new GameError(409, 'winded');
   const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
-  const cost = steamCost(route, arch.dive_steam_multiplier);
+  const cost = steamCost(route, arch.dive_steam_multiplier * (await loadEffects(trx, cfg, userId)).diveSteam);
   if (st.state.steam + EPS < cost) throw new GameError(402, 'insufficient_steam');
   await trx.updateTable('silos').set({ steam: silo.steam - cost }).where('user_id', '=', userId).execute();
   const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
@@ -341,12 +348,14 @@ export async function startDiveTx(trx: Trx, ctx: Ctx, userId: string, routeId: s
 
 export async function listRoutes(ctx: Ctx, userId: string) {
   const cfg = ctx.config;
+  await ctx.db.transaction().execute((trx) => settle(trx, cfg, userId, ctx.now()));
   const p = await ctx.db.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
   if (!p.archetype) throw new GameError(409, 'no_player');
   const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
   const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
   const pools = await ctx.db.selectFrom('world_pools').selectAll().execute();
-  const bonus = await equippedBonus(ctx.db, cfg.items.recipes, userId);
+  const fx = await loadEffects(ctx.db, cfg, userId);
+  const bonus = (await equippedBonus(ctx.db, cfg.items.recipes, userId)) + fx.divePower;
   return cfg.dives.routes.map((r) => {
     const pool = pools.find((x) => x.zone === r.zone);
     return {
@@ -356,9 +365,9 @@ export async function listRoutes(ctx: Ctx, userId: string) {
       minLevel: r.min_level,
       locked: p.level < r.min_level,
       seconds: r.seconds,
-      steam: steamCost(r, arch.dive_steam_multiplier),
+      steam: steamCost(r, arch.dive_steam_multiplier * fx.diveSteam),
       chancePct: Math.round(diveChance(stats, r.difficulty, bonus) * 100),
-      ore: [Math.round(routeRewards(cfg, r).oreMin * arch.dive_ore_multiplier), Math.round(routeRewards(cfg, r).oreMax * arch.dive_ore_multiplier)],
+      ore: [Math.round(routeRewards(cfg, r).oreMin * arch.dive_ore_multiplier * fx.diveOre), Math.round(routeRewards(cfg, r).oreMax * arch.dive_ore_multiplier * fx.diveOre)],
       tokens: r.tokens,
       xp: routeRewards(cfg, r).xp,
       zoneRichness: pool ? depositHint(pool.remaining, pool.total, cfg.dives.pool_floor_fraction) : 'bogate',

@@ -11,6 +11,7 @@ export const LEDGER_REASONS = [
   'raid_loss',
   'craft_cost',
   'repair_cost',
+  'research_cost',
   'market_sale',
   'market_purchase',
   'market_fee',

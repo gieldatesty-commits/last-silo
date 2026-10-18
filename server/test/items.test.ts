@@ -56,7 +56,7 @@ describe('Warsztat i przedmioty', () => {
   it('lista receptur: zablokowane poziomem Warsztatu', async () => {
     const { h } = await newPlayer();
     const r = (await app.inject({ url: '/items', headers: h })).json();
-    expect(r.recipes).toHaveLength(6);
+    expect(r.recipes).toHaveLength(13);
     expect(r.recipes.find((x: { id: string }) => x.id === 'kilof').locked).toBe(false);
     expect(r.recipes.find((x: { id: string }) => x.id === 'wiertlo_udarowe').locked).toBe(true);
   });
