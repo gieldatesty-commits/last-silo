@@ -31,6 +31,12 @@ docker compose up -d --build
 | GET | `/items` | ekwipunek, receptury (zablokowane poziomem Warsztatu), zakres jakości |
 | POST | `/items/craft` | wytworzenie `{recipeId}`; ruda + żetony; `Idempotency-Key` |
 | POST | `/items/:id/equip` · `/unequip` · `/repair` | założenie (1 na slot), zdjęcie, naprawa za rudę; `Idempotency-Key` |
+| GET | `/radio` | stan Radiostacji + słyszane sygnały (kierunek, dystans zaokrąglony; nick dopiero po kontakcie) |
+| POST | `/radio/contact` | namierzenie `{signalId}` (para); `Idempotency-Key` |
+| POST | `/radio/broadcast` | `{on}` – cisza radiowa / nadawanie (od Nadajnika) |
+| GET | `/raids/targets` · `/raids` | cele (słyszalni, znani, w lidze) · historia i aktywne |
+| POST | `/raids` | start najazdu `{targetId}`; rozstrzygany leniwie po dojeździe; `Idempotency-Key` |
+| GET | `/ranking?type=power\|loot` | ranking nadających (Nadajnik) |
 | GET | `/codex` | Kodeks Rdzeniowców: wpisy odkrywane badaniami (zablokowane bez treści, tylko podpowiedź) |
 | GET | `/research` | drzewo badań Laboratorium: stan, wymogi, koszt, czas (skracany poziomem Laboratorium) |
 | POST | `/research/:id/start` | start badania (jedno naraz); `Idempotency-Key` |
@@ -39,6 +45,7 @@ docker compose up -d --build
 Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
+- [x] M3 (serwer): Radiostacja (Odbiornik/Nadajnik/Szyfr/Przekaźniki), kontakt, najazdy async z łupem i ochroną, ranking; symulacja najazdów (`--noraids=1` wyłącza)
 - [x] Balans 0.7.0: 6 tras wysokich poziomów (strefa rdzenia, od poziomu 9 do 25, mnożnik nagrody), tańsze naprawy, mniej próbek; wyniki w docs/balans-v0.7.md
 - [x] Rdzeniowcy: zasób Próbki rdzeniowe (z głębokich zjazdów), gałąź badań (obserwacja, anatomia, język wibracji I–III, wiertła, izolacja), 10 wpisów kodeksu; poprawka księgi (debet na pustym portfelu)
 - [x] Dział nauki: Laboratorium (budynek), 13 badań w gałęziach górnictwo / inżynieria / rdzeniowcy (bonusy do zjazdów, tańsze naprawy i ulepszenia, jakość, odblokowanie receptur); 13 receptur w 4 slotach

@@ -21,6 +21,8 @@ export interface Database {
     depth: Generated<number>;
     config_version: string | null;
     subscription_until: Date | null;
+    radio_on: Generated<boolean>;
+    protected_until: Date | null;
   };
   wallets: { user_id: string; resource: string; balance: Generated<string> };
   ledger_entries: {
@@ -67,6 +69,18 @@ export interface Database {
     created_at: Generated<Date>;
   };
   research: { user_id: string; tech_id: string; state: 'active' | 'done'; ends_at: Date };
+  contacts: { user_id: string; target_id: string; created_at: Generated<Date> };
+  raids: {
+    id: Generated<string>;
+    attacker_id: string;
+    defender_id: string;
+    started_at: Date;
+    ends_at: Date;
+    seed: string | number;
+    steam_cost: number;
+    state: Generated<'active' | 'resolved'>;
+    result: unknown | null;
+  };
   world_pools: { zone: string; resource: string; total: number; remaining: number };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {

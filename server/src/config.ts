@@ -9,7 +9,7 @@ const stats = z.object({
   wytrwalosc: z.number().int().min(0),
 });
 
-export const BUILDING_TYPES = ['szyb_glowny', 'generator_pary', 'magazyn', 'warsztat', 'wartownia', 'laboratorium'] as const;
+export const BUILDING_TYPES = ['szyb_glowny', 'generator_pary', 'magazyn', 'warsztat', 'wartownia', 'laboratorium', 'radiostacja'] as const;
 export type BuildingType = (typeof BUILDING_TYPES)[number];
 
 const pos = z.number().positive();
@@ -107,6 +107,33 @@ export const GameConfigSchema = z
       ),
     }),
     codex: z.array(z.object({ id: z.string(), tech: z.string(), title: z.string(), text: z.string() })),
+    radio: z.object({
+      levels: z.object({ receiver: z.number().int().min(1), transmitter: z.number().int().min(1), cipher: z.number().int().min(1), relays: z.number().int().min(1) }),
+      r0_km: pos,
+      range_growth: pos,
+      cipher_range_reduction: z.number().min(0).max(0.9),
+      contact_steam: z.number().min(0),
+      distance_band_km: pos,
+      speed_km_per_min: pos,
+      travel_min: pos,
+      travel_max: pos,
+    }),
+    raids: z.object({
+      min_level: z.number().int().min(1),
+      beginner_protection_level: z.number().int().min(0),
+      steam: pos,
+      league_tolerance: z.number().min(0).max(5),
+      loot_fraction: z.number().min(0).max(0.5),
+      loot_cap_ore: z.number().int().min(0),
+      loot_cap_tokens: z.number().int().min(0),
+      protection_minutes: z.number().min(0),
+      same_target_cooldown_minutes: z.number().min(0),
+      same_target_per_day: z.number().int().min(1),
+      attacker_per_day: z.number().int().min(1),
+      xp_win: z.number().int().min(0),
+      xp_loss: z.number().int().min(0),
+      defender_xp_win: z.number().int().min(0),
+    }),
     world: z.object({
       expected_players: pos,
       radius_km: pos,

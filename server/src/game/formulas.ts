@@ -27,4 +27,4 @@ export function upgradeCost(c: GameConfig, type: BuildingType, toLevel: number, 
 export const upgradeSeconds = (c: GameConfig, toLevel: number) =>
   Math.round(c.upgrades.time_base_seconds * c.upgrades.time_growth ** (toLevel - 2));
 
-export const initialLevels = (): Levels => ({ szyb_glowny: 1, generator_pary: 1, magazyn: 1, warsztat: 1, wartownia: 1, laboratorium: 1 });
+export const initialLevels = (): Levels => ({ szyb_glowny: 1, generator_pary: 1, magazyn: 1, warsztat: 1, wartownia: 1, laboratorium: 1, radiostacja: 1 });

@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.7.0"
+version: "0.8.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -81,6 +81,7 @@ buildings:
   - { id: warsztat, name: Warsztat, base_cost: 80 }
   - { id: wartownia, name: Wartownia, base_cost: 70 }
   - { id: laboratorium, name: Laboratorium, base_cost: 90 }
+  - { id: radiostacja, name: Radiostacja, base_cost: 110 }
 
 archetypes:
   - id: gornik
@@ -156,3 +157,32 @@ codex:
   - { id: starsi, tech: jezyk_wibracji_3, title: Starsi, text: "Najgłębsze wzory mają jedno źródło. Kiedy ono mówi, reszta milknie. Rdzeniowcy nazywają je w swoim języku czymś, co oddajemy jako STARSZY. Jest ich niewielu, są najstarsi i najgłębiej — a to, co chroni jądro, chroni też coś, o czym nie wiemy jeszcze nic." }
   - { id: cena_wiertla, tech: wiertla_rdzeniowe, title: Cena wiertła, text: "Wiertło rdzeniowe działa, bo wibruje w paśmie, które skała znosi najlepiej. Dla Rdzeniowców brzmi to jak krzyk. Możemy z niego korzystać. Pytanie, czy powinniśmy." }
   - { id: cieplo_rdzenia, tech: izolacja_rdzenia, title: Ciepło rdzenia, text: "Kombinezon izolowany pozwala zejść głębiej, niż jakikolwiek człowiek schodził. Na dole nie ma ciemności, jakiej się spodziewano — jest ciepłe, bursztynowe światło i dźwięk, który czuć w kościach. Rdzeniowcy nie atakują. Czekają, aż wyjaśnimy, po co przyszliśmy." }
+
+# Radiostacja: poziom budynku 1 = izolacja (nic nie słychać, nikt nie słyszy). Wyższe poziomy odblokowują łączność.
+radio:
+  levels: { receiver: 2, transmitter: 3, cipher: 4, relays: 5 }   # minimalny poziom budynku dla każdej zdolności
+  r0_km: 5000              # zasięg nasłuchu na poziomie Odbiornika; × range_growth za każdy kolejny poziom
+  range_growth: 1.6
+  cipher_range_reduction: 0.35   # szyfr: tyle krócej inni Cię słyszą
+  contact_steam: 8         # koszt namierzenia (nawiązania kontaktu) z nasłuchiwanym silosem
+  distance_band_km: 500    # słyszany dystans jest zaokrąglany do tego kroku
+  speed_km_per_min: 1000   # czas dojazdu najazdu = dystans / prędkość, w granicach poniżej
+  travel_min: 2
+  travel_max: 20
+
+# Najazdy (PvP async). Rozstrzygnięcie: A = Siła + 0.4·Percepcja, D = Wytrwałość + 3·poziom Wartowni; P = 1 / (1 + e^(−3·ln(A/D)))
+raids:
+  min_level: 5                  # najazd możliwy od tego poziomu
+  beginner_protection_level: 4  # gracze poniżej tego poziomu nie mogą być celem
+  steam: 30
+  league_tolerance: 0.4         # moc celu w przedziale ±40% mocy atakującego
+  loot_fraction: 0.05           # część NIECHRONIONEJ rudy i żetonów obrońcy
+  loot_cap_ore: 4000
+  loot_cap_tokens: 80
+  protection_minutes: 360       # ochrona obrońcy po przegranej
+  same_target_cooldown_minutes: 180
+  same_target_per_day: 3
+  attacker_per_day: 5
+  xp_win: 14
+  xp_loss: 4
+  defender_xp_win: 6

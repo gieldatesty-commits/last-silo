@@ -7,6 +7,7 @@ import { rng } from '../game/rng.js';
 import { addXp, diveChance, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
+import { resolveDueRaids } from './raids.js';
 import { equippedBonus, loadEffects, wearEquipped } from './gear.js';
 import { randomInt } from 'node:crypto';
 
@@ -32,7 +33,7 @@ export interface Ctx {
   seed?: () => number;
 }
 
-type Trx = Transaction<Database>;
+export type Trx = Transaction<Database>;
 
 const EPS = 1e-9;
 
@@ -106,6 +107,13 @@ interface Settled {
 
 /** Rozlicza silos do `now`: produkcja, para, ukończone ulepszenia. Idempotentne, serializowane blokadą wiersza. */
 export async function settle(trx: Trx, cfg: GameConfig, userId: string, now: Date): Promise<Settled> {
+  // najpierw najazdy, które dotarły (blokują oba silosy w stałej kolejności), potem zwykłe rozliczenie
+  await resolveDueRaids(trx, cfg, userId, now);
+  return settleCore(trx, cfg, userId, now);
+}
+
+/** Rozlicza jeden silos bez ruszania najazdów (używane też przy rozstrzyganiu najazdu dla drugiej strony). */
+export async function settleCore(trx: Trx, cfg: GameConfig, userId: string, now: Date): Promise<Settled> {
   const silo = await trx.selectFrom('silos').selectAll().where('user_id', '=', userId).forUpdate().executeTakeFirst();
   if (!silo) throw new GameError(409, 'no_player');
   const rows = await trx.selectFrom('buildings').select(['type', 'level']).where('user_id', '=', userId).execute();
@@ -263,6 +271,8 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
     }),
     queue: diveRows.map((d) => ({ id: String(d.id), routeId: d.route_id, startsAt: d.started_at, endsAt: d.ends_at, running: d.started_at <= st.state.at })),
     queueSlots: queueSlots(cfg, p.subscription_until, st.state.at),
+    radio: { level: lv.radiostacja, receiver: lv.radiostacja >= cfg.radio.levels.receiver, transmitter: lv.radiostacja >= cfg.radio.levels.transmitter, on: p.radio_on },
+    protectedUntil: p.protected_until && p.protected_until > st.state.at ? p.protected_until : null,
     windedUntil: siloRow.winded_until && siloRow.winded_until > st.state.at ? siloRow.winded_until : null,
     job: jobRow ? { type: jobRow.building_type, toLevel: jobRow.to_level, endsAt: jobRow.ends_at } : null,
     serverTime: st.state.at,

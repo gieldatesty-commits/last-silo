@@ -6,6 +6,8 @@ import type { Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
 import { idempotent } from './idempotency.js';
 import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
+import { afterRaidCommitted, listRaids, listTargets, startRaidTx } from './services/raids.js';
+import { contactTx, getRadio, ranking, setBroadcast } from './services/radio.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
 import { craftTx, equipTx, listItems, repairTx } from './services/items.js';
@@ -165,6 +167,34 @@ export function buildApp(deps: AppDeps) {
     });
   }
 
+  app.get('/radio', { onRequest: auth }, async (req) => getRadio(ctx, req.user.sub));
+  app.post('/radio/contact', { onRequest: auth }, async (req, reply) => {
+    const { signalId } = z.object({ signalId: z.string().uuid() }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 200, body: await contactTx(trx, ctx, userId, signalId) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+  app.post('/radio/broadcast', { onRequest: auth }, async (req) => {
+    const { on } = z.object({ on: z.boolean() }).parse(req.body);
+    return setBroadcast(ctx, req.user.sub, on);
+  });
+  app.get('/ranking', { onRequest: auth }, async (req) => {
+    const { type } = z.object({ type: z.enum(['power', 'loot']).default('power') }).parse(req.query);
+    return ranking(ctx, req.user.sub, type);
+  });
+  app.get('/raids/targets', { onRequest: auth }, async (req) => listTargets(ctx, req.user.sub));
+  app.get('/raids', { onRequest: auth }, async (req) => listRaids(ctx, req.user.sub));
+  app.post('/raids', { onRequest: auth }, async (req, reply) => {
+    const { targetId } = z.object({ targetId: z.string().uuid() }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await startRaidTx(trx, ctx, userId, targetId) }));
+    if (!res.replay) await afterRaidCommitted(ctx, userId, targetId, (res.body as { endsAt: string }).endsAt);
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
   app.get('/codex', { onRequest: auth }, async (req) => getCodex(ctx, req.user.sub));
   app.get('/research', { onRequest: auth }, async (req) => listResearch(ctx, req.user.sub));
   app.post('/research/:id/start', { onRequest: auth }, async (req, reply) => {
