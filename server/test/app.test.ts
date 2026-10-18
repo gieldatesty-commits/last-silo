@@ -5,7 +5,7 @@ import { parseGameConfig } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 
-const url = process.env.TEST_DATABASE_URL ?? 'postgres://szyb:szyb@localhost:5432/szyb7_test';
+const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
 const { db, pool } = createDb(url);
 const config = parseGameConfig(readFileSync('../config/game.yaml', 'utf8'));
 const app = buildApp({ db, config, jwtSecret: 'test-secret-1234567890' });

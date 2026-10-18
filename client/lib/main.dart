@@ -3,10 +3,10 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'api.dart';
 
-void main() => runApp(const Szyb7App());
+void main() => runApp(const LastSiloApp());
 
-class Szyb7App extends StatelessWidget {
-  const Szyb7App({super.key});
+class LastSiloApp extends StatelessWidget {
+  const LastSiloApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
         onGenerateTitle: (c) => AppLocalizations.of(c).appTitle,

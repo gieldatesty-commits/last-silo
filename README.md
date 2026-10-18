@@ -1,14 +1,14 @@
-# Szyb 7
+# Last Silo
 
 Mobilna gra w świecie Głębi (podziemna kolonia). Spec: `docs/glebia-mvp-spec.md`.
 
 ## Uruchomienie lokalnie (serwer)
 ```bash
 cd server && npm ci
-export DATABASE_URL=postgres://szyb:szyb@localhost:5432/szyb7
+export DATABASE_URL=postgres://lastsilo:lastsilo@localhost:5432/lastsilo
 export JWT_SECRET=dev-secret-1234567890
 npm run dev          # migracje odpalają się przy starcie
-npm test             # wymaga bazy szyb7_test (TEST_DATABASE_URL)
+npm test             # wymaga bazy lastsilo_test (TEST_DATABASE_URL)
 ```
 
 ## Wdrożenie na VPS

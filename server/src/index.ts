@@ -10,4 +10,4 @@ const { db, pool } = createDb(env.DATABASE_URL);
 await migrate(pool);
 const app = buildApp({ db, config, jwtSecret: env.JWT_SECRET });
 await app.listen({ port: env.PORT, host: '0.0.0.0' });
-console.log(`Szyb 7 server: :${env.PORT}, config ${config.version}`);
+console.log(`Last Silo server: :${env.PORT}, config ${config.version}`);

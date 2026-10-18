@@ -1,4 +1,4 @@
-# Konfiguracja gry Szyb 7 (M0: tylko szkielet; balans z sekcji 5 specu dochodzi w M1+)
+# Konfiguracja gry Last Silo (M0: tylko szkielet; balans z sekcji 5 specu dochodzi w M1+)
 version: "0.0.1"
 resources:
   - id: ore

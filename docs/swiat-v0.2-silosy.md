@@ -1,4 +1,4 @@
-# Szyb 7 – korekta świata v0.2 („Silosy i Rdzeniowcy")
+# Last Silo – korekta świata v0.2 („Silosy i Rdzeniowcy")
 
 > Zastępuje wątek „kolonia pod martwą powierzchnią + Wielka Maszyna/Kolosy" z `bloodwars-research-mobile-brief.md` (sekcja 7d). Reszta 7d (profesje, zasoby, archetypy, ekonomia zamknięta) zostaje.
 > Zmiana wg pomysłu autora z 18.10.2026: (1) każdy gracz ma własny silos, (2) silosy są losowo rozrzucone po całej planecie, (3) wrogiem jest nieznany, inteligentny, ale prymitywny gatunek żyjący od zawsze w okolicach jądra Ziemi.

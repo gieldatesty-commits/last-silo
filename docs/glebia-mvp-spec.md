@@ -328,7 +328,7 @@ Prywatność: minimalizacja danych, zgodnie z polityką prywatności i RODO; ano
 
 ## 15. Decyzje przed M0 (zatwierdzone)
 
-1. **Nazwa:** gra **Szyb 7**; **Głębia** zostaje nazwą świata. Przed publikacją sprawdzić UPRP, EUIPO i Google Play (kolizje nazw).
+1. **Nazwa:** gra **Last Silo**; **Głębia** zostaje nazwą świata. Przed publikacją sprawdzić UPRP, EUIPO i Google Play (kolizje nazw).
 2. **Serwer:** Fastify + TypeScript + Kysely (ew. Drizzle) + PostgreSQL + pg-boss.
 3. **Logowanie:** gość + Google Sign-In (Credential Manager), z możliwością powiązania konta gościa. E-mail (magic link) po MVP, Apple razem z iOS.
 4. **Język UI:** polski w MVP; wszystkie teksty w plikach tłumaczeń (Flutter ARB), angielski później.

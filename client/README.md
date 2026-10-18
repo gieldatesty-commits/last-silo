@@ -6,7 +6,7 @@ Szkielet M0: ekran z przyciskiem „Zejdź na dół” → logowanie gościa →
 Pierwsze uruchomienie:
 ```bash
 cd client
-flutter create . --platforms=android --org pl.szyb7 --project-name szyb7   # generuje android/
+flutter create . --platforms=android --org pl.lastsilo --project-name lastsilo   # generuje android/
 flutter pub get
 flutter gen-l10n
 flutter run --dart-define=API_URL=http://10.0.2.2:3000
