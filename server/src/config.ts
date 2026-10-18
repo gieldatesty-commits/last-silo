@@ -26,7 +26,31 @@ export const GameConfigSchema = z
         floor_fraction: z.number().min(0.01).max(0.5),
       }),
     }),
+    progression: z.object({ xp_base: pos, xp_exp: pos, max_level: z.number().int().min(2), points_per_level: z.number().int().min(0) }),
+    dives: z.object({
+      fail_reward_fraction: z.number().min(0).max(1),
+      winded_seconds: z.number().min(0),
+      pool_floor_fraction: z.number().min(0.01).max(0.5),
+      routes: z
+        .array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            zone: z.string(),
+            min_level: z.number().int().min(1),
+            seconds: pos,
+            steam: pos,
+            difficulty: pos,
+            ore: z.tuple([z.number().min(0), z.number().min(0)]),
+            tokens: z.tuple([z.number().int().min(0), z.number().int().min(0)]),
+            xp: z.number().min(0),
+            pool_per_player: pos,
+          }),
+        )
+        .min(1),
+    }),
     world: z.object({
+      expected_players: pos,
       radius_km: pos,
       min_silo_distance_km: z.number().min(0),
       placement_candidates: z.number().int().min(1).max(500),
@@ -46,7 +70,7 @@ export const GameConfigSchema = z
     }),
     buildings: z.array(z.object({ id: z.enum(BUILDING_TYPES), name: z.string(), base_cost: pos })),
     archetypes: z
-      .array(z.object({ id: z.string(), name: z.string(), stats, upgrade_cost_multiplier: pos.default(1) }))
+      .array(z.object({ id: z.string(), name: z.string(), stats, upgrade_cost_multiplier: pos.default(1), dive_ore_multiplier: pos.default(1), dive_steam_multiplier: pos.default(1) }))
       .min(1),
   })
   .superRefine((cfg, ctx) => {

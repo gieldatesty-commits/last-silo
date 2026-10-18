@@ -25,11 +25,16 @@ docker compose up -d --build
 | POST | `/players` | tworzy postać: `{nickname, archetype}`, losuje pozycję silosu i ukryte złoże |
 | GET | `/silo` | stan silosu; rozlicza produkcję, parę i ukończone ulepszenia |
 | POST | `/buildings/:type/upgrade` | ulepszenie budynku; wymaga nagłówka `Idempotency-Key` |
+| GET | `/dives/routes` | trasy zjazdów: koszt, czas, Twoja szansa, zakres nagród, bogactwo strefy (opis, bez liczb) |
+| POST | `/dives` | start zjazdu `{routeId}`; wymaga `Idempotency-Key` |
+| GET | `/dives/history` | ostatnie rozstrzygnięte zjazdy |
+| POST | `/players/stats` | rozdanie wolnych punktów statystyk |
 
-Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (symulator złoża i ulepszeń), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
+Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
 - [x] M0: szkielet, logowanie gościa, Docker/CI (obraz i klient niesprawdzone, brak Dockera i Fluttera w środowisku autora)
 - [x] M1 (serwer): ledger, postać, statystyki, silos, 5 budynków, ulepszenia z timerami (pg-boss), ukryte złoże lokalne, idempotencja, audyt, symulator. 33 testy.
 - [ ] M1 (reszta): push FCM, ekran silosu w kliencie
-- [ ] M2: zjazdy (Rdzeniowcy), ekwipunek; pule głębokie
+- [x] M2a (serwer): 3 trasy zjazdów, XP i poziomy, punkty statystyk, zadyszka po porażce, wspólne ukryte pule stref. 51 testów.
+- [ ] M2b: przedmioty, rzemiosło i naprawy (Warsztat), ekran zjazdów w kliencie

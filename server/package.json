@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "sim": "tsx src/sim/sim.ts",
-    "audit": "tsx src/audit.ts"
+    "audit": "tsx src/audit.ts",
+    "sim:world": "tsx src/sim/world-sim.ts"
   },
   "dependencies": {
     "@fastify/jwt": "^10.2.5",

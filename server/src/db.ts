@@ -41,7 +41,20 @@ export interface Database {
     deposit_total: number;
     deposit_remaining: number;
     seed: string | number;
+    winded_until: Date | null;
   };
+  dives: {
+    id: Generated<string>;
+    user_id: string;
+    route_id: string;
+    started_at: Date;
+    ends_at: Date;
+    seed: string | number;
+    steam_cost: number;
+    state: Generated<'active' | 'resolved'>;
+    result: unknown | null;
+  };
+  world_pools: { zone: string; resource: string; total: number; remaining: number };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {
     id: Generated<string>;

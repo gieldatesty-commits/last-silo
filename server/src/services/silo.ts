@@ -4,6 +4,7 @@ import { BUILDING_TYPES, type BuildingType, type GameConfig } from '../config.js
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
 import { initialLevels, oreCap, orePerHour, protectedShare, steamCap, steamRegen, upgradeCost, upgradeSeconds, type Levels } from '../game/formulas.js';
 import { rng } from '../game/rng.js';
+import { addXp, diveChance, poolTotal, resolveDive, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { randomInt } from 'node:crypto';
@@ -26,6 +27,8 @@ export interface Ctx {
   config: GameConfig;
   now: () => Date;
   scheduler: Scheduler;
+  /** ziarno zjazdu; w testach można podstawić */
+  seed?: () => number;
 }
 
 type Trx = Transaction<Database>;
@@ -136,7 +139,53 @@ export async function settle(trx: Trx, cfg: GameConfig, userId: string, now: Dat
       .values({ user_id: userId, name: 'upgrade_done', props: JSON.stringify({ building: u.type, level: u.toLevel }) })
       .execute();
   }
-  return { state, oreInt: Math.max(whole, oreInt), done };
+  const diveOre = await resolveDueDives(trx, cfg, userId, now);
+  return { state, oreInt: Math.max(whole, oreInt) + diveOre, done };
+}
+
+const ZONE_RESOURCE = 'ore';
+
+async function lockPool(trx: Trx, cfg: GameConfig, route: Route) {
+  await trx
+    .insertInto('world_pools')
+    .values({ zone: route.zone, resource: ZONE_RESOURCE, total: poolTotal(cfg, route), remaining: poolTotal(cfg, route) })
+    .onConflict((oc) => oc.columns(['zone', 'resource']).doNothing())
+    .execute();
+  return trx.selectFrom('world_pools').selectAll().where('zone', '=', route.zone).where('resource', '=', ZONE_RESOURCE).forUpdate().executeTakeFirstOrThrow();
+}
+
+/** Rozstrzyga zjazdy, których czas minął. Zwraca sumę przyznanej rudy (do widoku). */
+async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: Date): Promise<number> {
+  const due = await trx.selectFrom('dives').selectAll().where('user_id', '=', userId).where('state', '=', 'active').where('ends_at', '<=', now).orderBy('ends_at').execute();
+  let oreTotal = 0;
+  for (const d of due) {
+    const route = cfg.dives.routes.find((r) => r.id === d.route_id)!;
+    const p = await trx.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
+    const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
+    const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
+    const pool = await lockPool(trx, cfg, route);
+    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier, Number(d.seed), { remaining: pool.remaining, total: pool.total });
+
+    await applyLedger(
+      trx,
+      userId,
+      [
+        { resource: 'ore', delta: out.ore, reason: 'dive_reward', ref: `dive:${d.id}` },
+        { resource: 'tokens', delta: out.tokens, reason: 'dive_reward', ref: `dive:${d.id}:tokens` },
+      ],
+      cfg.version,
+    );
+    oreTotal += out.ore;
+    if (out.poolDraw > 0) await trx.updateTable('world_pools').set({ remaining: pool.remaining - out.poolDraw }).where('zone', '=', pool.zone).where('resource', '=', pool.resource).execute();
+    const lv = addXp(cfg, p.level, Number(p.xp), out.xp);
+    await trx.updateTable('players').set({ level: lv.level, xp: String(lv.xpInLevel), free_points: p.free_points + lv.points }).where('user_id', '=', userId).execute();
+    if (!out.success) await trx.updateTable('silos').set({ winded_until: new Date(d.ends_at.getTime() + cfg.dives.winded_seconds * 1000) }).where('user_id', '=', userId).execute();
+    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
+    await trx.updateTable('dives').set({ state: 'resolved', result: JSON.stringify(result) }).where('id', '=', d.id).execute();
+    await trx.insertInto('notifications').values({ user_id: userId, type: 'dive_done', payload: JSON.stringify({ routeId: route.id, ...result }), sent_at: null, read_at: null }).execute();
+    await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_done', props: JSON.stringify({ routeId: route.id, ...result }) }).execute();
+  }
+  return oreTotal;
 }
 
 /** Rozlicz bez widoku (używane przez scheduler). */
@@ -157,6 +206,8 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
   const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
   const tokens = await walletBalance(trx, userId, 'tokens');
   const jobRow = await trx.selectFrom('jobs').selectAll().where('user_id', '=', userId).where('state', '=', 'pending').orderBy('ends_at').executeTakeFirst();
+  const diveRow = await trx.selectFrom('dives').selectAll().where('user_id', '=', userId).where('state', '=', 'active').executeTakeFirst();
+  const siloRow = await trx.selectFrom('silos').select('winded_until').where('user_id', '=', userId).executeTakeFirstOrThrow();
   const lv = st.state.levels;
   const x = Math.max(cfg.economy.deposit.floor_fraction, st.state.depositRemaining / st.state.depositTotal);
   return {
@@ -165,6 +216,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
       archetype: p.archetype,
       level: p.level,
       xp: Number(p.xp),
+      xpToNext: p.level >= cfg.progression.max_level ? null : xpToNext(cfg, p.level),
       stats: { sila: p.sila, technika: p.technika, percepcja: p.percepcja, wytrwalosc: p.wytrwalosc },
       freePoints: p.free_points,
     },
@@ -184,6 +236,8 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
         next: level >= cfg.upgrades.max_level ? null : { level: next, cost: upgradeCost(cfg, b.id, next, arch.upgrade_cost_multiplier), seconds: upgradeSeconds(cfg, next) },
       };
     }),
+    dive: diveRow ? { routeId: diveRow.route_id, endsAt: diveRow.ends_at } : null,
+    windedUntil: siloRow.winded_until && siloRow.winded_until > st.state.at ? siloRow.winded_until : null,
     job: jobRow ? { type: jobRow.building_type, toLevel: jobRow.to_level, endsAt: jobRow.ends_at } : null,
     serverTime: st.state.at,
     configVersion: cfg.version,
@@ -236,6 +290,86 @@ export async function startUpgrade(ctx: Ctx, userId: string, type: BuildingType)
   const r = await ctx.db.transaction().execute((trx) => startUpgradeTx(trx, ctx, userId, type));
   await afterUpgradeCommitted(ctx, userId, r.endsAt);
   return r;
+}
+
+
+export async function startDiveTx(trx: Trx, ctx: Ctx, userId: string, routeId: string) {
+  const cfg = ctx.config;
+  const now = ctx.now();
+  const route = cfg.dives.routes.find((r) => r.id === routeId);
+  if (!route) throw new GameError(400, 'unknown_route');
+  const st = await settle(trx, cfg, userId, now);
+  const p = await trx.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
+  if (p.level < route.min_level) throw new GameError(409, 'level_too_low');
+  const active = await trx.selectFrom('dives').select('id').where('user_id', '=', userId).where('state', '=', 'active').executeTakeFirst();
+  if (active) throw new GameError(409, 'dive_active');
+  const silo = await trx.selectFrom('silos').select(['steam', 'winded_until']).where('user_id', '=', userId).executeTakeFirstOrThrow();
+  if (silo.winded_until && silo.winded_until > now) throw new GameError(409, 'winded');
+  const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
+  const cost = steamCost(route, arch.dive_steam_multiplier);
+  if (st.state.steam + EPS < cost) throw new GameError(402, 'insufficient_steam');
+  await trx.updateTable('silos').set({ steam: silo.steam - cost }).where('user_id', '=', userId).execute();
+  const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
+  const endsAt = new Date(now.getTime() + route.seconds * 1000);
+  const d = await trx
+    .insertInto('dives')
+    .values({ user_id: userId, route_id: route.id, started_at: now, ends_at: endsAt, seed, steam_cost: cost, result: null })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_started', props: JSON.stringify({ routeId: route.id, steam: cost }) }).execute();
+  return { diveId: String(d.id), routeId: route.id, steamCost: cost, endsAt: endsAt.toISOString() };
+}
+
+export async function listRoutes(ctx: Ctx, userId: string) {
+  const cfg = ctx.config;
+  const p = await ctx.db.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
+  if (!p.archetype) throw new GameError(409, 'no_player');
+  const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
+  const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
+  const pools = await ctx.db.selectFrom('world_pools').selectAll().execute();
+  return cfg.dives.routes.map((r) => {
+    const pool = pools.find((x) => x.zone === r.zone);
+    return {
+      id: r.id,
+      name: r.name,
+      zone: r.zone,
+      minLevel: r.min_level,
+      locked: p.level < r.min_level,
+      seconds: r.seconds,
+      steam: steamCost(r, arch.dive_steam_multiplier),
+      chancePct: Math.round(diveChance(stats, r.difficulty) * 100),
+      ore: [Math.round(r.ore[0] * arch.dive_ore_multiplier), Math.round(r.ore[1] * arch.dive_ore_multiplier)],
+      tokens: r.tokens,
+      xp: r.xp,
+      zoneRichness: pool ? depositHint(pool.remaining, pool.total, cfg.dives.pool_floor_fraction) : 'bogate',
+    };
+  });
+}
+
+export async function diveHistory(ctx: Ctx, userId: string, limit = 10) {
+  const rows = await ctx.db.selectFrom('dives').selectAll().where('user_id', '=', userId).where('state', '=', 'resolved').orderBy('ends_at', 'desc').limit(limit).execute();
+  return rows.map((d) => ({ id: String(d.id), routeId: d.route_id, endedAt: d.ends_at, result: d.result }));
+}
+
+export async function spendPoints(ctx: Ctx, userId: string, add: Stats) {
+  const total = add.sila + add.technika + add.percepcja + add.wytrwalosc;
+  if (total <= 0) throw new GameError(400, 'bad_request');
+  await ctx.db.transaction().execute(async (trx) => {
+    const p = await trx.selectFrom('players').selectAll().where('user_id', '=', userId).forUpdate().executeTakeFirstOrThrow();
+    if (!p.archetype) throw new GameError(409, 'no_player');
+    if (total > p.free_points) throw new GameError(409, 'not_enough_points');
+    await trx
+      .updateTable('players')
+      .set({ sila: p.sila! + add.sila, technika: p.technika! + add.technika, percepcja: p.percepcja! + add.percepcja, wytrwalosc: p.wytrwalosc! + add.wytrwalosc, free_points: p.free_points - total })
+      .where('user_id', '=', userId)
+      .execute();
+    await trx.insertInto('events_log').values({ user_id: userId, name: 'points_spent', props: JSON.stringify(add) }).execute();
+  });
+  return getSilo(ctx, userId);
+}
+
+export async function afterDiveCommitted(ctx: Ctx, userId: string, endsAt: string) {
+  await ctx.scheduler.schedule(userId, new Date(endsAt)).catch(() => undefined);
 }
 
 export type { Kysely, Levels };

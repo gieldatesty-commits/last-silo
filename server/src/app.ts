@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
 import { idempotent } from './idempotency.js';
-import { afterUpgradeCommitted, createPlayer, GameError, getSilo, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
+import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -20,6 +20,7 @@ export interface AppDeps {
   jwtSecret: string;
   now?: () => Date;
   scheduler?: Scheduler;
+  seed?: () => number;
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -43,7 +44,7 @@ const PlayerBody = z.object({
 
 export function buildApp(deps: AppDeps) {
   const { db, config, jwtSecret } = deps;
-  const ctx: Ctx = { db, config, now: deps.now ?? (() => new Date()), scheduler: deps.scheduler ?? { schedule: async () => undefined } };
+  const ctx: Ctx = { db, config, now: deps.now ?? (() => new Date()), scheduler: deps.scheduler ?? { schedule: async () => undefined }, seed: deps.seed };
   const app = Fastify({ logger: false });
   app.register(jwt, { secret: jwtSecret, sign: { expiresIn: '30d' } });
 
@@ -119,6 +120,26 @@ export function buildApp(deps: AppDeps) {
     const res = await idempotent(db, userId, key, async (trx) => ({ status: 201, body: await startUpgradeTx(trx, ctx, userId, type) }));
     if (!res.replay) await afterUpgradeCommitted(ctx, userId, (res.body as { endsAt: string }).endsAt);
     return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+
+  app.get('/dives/routes', { onRequest: auth }, async (req) => listRoutes(ctx, req.user.sub));
+  app.get('/dives/history', { onRequest: auth }, async (req) => diveHistory(ctx, req.user.sub));
+
+  app.post('/dives', { onRequest: auth }, async (req, reply) => {
+    const { routeId } = z.object({ routeId: z.string().min(1) }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (typeof key !== 'string' || key.length < 8 || key.length > 100) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key, async (trx) => ({ status: 201, body: await startDiveTx(trx, ctx, userId, routeId) }));
+    if (!res.replay) await afterDiveCommitted(ctx, userId, (res.body as { endsAt: string }).endsAt);
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+
+  // Rozdanie wolnych punktów statystyk
+  app.post('/players/stats', { onRequest: auth }, async (req) => {
+    const n = z.number().int().min(0).max(1000).default(0);
+    const body = z.object({ sila: n, technika: n, percepcja: n, wytrwalosc: n }).parse(req.body);
+    return spendPoints(ctx, req.user.sub, body);
   });
 
   return app;
