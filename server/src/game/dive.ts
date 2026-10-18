@@ -83,9 +83,9 @@ export function efficiency(c: GameConfig, minutes: number): number {
 export function routeRewards(c: GameConfig, route: Route) {
   const minutes = route.seconds / 60;
   const eff = efficiency(c, minutes);
-  const ore = c.dives.economy.ore_per_min * minutes * eff;
+  const ore = c.dives.economy.ore_per_min * minutes * eff * route.reward_mult;
   const sp = c.dives.economy.spread;
-  return { oreAvg: ore, oreMin: ore * (1 - sp), oreMax: ore * (1 + sp), xp: Math.round(c.dives.economy.xp_per_min * minutes * eff), orePerHour: (ore / minutes) * 60 };
+  return { oreAvg: ore, oreMin: ore * (1 - sp), oreMax: ore * (1 + sp), xp: Math.round(c.dives.economy.xp_per_min * minutes * eff * route.reward_mult), orePerHour: (ore / minutes) * 60 };
 }
 
 /** Całkowita pula strefy dla danej liczby graczy (każdy silos dokłada swój udział). */

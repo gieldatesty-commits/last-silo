@@ -106,7 +106,8 @@ function act(p: P, nowMs: number) {
   const maxSec = p.style === 'hardcore' ? 1800 : p.style === 'regularny' ? 4 * 3600 : 8 * 3600;
   while (p.queue.length < p.slots && nowMs >= p.windedUntil) {
     const opts = cfg.dives.routes.filter((x) => x.min_level <= p.level && x.seconds <= maxSec && diveChance(p.stats, x.difficulty, bonusOf(p)) >= 0.3);
-    const route = opts.length ? opts[opts.length - 1]! : cfg.dives.routes[0]!;
+    // hardcore: najwyższa dostępna trasa krótka; reszta: najdłuższa trasa mieszcząca się w ich rytmie (rzadziej wchodzą do gry)
+    const route = !opts.length ? cfg.dives.routes[0]! : p.style === 'hardcore' ? opts[opts.length - 1]! : [...opts].sort((a, b) => b.seconds - a.seconds || b.min_level - a.min_level)[0]!;
     const cost = steamCost(route, p.arch.dive_steam_multiplier * fxOf(p).diveSteam);
     if (route.min_level > p.level || p.silo.steam < cost) break;
     p.silo = { ...p.silo, steam: p.silo.steam - cost };

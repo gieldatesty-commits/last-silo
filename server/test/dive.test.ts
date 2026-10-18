@@ -26,22 +26,33 @@ describe('szansa zjazdu', () => {
 describe('opłacalność tras', () => {
   const byLen = [...c.dives.routes].sort((a, b) => a.seconds - b.seconds);
   it('krótkie zjazdy płacą 15–20% więcej za godzinę niż najdłuższy', () => {
-    const shortest = routeRewards(c, byLen[0]!).orePerHour;
-    const longest = routeRewards(c, byLen[byLen.length - 1]!).orePerHour;
+    const base = (r: (typeof byLen)[number]) => routeRewards(c, r).orePerHour / r.reward_mult;
+    const shortest = base(byLen[0]!);
+    const longest = base(byLen[byLen.length - 1]!);
     expect(shortest / longest).toBeGreaterThanOrEqual(1.15);
     expect(shortest / longest).toBeLessThanOrEqual(1.2001);
     expect(efficiency(c, 3)).toBeCloseTo(1.2, 6);
     expect(efficiency(c, 480)).toBeCloseTo(1.0, 6);
   });
   it('opłacalność za godzinę maleje wraz z długością trasy', () => {
-    for (let i = 1; i < byLen.length; i++) expect(routeRewards(c, byLen[i]!).orePerHour).toBeLessThan(routeRewards(c, byLen[i - 1]!).orePerHour);
+    const base = (r: (typeof byLen)[number]) => routeRewards(c, r).orePerHour / r.reward_mult;
+    for (let i = 1; i < byLen.length; i++) if (byLen[i]!.seconds > byLen[i - 1]!.seconds) expect(base(byLen[i]!)).toBeLessThanOrEqual(base(byLen[i - 1]!) + 1e-9);
   });
   it('długa trasa wypłaca w całości więcej niż krótka', () => {
-    for (let i = 1; i < byLen.length; i++) expect(routeRewards(c, byLen[i]!).oreAvg).toBeGreaterThan(routeRewards(c, byLen[i - 1]!).oreAvg);
+    const base = (r: (typeof byLen)[number]) => routeRewards(c, r).oreAvg / r.reward_mult;
+    for (let i = 1; i < byLen.length; i++) if (byLen[i]!.seconds > byLen[i - 1]!.seconds) expect(base(byLen[i]!)).toBeGreaterThan(base(byLen[i - 1]!));
+  });
+  it('trudność i nagroda rosną z poziomem trasy', () => {
+    const byLvl = [...c.dives.routes].sort((a, b) => a.min_level - b.min_level);
+    for (let i = 1; i < byLvl.length; i++) {
+      expect(byLvl[i]!.difficulty).toBeGreaterThan(byLvl[i - 1]!.difficulty);
+      expect(byLvl[i]!.reward_mult).toBeGreaterThanOrEqual(byLvl[i - 1]!.reward_mult);
+    }
+    expect(byLvl[byLvl.length - 1]!.min_level).toBeLessThanOrEqual(c.progression.max_level);
   });
   it('koszt pary mieści się w limicie generatora na odpowiednim poziomie', () => {
-    const l5cap = c.effects.steam.cap_base + c.effects.steam.cap_step * 4;
-    for (const r of byLen) expect(r.steam).toBeLessThanOrEqual(l5cap);
+    const l8cap = c.effects.steam.cap_base + c.effects.steam.cap_step * (c.upgrades.max_level - 1);
+    for (const r of byLen) expect(r.steam).toBeLessThanOrEqual(l8cap);
   });
 });
 

@@ -51,7 +51,7 @@ describe('zjazdy', () => {
     const { h } = await newPlayer();
     const res = await app.inject({ url: '/dives/routes', headers: h });
     const routes = res.json();
-    expect(routes).toHaveLength(5);
+    expect(routes).toHaveLength(config.dives.routes.length);
     expect(routes[0]).toMatchObject({ id: 'plytki', locked: false, chancePct: 58, steam: 3 });
     expect(routes[1].locked).toBe(true);
     expect(res.body).not.toMatch(/remaining|pool|total/i);

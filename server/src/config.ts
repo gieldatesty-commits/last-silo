@@ -53,6 +53,7 @@ export const GameConfigSchema = z
             difficulty: pos,
             tokens: z.tuple([z.number().int().min(0), z.number().int().min(0)]),
             samples: z.tuple([z.number().int().min(0), z.number().int().min(0)]).default([0, 0]),
+            reward_mult: pos.default(1),
           }),
         )
         .min(1),

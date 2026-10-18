@@ -166,8 +166,8 @@ describe('Rdzeniowcy: próbki i kodeks', () => {
     for (let seed = 1; seed < 200; seed++) {
       const deep = resolveDive(config, route('pelna_zmiana'), st, 1, seed, pool0);
       if (deep.success) {
-        expect(deep.samples).toBeGreaterThanOrEqual(4);
-        expect(deep.samples).toBeLessThanOrEqual(9);
+        expect(deep.samples).toBeGreaterThanOrEqual(route('pelna_zmiana').samples[0]);
+        expect(deep.samples).toBeLessThanOrEqual(route('pelna_zmiana').samples[1]);
         sawPositive = true;
       } else expect(deep.samples).toBe(0);
       expect(resolveDive(config, route('plytki'), st, 1, seed, pool0).samples).toBe(0);

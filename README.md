@@ -39,6 +39,7 @@ docker compose up -d --build
 Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
+- [x] Balans 0.7.0: 6 tras wysokich poziomów (strefa rdzenia, od poziomu 9 do 25, mnożnik nagrody), tańsze naprawy, mniej próbek; wyniki w docs/balans-v0.7.md
 - [x] Rdzeniowcy: zasób Próbki rdzeniowe (z głębokich zjazdów), gałąź badań (obserwacja, anatomia, język wibracji I–III, wiertła, izolacja), 10 wpisów kodeksu; poprawka księgi (debet na pustym portfelu)
 - [x] Dział nauki: Laboratorium (budynek), 13 badań w gałęziach górnictwo / inżynieria / rdzeniowcy (bonusy do zjazdów, tańsze naprawy i ulepszenia, jakość, odblokowanie receptur); 13 receptur w 4 slotach
 - [x] M2b (serwer): Warsztat, 6 receptur, jakość zależna od poziomu Warsztatu, trwałość (−1 na zjazd), naprawy, bonus do mocy zjazdu; klient nie ruszany

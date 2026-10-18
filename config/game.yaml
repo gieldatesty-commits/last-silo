@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.6.0"
+version: "0.7.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -43,7 +43,7 @@ dives:
   winded_seconds: 300         # "zadyszka" po porażce blokuje DODAWANIE nowych zjazdów do kolejki
   pool_floor_fraction: 0.10   # poniżej 10% puli nagroda = 10% (ślady), bez dalszego ubywania puli
   economy:
-    ore_per_min: 1.6
+    ore_per_min: 1.5
     xp_per_min: 1.0
     short_bonus: 0.20         # premia krótkich tras względem najdłuższej (15–20%)
     reference_minutes: 480
@@ -53,12 +53,20 @@ dives:
   zones:
     gorne:    { name: Górne strefy,    pool_per_player: 30000 }   # Płytki, Średni, Głęboki
     glebokie: { name: Głębokie strefy, pool_per_player: 48000 }   # Przepaść, Pełna zmiana
+    jadro:    { name: Strefa rdzenia,  pool_per_player: 150000 }  # trasy od poziomu 9: nagroda × reward_mult
   routes:
     - { id: plytki,       name: Płytki,       zone: gorne,    min_level: 1, seconds: 180,   steam: 3,  difficulty: 2.5,  tokens: [0, 0] }
     - { id: sredni,       name: Średni,       zone: gorne,    min_level: 2, seconds: 900,   steam: 10, difficulty: 4.0,  tokens: [0, 2] }
-    - { id: gleboki,      name: Głęboki,      zone: gorne,    min_level: 3, seconds: 3600,  steam: 22, difficulty: 5.5,  tokens: [4, 10], samples: [0, 2] }
-    - { id: przepasc,     name: Przepaść,     zone: glebokie, min_level: 5, seconds: 14400, steam: 45, difficulty: 8.0,  tokens: [20, 40], samples: [2, 5] }
-    - { id: pelna_zmiana, name: Pełna zmiana, zone: glebokie, min_level: 7, seconds: 28800, steam: 70, difficulty: 11.0, tokens: [45, 80], samples: [4, 9] }
+    - { id: gleboki,      name: Głęboki,      zone: gorne,    min_level: 3, seconds: 3600,  steam: 22, difficulty: 5.5,  tokens: [4, 10], samples: [0, 1] }
+    - { id: przepasc,     name: Przepaść,     zone: glebokie, min_level: 5, seconds: 14400, steam: 45, difficulty: 8.0,  tokens: [20, 40], samples: [0, 1] }
+    - { id: pelna_zmiana, name: Pełna zmiana, zone: glebokie, min_level: 7, seconds: 28800, steam: 70, difficulty: 11.0, tokens: [45, 80], samples: [0, 1] }
+    # --- trasy wysokich poziomów: strefa rdzenia, trudność rośnie do końca drabinki poziomów (reward_mult = mnożnik rudy i XP)
+    - { id: szczeliny,    name: Szczeliny,        zone: jadro, min_level: 9,  seconds: 1200,  steam: 13,  difficulty: 15.0, reward_mult: 1.3, tokens: [8, 16],   samples: [0, 0] }
+    - { id: komin,        name: Komin żarowy,     zone: jadro, min_level: 12, seconds: 5400,  steam: 30,  difficulty: 20.0, reward_mult: 1.45, tokens: [18, 32], samples: [0, 0] }
+    - { id: sztolnia,     name: Sztolnia echa,    zone: jadro, min_level: 14, seconds: 1800,  steam: 16,  difficulty: 25.0, reward_mult: 1.6, tokens: [14, 26],  samples: [0, 0] }
+    - { id: labirynt,     name: Labirynt łusek,   zone: jadro, min_level: 17, seconds: 14400, steam: 55,  difficulty: 31.0, reward_mult: 1.8, tokens: [40, 70],  samples: [0, 1] }
+    - { id: brama,        name: Brama Starszych,  zone: jadro, min_level: 20, seconds: 28800, steam: 85,  difficulty: 38.0, reward_mult: 2.1, tokens: [80, 130], samples: [0, 1] }
+    - { id: serce,        name: Serce rdzenia,    zone: jadro, min_level: 25, seconds: 43200, steam: 105, difficulty: 48.0, reward_mult: 2.5, tokens: [120, 200], samples: [0, 1] }
 
 effects:
   ore_per_hour: { base: 40, growth: 1.3 }                 # Szyb główny
@@ -94,7 +102,7 @@ archetypes:
 # Warsztat: przedmioty dają bonus do mocy zjazdu (a więc do szansy), zużywają się i wymagają napraw
 items:
   inventory_max: 24
-  repair_cost_fraction: 0.4        # pełna naprawa = ta część kosztu rudy receptury (proporcjonalnie do ubytku)
+  repair_cost_fraction: 0.18       # pełna naprawa = ta część kosztu rudy receptury (proporcjonalnie do ubytku)
   quality: { min: 0.85, max: 1.05, min_step: 0.02, max_step: 0.04 }   # zakres jakości rośnie z poziomem Warsztatu
   slots: [narzedzie, ochrona, lampa, sprzet]
   recipes:   # tech: receptura odblokowana badaniem w Laboratorium
@@ -132,9 +140,9 @@ research:
     - { id: anatomia_rdzeniowcow, name: Anatomia Rdzeniowców, branch: rdzeniowcy, lab: 4, ore: 1500, tokens: 10, samples: 8,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { samples_pct: 20 } }
     - { id: jezyk_wibracji_1,   name: Język wibracji I,       branch: rdzeniowcy, lab: 4, ore: 2000, tokens: 15, samples: 6,  seconds: 10800, requires: [obserwacja_rdzeniowcow], effect: { winded_pct: -25 } }
     - { id: jezyk_wibracji_2,   name: Język wibracji II,      branch: rdzeniowcy, lab: 5, ore: 3500, tokens: 25, samples: 12, seconds: 16200, requires: [jezyk_wibracji_1, rezonans_skal], effect: { winded_pct: -25, dive_power: 0.3 } }
-    - { id: jezyk_wibracji_3,   name: Język wibracji III,     branch: rdzeniowcy, lab: 6, ore: 6000, tokens: 40, samples: 20, seconds: 28800, requires: [jezyk_wibracji_2, anatomia_rdzeniowcow], effect: { dive_power: 0.4 } }
+    - { id: jezyk_wibracji_3,   name: Język wibracji III,     branch: rdzeniowcy, lab: 6, ore: 6000, tokens: 40, samples: 35, seconds: 28800, requires: [jezyk_wibracji_2, anatomia_rdzeniowcow], effect: { dive_power: 0.4 } }
     - { id: wiertla_rdzeniowe,  name: Wiertła rdzeniowe,      branch: rdzeniowcy, lab: 5, ore: 3200, tokens: 22, samples: 10, seconds: 14400, requires: [metalurgia, rezonans_skal], unlocks: [wiertlo_rdzeniowe] }
-    - { id: izolacja_rdzenia,   name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, samples: 15, seconds: 21600, requires: [metalurgia, anatomia_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }
+    - { id: izolacja_rdzenia,   name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, samples: 25, seconds: 21600, requires: [metalurgia, anatomia_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }
 
 # Kodeks Rdzeniowców: wpisy odkrywane badaniami (fabuła; gracz poznaje gatunek stopniowo)
 codex:
