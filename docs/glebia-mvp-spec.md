@@ -2,7 +2,7 @@
 
 > Dokument roboczy dla pracy **solo + AI**. Opiera się na `bloodwars-research-mobile-brief.md` (sekcje 5, 7a–7d).
 > Wszystkie liczby to **wartości startowe do strojenia** w symulatorze i na becie – nie finalny balans.
-> **Aktualizacja 18.10.2026:** fabuła zmieniona na „Silosy i Rdzeniowcy” – patrz `swiat-v0.2-silosy.md` (sztolnia → silos, Kolosy → Starsi, każdy gracz ma silos w losowym miejscu planety, wrogiem jest prymitywny gatunek z okolic jądra). Poniższe sekcje używają jeszcze starych nazw; zmiany mechaniczne są w sekcji 7 tamtego dokumentu.
+> **Aktualizacja 18.10.2026:** fabuła zmieniona na „Silosy i Rdzeniowcy” – patrz `swiat-v0.2-silosy.md` (sztolnia → silos, Kolosy → Starsi, każdy gracz ma silos w losowym miejscu planety, wrogiem jest prymitywny gatunek z okolic jądra). Poniższe sekcje używają jeszcze starych nazw; zmiany mechaniczne są w sekcjach 7–9 tamtego dokumentu (m.in. 6. budynek **Radiostacja**: najazdy, rynek i ranking dostępne dopiero po odkryciu innych silosów; zasoby skończone i ukryte).
 > Nazwy (Głębia, żetony, para, zjazdy itd.) są robocze; przed publikacją sprawdzić znaki towarowe.
 > Spec nie jest poradą prawną; punkty zgodności ze sklepem/RODO sprawdzić w aktualnych wymaganiach Google Play.
 

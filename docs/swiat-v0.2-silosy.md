@@ -51,9 +51,44 @@ Zaleta ukryta w zmianie: losowe rozmieszczenie rozwiązuje skargę z BW, że naj
 5. Słownik: sztolnia → **silos**, Kolosy → **Starsi**, Wielka Maszyna → **Rdzeniowcy / Jądro**. Grupowa zmiana nazw w specu po zatwierdzeniu tej wersji.
 6. Telemetria: dodać zdarzenie `codex_entry_unlocked` (metryka zaangażowania w fabułę).
 
-## 8. Pytania otwarte
-1. **Dlaczego gracze walczą między sobą**, skoro jest wspólny wróg? Moja propozycja: rywalizujące ekipy wiertnicze walczą o ograniczone zasoby i reliktów Rdzeniowców. Czy pasuje?
-2. **Czy planeta ma być wprost Ziemią** (z kontynentami w tle), czy stylizowaną, bezimienną kulą? Rekomenduję bezimienną.
-3. **Czy cechy** (po MVP) mają być siecią tuneli łączących silosy (bonusy za sąsiedztwo), czy luźnym sojuszem bez geografii?
-4. **Wrogość gatunku:** czysto wrogi czy neutralny z możliwością układów? Wpływa na sezon 2+.
-5. **Nazwa gry:** „Szyb 7" nadal pasuje; alternatywa „Silos 7". Do sprawdzenia razem z UPRP/EUIPO.
+## 8. Zasoby skończone i ukryte (decyzja 18.10)
+Zasoby w świecie mają **z góry ustaloną, ukrytą ilość** – gracze nie wiedzą, ile jej jest. Dzięki temu rywalizacja o „ograniczone zasoby" (powód PvP) wynika z samego świata, a nie z gadania. Proponowana konstrukcja:
+- **Złoże lokalne** pod każdym silosem: ukryta wielkość losowana przy tworzeniu (±40% wokół wartości bazowej), wyczerpuje się wydobyciem z Szybu głównego.
+- **Pule głębokie** dla każdej strefy głębokości i surowca: wspólne dla wszystkich, wielkość ustawiona w configu na podstawie przewidywanej liczby graczy (ukryta przed klientem).
+- **Wydajność maleje płynnie:** mnożnik `clamp(pozostało / całość, 0.15, 1)` – nikt nie trafia na twardą zero (na starcie brak „martwych kont"), ale po wyczerpaniu opłaca się schodzić głębiej, handlować lub napadać.
+- **Informacja jakościowa zamiast liczb:** klient widzi tylko opis („bogate", „średnie", „na wyczerpaniu") po zwiadzie Mapowacza/Zwiadowcy; serwer nigdy nie wysyła sum.
+- **Koniec sezonu:** wyczerpanie puli głębokiej lub osiągnięcie Jądra. Po sezonie publikujemy **raport z faktycznymi sumami** (przejrzystość, uczciwość).
+- **Zabezpieczenia:** dzienny limit wydobycia na gracza (przeciw botom drenującym pule), minimalna podłoga wydajności, brak sprzedaży surowców za abonament.
+- **Konsekwencja dla ekonomii:** ledger zapisuje, z której puli pochodzi każdy przychód (`ref = pool_id`); symulator musi testować scenariusz „pula się kończy".
+
+## 9. Łączność i odkrywanie innych silosów (decyzja 18.10)
+Gracze **nie wiedzą o innych silosach** na starcie. Muszą rozwinąć łączność i zacząć nadawać własny sygnał. To jest bramka do PvP, handlu i cechów.
+
+Budynek **Radiostacja** (6. budynek MVP), poziomy:
+| Poz. | Nazwa | Co daje |
+|---|---|---|
+| 0 | Izolacja | brak wiedzy o innych; nikt Cię nie widzi; tylko zjazdy (PvE) |
+| 1 | Odbiornik | nasłuch: wykrywasz **sygnały** nadających silosów (kierunek + przybliżony dystans); słyszysz też „werble" Rdzeniowców |
+| 2 | Nadajnik | zaczynasz nadawać: inni mogą Cię wykryć; odblokowuje rynek, wiadomości, ranking, **bycie celem najazdu** |
+| 3 | Szyfr / zagłuszanie | zmniejszasz szansę wykrycia przez innych (koszt: mniej kontaktów) |
+| 4 | Przekaźniki | większy zasięg; wstępnie: łącza cechowe (po MVP) |
+
+Zasady:
+- **Najazd wymaga kontaktu:** atakujący musi mieć Odbiornik, a cel musi nadawać (lub zostać wykryty skanem za parę).
+- **Izolacja jest bezpieczna, ale samotna:** kto nie nadaje, nie może być napadnięty – ale nie handluje, nie jest w rankingu i nie ma dostępu do rzadkich surowców z wymiany. To naturalny kompromis zamiast wymuszonego PvP (skarga z BW).
+- **Zasięg:** `r = r0 * 1.6^(L-1)`. Wartość `r0` w configu liczona z gęstości (świat skalowany do liczby graczy: np. `r0 ≈ 2 × średni dystans do najbliższego sąsiada`), żeby w becie 30–50 osób każdy po Odbiorniku poz. 1 słyszał kilka silosów.
+- **Rdzeniowcy też słuchają [propozycja]:** nadawanie podnosi „hałas" i może przyciągać fale plemion – ryzyko za widoczność.
+
+Wpływ na onboarding (zastępuje dni 1–7 ze specu): dni 1–2 sam w silosie (budowa, zjazdy) → dzień 3 Odbiornik i pierwsze „sygnały z oddali" → dni 4–5 Nadajnik, pierwszy kontakt, rynek → dni 6–7 pierwszy najazd lub pierwszy handel.
+
+## 10. Rozstrzygnięte i otwarte
+**Rozstrzygnięte:**
+1. Dlaczego gracze walczą: ograniczone, ukryte zasoby świata (sekcja 8).
+2. Planeta: stylizowana, bez nazw.
+3. Cechy (po MVP): sieć łączy między silosami (rozwinięcie Przekaźników) – *przyjęte przy założeniu, że „ok" oznaczało pierwszą opcję; popraw, jeśli chodziło o luźny sojusz*.
+4. Odkrywanie: przez łączność (sekcja 9). Wrogość gatunku: nadal do ustalenia (propozycja: z początku wroga, po sezonie 1 możliwa wymiana).
+
+**Otwarte:**
+- **Nazwa gry:** kandydat „Last Silo" (liczba pojedyncza brzmi naturalniej niż „Last Silos"). Uwaga na skojarzenia z serią „Silo" (książki i serial); to nie musi blokować, ale wymaga sprawdzenia w UPRP/EUIPO i Google Play. Wyszukiwanie z 18.10 nie znalazło gry o tej nazwie, ale to nie jest formalne badanie.
+- Czy nadawanie ma przyciągać plemiona (ryzyko)?
+- Wielkość ukrytych pul (do ustalenia w symulatorze ekonomii, M1).
