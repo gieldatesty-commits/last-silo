@@ -2,6 +2,7 @@
 
 > Dokument roboczy dla pracy **solo + AI**. Opiera się na `bloodwars-research-mobile-brief.md` (sekcje 5, 7a–7d).
 > Wszystkie liczby to **wartości startowe do strojenia** w symulatorze i na becie – nie finalny balans.
+> **Aktualizacja 18.10.2026:** fabuła zmieniona na „Silosy i Rdzeniowcy” – patrz `swiat-v0.2-silosy.md` (sztolnia → silos, Kolosy → Starsi, każdy gracz ma silos w losowym miejscu planety, wrogiem jest prymitywny gatunek z okolic jądra). Poniższe sekcje używają jeszcze starych nazw; zmiany mechaniczne są w sekcji 7 tamtego dokumentu.
 > Nazwy (Głębia, żetony, para, zjazdy itd.) są robocze; przed publikacją sprawdzić znaki towarowe.
 > Spec nie jest poradą prawną; punkty zgodności ze sklepem/RODO sprawdzić w aktualnych wymaganiach Google Play.
 
@@ -89,7 +90,7 @@ Uwaga: nazwy robocze; typy uproszczone.
 |---|---|
 | `users` | id, created_at, auth_provider, auth_id, locale, deleted_at |
 | `devices` | id, user_id, fcm_token, platform, last_seen_at |
-| `players` | id, user_id, name (unikalna), archetype, level, xp, season_id, league, power_score, created_at |
+| `players` | id, user_id, name (unikalna), archetype, level, xp, season_id, league, power_score, silo_lat, silo_lon, depth, created_at |
 | `player_stats` | player_id, sila, technika, percepcja, wytrwalosc, free_points |
 | `wallets` | player_id, ruda, para, zetony, para_updated_at (regeneracja liczona, nie ticking) |
 | `ledger_entries` | id, player_id, currency, delta, reason, ref_type, ref_id, created_at, config_version (**niezmienialny dziennik**) |
