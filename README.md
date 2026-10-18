@@ -17,8 +17,19 @@ cp .env.example .env   # uzupełnij hasła i DOMAIN
 docker compose up -d --build
 ```
 
-## Status M0
-- [x] Serwer: `/health`, `POST /auth/guest`, `GET /me`, migracje, walidacja configu (zod), testy
-- [x] Docker Compose (Postgres + API + Caddy/TLS), CI (GitHub Actions)
-- [ ] Google Sign-In, pg-boss (timery), Idempotency-Key — M1
-- [ ] Klient Flutter: szkielet w `client/` (nie zbudowany — brak Fluttera w środowisku autora)
+## API (stan po M1)
+| Metoda | Ścieżka | Opis |
+|---|---|---|
+| POST | `/auth/guest` | konto gościa (lub ponowne logowanie z `userId` + `guestSecret`) |
+| GET | `/me` | podstawowy profil |
+| POST | `/players` | tworzy postać: `{nickname, archetype}`, losuje pozycję silosu i ukryte złoże |
+| GET | `/silo` | stan silosu; rozlicza produkcję, parę i ukończone ulepszenia |
+| POST | `/buildings/:type/upgrade` | ulepszenie budynku; wymaga nagłówka `Idempotency-Key` |
+
+Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (symulator złoża i ulepszeń), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
+
+## Status
+- [x] M0: szkielet, logowanie gościa, Docker/CI (obraz i klient niesprawdzone, brak Dockera i Fluttera w środowisku autora)
+- [x] M1 (serwer): ledger, postać, statystyki, silos, 5 budynków, ulepszenia z timerami (pg-boss), ukryte złoże lokalne, idempotencja, audyt, symulator. 33 testy.
+- [ ] M1 (reszta): push FCM, ekran silosu w kliencie
+- [ ] M2: zjazdy (Rdzeniowcy), ekwipunek; pule głębokie

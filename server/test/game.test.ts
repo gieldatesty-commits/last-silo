@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { parseGameConfig } from '../src/config.js';
+import { orePerHour, oreCap, steamCap, upgradeCost, upgradeSeconds, initialLevels } from '../src/game/formulas.js';
+import { advance, produce, type SiloState } from '../src/game/silo.js';
+import { distanceKm, placeSilo, rollLocalDeposit } from '../src/game/world.js';
+import { rng } from '../src/game/rng.js';
+
+const c = parseGameConfig(readFileSync('../config/game.yaml', 'utf8'));
+const t0 = new Date('2026-01-01T00:00:00Z');
+const at = (h: number) => new Date(t0.getTime() + h * 3_600_000);
+
+const fresh = (): SiloState => ({
+  levels: initialLevels(),
+  oreReal: 0,
+  steam: 0,
+  depositTotal: 15000,
+  depositRemaining: 15000,
+  at: t0,
+});
+
+describe('formuły', () => {
+  it('produkcja, magazyn, para wg specu', () => {
+    expect(orePerHour(c, 1)).toBe(40);
+    expect(orePerHour(c, 3)).toBeCloseTo(40 * 1.3 ** 2);
+    expect(oreCap(c, 1)).toBe(1000);
+    expect(oreCap(c, 3)).toBe(2250);
+    expect(steamCap(c, 4)).toBe(175);
+  });
+  it('koszt i czas ulepszenia', () => {
+    expect(upgradeCost(c, 'szyb_glowny', 2)).toBe(Math.ceil(50 * 1.6));
+    expect(upgradeCost(c, 'szyb_glowny', 2, 0.9)).toBe(Math.ceil(50 * 1.6 * 0.9));
+    expect(upgradeSeconds(c, 2)).toBe(180);
+    expect(upgradeSeconds(c, 8)).toBe(180 * 64);
+  });
+});
+
+describe('produkcja ze złoża', () => {
+  it('na początku ~ pełna wydajność', () => {
+    const p = produce(15000, 15000, 40, 0.15, 1, 1000);
+    expect(p.amount).toBeGreaterThan(39.9);
+    expect(p.amount).toBeLessThanOrEqual(40);
+  });
+  it('wynik nie zależy od częstotliwości rozliczeń', () => {
+    const once = advance(fresh(), c, at(48), []).state;
+    let s = fresh();
+    for (let i = 1; i <= 48 * 6; i++) s = advance(s, c, at(i / 6), []).state;
+    // magazyn L1 = 1000, więc porównujemy też z dużym magazynem w drugim teście
+    expect(s.oreReal).toBeCloseTo(once.oreReal, 6);
+    expect(s.depositRemaining).toBeCloseTo(once.depositRemaining, 6);
+  });
+  it('całka jest dokładna także bez limitu magazynu', () => {
+    const big = { ...fresh(), levels: { ...initialLevels(), magazyn: 8 } };
+    const once = advance(big, c, at(200), []).state;
+    let s = big;
+    for (let i = 1; i <= 200; i++) s = advance(s, c, at(i), []).state;
+    expect(s.oreReal).toBeCloseTo(once.oreReal, 6);
+  });
+  it('magazyn ogranicza ilość rudy', () => {
+    const s = advance(fresh(), c, at(1000), []).state;
+    expect(s.oreReal).toBeLessThanOrEqual(1000);
+    expect(s.oreReal).toBeCloseTo(1000, 3);
+  });
+  it('złoże maleje, ale podłoga 15% daje strumyk', () => {
+    const big = { ...fresh(), depositTotal: 1000, depositRemaining: 1000, levels: { ...initialLevels(), magazyn: 8 } };
+    const s = advance(big, c, at(2000), []).state;
+    expect(s.depositRemaining).toBeCloseTo(150, 3); // dno = 15% całości
+    const more = advance(s, c, at(2010), []).state;
+    expect(more.depositRemaining).toBeCloseTo(150, 3);
+    expect(more.oreReal - s.oreReal).toBeCloseTo(40 * 0.15 * 10, 3);
+  });
+  it('ulepszenie w trakcie okresu zmienia tempo od momentu ukończenia', () => {
+    const up = [{ id: 1, type: 'szyb_glowny' as const, toLevel: 2, endsAt: at(1) }];
+    const s = advance({ ...fresh(), levels: { ...initialLevels(), magazyn: 8 } }, c, at(2), up);
+    expect(s.done).toHaveLength(1);
+    expect(s.state.levels.szyb_glowny).toBe(2);
+    // ok. 40 w 1. godzinie i ok. 52 w 2. (mniej o ubytek złoża)
+    expect(s.state.oreReal).toBeGreaterThan(88);
+    expect(s.state.oreReal).toBeLessThan(92);
+  });
+  it('para regeneruje się do limitu', () => {
+    const s = advance(fresh(), c, at(10), []).state;
+    expect(s.steam).toBe(100);
+    const half = advance(fresh(), c, new Date(t0.getTime() + 30 * 60_000), []).state;
+    expect(half.steam).toBeCloseTo(30, 6);
+  });
+});
+
+describe('świat', () => {
+  it('losowanie złoża w zadanym przedziale i deterministyczne dla ziarna', () => {
+    for (let seed = 1; seed < 50; seed++) {
+      const d = rollLocalDeposit(c, rng(seed));
+      expect(d).toBeGreaterThanOrEqual(15000 * 0.6);
+      expect(d).toBeLessThanOrEqual(15000 * 1.4);
+      expect(rollLocalDeposit(c, rng(seed))).toBe(d);
+    }
+  });
+  it('silosy rozkładają się z zachowaniem odstępów', () => {
+    const r = rng(42);
+    const pts: { lat: number; lon: number }[] = [];
+    for (let i = 0; i < 40; i++) pts.push(placeSilo(c, pts, r));
+    let min = Infinity;
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++) min = Math.min(min, distanceKm(pts[i]!, pts[j]!, c.world.radius_km));
+    expect(min).toBeGreaterThan(c.world.min_silo_distance_km);
+  });
+  it('haversine: półkole = pi*R', () => {
+    expect(distanceKm({ lat: 0, lon: 0 }, { lat: 0, lon: 180 }, 1000)).toBeCloseTo(Math.PI * 1000, 3);
+  });
+});

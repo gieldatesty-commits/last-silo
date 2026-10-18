@@ -1,40 +1,67 @@
-import { Kysely, PostgresDialect } from 'kysely';
+import { Kysely, PostgresDialect, type Generated } from 'kysely';
 import pg from 'pg';
 
+// pg zwraca bigint/numeric jako string, double jako number
 export interface Database {
-  users: {
-    id: string;
-    guest_secret_hash: string;
-    google_sub: string | null;
-    created_at: Date;
-  };
+  users: { id: Generated<string>; guest_secret_hash: string; google_sub: string | null; created_at: Generated<Date> };
   players: {
     user_id: string;
     nickname: string | null;
     archetype: string | null;
-    created_at: Date;
+    created_at: Generated<Date>;
+    level: Generated<number>;
+    xp: Generated<string>;
+    sila: number | null;
+    technika: number | null;
+    percepcja: number | null;
+    wytrwalosc: number | null;
+    free_points: Generated<number>;
+    silo_lat: number | null;
+    silo_lon: number | null;
+    depth: Generated<number>;
+    config_version: string | null;
   };
-  wallets: {
-    user_id: string;
-    resource: string;
-    balance: string; // bigint z pg jako string
-  };
+  wallets: { user_id: string; resource: string; balance: Generated<string> };
   ledger_entries: {
-    id: string;
+    id: Generated<string>;
     user_id: string;
     resource: string;
-    delta: string;
+    delta: string | number;
     reason: string;
     ref: string | null;
     config_version: string;
-    created_at: Date;
+    created_at: Generated<Date>;
   };
-  events_log: {
-    id: string;
-    user_id: string | null;
-    name: string;
-    props: unknown;
-    created_at: Date;
+  events_log: { id: Generated<string>; user_id: string | null; name: string; props: Generated<unknown>; created_at: Generated<Date> };
+  silos: {
+    user_id: string;
+    steam: number;
+    ore_carry: Generated<number>;
+    settled_at: Date;
+    deposit_total: number;
+    deposit_remaining: number;
+    seed: string | number;
+  };
+  buildings: { user_id: string; type: string; level: Generated<number> };
+  jobs: {
+    id: Generated<string>;
+    user_id: string;
+    kind: string;
+    building_type: string | null;
+    to_level: number | null;
+    ends_at: Date;
+    state: Generated<'pending' | 'done' | 'cancelled'>;
+    created_at: Generated<Date>;
+  };
+  idempotency_keys: { user_id: string; key: string; status: number; response: unknown; created_at: Generated<Date> };
+  notifications: {
+    id: Generated<string>;
+    user_id: string;
+    type: string;
+    payload: Generated<unknown>;
+    created_at: Generated<Date>;
+    sent_at: Date | null;
+    read_at: Date | null;
   };
 }
 

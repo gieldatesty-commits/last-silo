@@ -1,12 +1,43 @@
-# Konfiguracja gry Last Silo (M0: tylko szkielet; balans z sekcji 5 specu dochodzi w M1+)
-version: "0.0.1"
+# Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
+version: "0.1.0"
+
 resources:
-  - id: ore
-    name: Ruda
-  - id: steam
-    name: Para
-  - id: tokens
-    name: Żetony
+  - { id: ore, name: Ruda }
+  - { id: steam, name: Para }
+  - { id: tokens, name: Żetony }
+
+economy:
+  start_ore: 300
+  deposit:
+    local_total: 15000     # ukryta, bazowa wielkość złoża pod silosem (rudy)
+    variance: 0.4          # losowanie ±40%
+    floor_fraction: 0.15   # poniżej 15% złoża wydajność = 15% bazowej (ślady rudy), bez dalszego ubywania
+
+world:
+  radius_km: 6371          # stylizowana kula, bez nazw
+  min_silo_distance_km: 300
+  placement_candidates: 20 # best-candidate sampling: wybieramy najdalszy od sąsiadów
+
+upgrades:
+  max_level: 8
+  cost_growth: 1.6         # koszt(L) = base_cost * cost_growth^(L-1), L = poziom docelowy
+  time_base_seconds: 180   # czas(L) = time_base * time_growth^(L-2); L2 = 3 min ... L8 ≈ 3,2 h
+  time_growth: 2.0
+  queue_slots: 1
+
+effects:
+  ore_per_hour: { base: 40, growth: 1.3 }                 # Szyb główny
+  steam: { cap_base: 100, cap_step: 25, regen_base: 1, regen_step: 0.2 }   # Generator pary (regen w parze/min)
+  warehouse: { cap_base: 1000, cap_growth: 1.5, protected_step: 0.10, protected_max: 0.6 }
+  watchtower: { defense_step: 3 }
+
+buildings:
+  - { id: szyb_glowny, name: Szyb główny, base_cost: 50 }
+  - { id: generator_pary, name: Generator pary, base_cost: 60 }
+  - { id: magazyn, name: Magazyn, base_cost: 40 }
+  - { id: warsztat, name: Warsztat, base_cost: 80 }
+  - { id: wartownia, name: Wartownia, base_cost: 70 }
+
 archetypes:
   - id: gornik
     name: Górnik
@@ -14,6 +45,7 @@ archetypes:
   - id: inzynier
     name: Inżynier
     stats: { sila: 2, technika: 5, percepcja: 3, wytrwalosc: 3 }
+    upgrade_cost_multiplier: 0.9
   - id: zwiadowca
     name: Zwiadowca
     stats: { sila: 3, technika: 3, percepcja: 5, wytrwalosc: 2 }

@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sim": "tsx src/sim/sim.ts",
+    "audit": "tsx src/audit.ts"
   },
   "dependencies": {
     "@fastify/jwt": "^10.2.5",

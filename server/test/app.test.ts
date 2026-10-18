@@ -23,12 +23,12 @@ afterAll(async () => {
 });
 
 describe('config', () => {
+  it('wczytuje game.yaml', () => {
+    expect(config.buildings).toHaveLength(5);
+  });
   it('odrzuca zduplikowane id', () => {
-    expect(() =>
-      parseGameConfig(`version: "1"
-resources: [{id: a, name: A}, {id: a, name: B}]
-archetypes: [{id: x, name: X, stats: {sila: 1, technika: 1, percepcja: 1, wytrwalosc: 1}}]`),
-    ).toThrow();
+    const y = readFileSync('../config/game.yaml', 'utf8').replace('- { id: magazyn, name: Magazyn, base_cost: 40 }', '- { id: szyb_glowny, name: X, base_cost: 40 }');
+    expect(() => parseGameConfig(y)).toThrow();
   });
 });
 
