@@ -180,7 +180,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const pool = await lockPool(trx, cfg, route);
     const fx = await loadEffects(trx, cfg, userId);
     const bonus = (await equippedBonus(trx, cfg.items.recipes, userId)) + fx.divePower;
-    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus);
+    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples);
     await wearEquipped(trx, userId);
 
     await applyLedger(
@@ -189,6 +189,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
       [
         { resource: 'ore', delta: out.ore, reason: 'dive_reward', ref: `dive:${d.id}` },
         { resource: 'tokens', delta: out.tokens, reason: 'dive_reward', ref: `dive:${d.id}:tokens` },
+        { resource: 'samples', delta: out.samples, reason: 'dive_reward', ref: `dive:${d.id}:samples` },
       ],
       cfg.version,
     );
@@ -196,8 +197,8 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     if (out.poolDraw > 0) await trx.updateTable('world_pools').set({ remaining: pool.remaining - out.poolDraw }).where('zone', '=', pool.zone).where('resource', '=', pool.resource).execute();
     const lv = addXp(cfg, p.level, Number(p.xp), out.xp);
     await trx.updateTable('players').set({ level: lv.level, xp: String(lv.xpInLevel), free_points: p.free_points + lv.points }).where('user_id', '=', userId).execute();
-    if (!out.success) await trx.updateTable('silos').set({ winded_until: new Date(d.ends_at.getTime() + cfg.dives.winded_seconds * 1000) }).where('user_id', '=', userId).execute();
-    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
+    if (!out.success) await trx.updateTable('silos').set({ winded_until: new Date(d.ends_at.getTime() + cfg.dives.winded_seconds * fx.winded * 1000) }).where('user_id', '=', userId).execute();
+    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, samples: out.samples, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
     await trx.updateTable('dives').set({ state: 'resolved', result: JSON.stringify(result) }).where('id', '=', d.id).execute();
     await trx.insertInto('notifications').values({ user_id: userId, type: 'dive_done', payload: JSON.stringify({ routeId: route.id, ...result }), sent_at: null, read_at: null }).execute();
     await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_done', props: JSON.stringify({ routeId: route.id, ...result }) }).execute();
@@ -227,6 +228,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
   const p = await trx.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
   const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
   const tokens = await walletBalance(trx, userId, 'tokens');
+  const samples = await walletBalance(trx, userId, 'samples');
   const jobRow = await trx.selectFrom('jobs').selectAll().where('user_id', '=', userId).where('state', '=', 'pending').orderBy('ends_at').executeTakeFirst();
   const diveRows = await trx.selectFrom('dives').selectAll().where('user_id', '=', userId).where('state', '=', 'active').orderBy('ends_at').execute();
   const siloRow = await trx.selectFrom('silos').select('winded_until').where('user_id', '=', userId).executeTakeFirstOrThrow();
@@ -244,7 +246,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
       freePoints: p.free_points,
     },
     silo: { lat: p.silo_lat, lon: p.silo_lon, depth: p.depth, deposit: depositHint(st.state.depositRemaining, st.state.depositTotal, cfg.economy.deposit.floor_fraction) },
-    wallet: { ore: st.oreInt, steam: Math.floor(st.state.steam + EPS), tokens },
+    wallet: { ore: st.oreInt, steam: Math.floor(st.state.steam + EPS), tokens, samples },
     caps: { ore: oreCap(cfg, lv.magazyn), steam: steamCap(cfg, lv.generator_pary) },
     rates: { orePerHour: Math.round(orePerHour(cfg, lv.szyb_glowny) * x * 100) / 100, steamPerMin: steamRegen(cfg, lv.generator_pary) },
     protectedShare: protectedShare(cfg, lv.magazyn),
@@ -369,6 +371,7 @@ export async function listRoutes(ctx: Ctx, userId: string) {
       chancePct: Math.round(diveChance(stats, r.difficulty, bonus) * 100),
       ore: [Math.round(routeRewards(cfg, r).oreMin * arch.dive_ore_multiplier * fx.diveOre), Math.round(routeRewards(cfg, r).oreMax * arch.dive_ore_multiplier * fx.diveOre)],
       tokens: r.tokens,
+      samples: r.samples,
       xp: routeRewards(cfg, r).xp,
       zoneRichness: pool ? depositHint(pool.remaining, pool.total, cfg.dives.pool_floor_fraction) : 'bogate',
     };

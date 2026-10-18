@@ -35,6 +35,7 @@ export async function listResearch(ctx: Ctx, userId: string) {
         missing,
         ore: t.ore,
         tokens: t.tokens,
+        samples: t.samples,
         seconds: researchSeconds(cfg, t.seconds, lab),
         effect: t.effect,
         unlocks: t.unlocks,
@@ -65,6 +66,7 @@ export async function startResearchTx(trx: Trx, ctx: Ctx, userId: string, techId
       [
         { resource: 'ore', delta: -t.ore, reason: 'research_cost', ref: `research:${t.id}` },
         { resource: 'tokens', delta: -t.tokens, reason: 'research_cost', ref: `research:${t.id}:tokens` },
+        { resource: 'samples', delta: -t.samples, reason: 'research_cost', ref: `research:${t.id}:samples` },
       ],
       cfg.version,
     );

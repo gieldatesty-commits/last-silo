@@ -39,6 +39,7 @@ export interface DiveOutcome {
   chance: number;
   ore: number;
   tokens: number;
+  samples: number;
   xp: number;
   /** ile ubyło z puli strefy */
   poolDraw: number;
@@ -51,12 +52,13 @@ export interface DiveOutcome {
  * Nagroda rudy skalowana zdrowiem WSPÓLNEJ puli strefy: max(floor, pozostało/całość).
  * Powyżej podłogi pula ubywa o przyznaną rudę, poniżej – "ślady" bez ubywania.
  */
-export function resolveDive(c: GameConfig, route: Route, stats: Stats, oreMultiplier: number, seed: number, pool: { remaining: number; total: number }, itemBonus = 0): DiveOutcome {
+export function resolveDive(c: GameConfig, route: Route, stats: Stats, oreMultiplier: number, seed: number, pool: { remaining: number; total: number }, itemBonus = 0, samplesMult = 1): DiveOutcome {
   const r = rng(seed);
   const chance = diveChance(stats, route.difficulty, itemBonus);
   const success = r() < chance;
   const uOre = r();
   const uTok = r();
+  const uSmp = r(); // dolosowywane na końcu, by nie zmieniać wyników wcześniejszych losowań
   const floor = c.dives.pool_floor_fraction;
   const health = pool.total > 0 ? Math.max(floor, pool.remaining / pool.total) : floor;
   const frac = success ? 1 : c.dives.fail_reward_fraction;
@@ -66,7 +68,8 @@ export function resolveDive(c: GameConfig, route: Route, stats: Stats, oreMultip
   const aboveFloor = pool.remaining - floor * pool.total;
   const poolDraw = aboveFloor > 0 ? Math.min(ore, aboveFloor) : 0;
   const tokens = success ? Math.round(route.tokens[0] + (route.tokens[1] - route.tokens[0]) * uTok) : 0;
-  return { success, chance, ore, tokens, xp: Math.round(rw.xp * frac), poolDraw, poolHealth: health };
+  const samples = success ? Math.round((route.samples[0] + (route.samples[1] - route.samples[0]) * uSmp) * samplesMult) : 0;
+  return { success, chance, ore, tokens, samples, xp: Math.round(rw.xp * frac), poolDraw, poolHealth: health };
 }
 
 /** Efektywność nagrody: krótkie trasy płacą więcej za minutę (1 + short_bonus przy najkrótszej, 1.0 przy najdłuższej). */

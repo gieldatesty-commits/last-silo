@@ -6,6 +6,7 @@ import type { Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
 import { idempotent } from './idempotency.js';
 import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
+import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
 import { craftTx, equipTx, listItems, repairTx } from './services/items.js';
 
@@ -164,6 +165,7 @@ export function buildApp(deps: AppDeps) {
     });
   }
 
+  app.get('/codex', { onRequest: auth }, async (req) => getCodex(ctx, req.user.sub));
   app.get('/research', { onRequest: auth }, async (req) => listResearch(ctx, req.user.sub));
   app.post('/research/:id/start', { onRequest: auth }, async (req, reply) => {
     const { id } = z.object({ id: z.string().min(1).max(60) }).parse(req.params);

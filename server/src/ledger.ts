@@ -51,11 +51,22 @@ export async function applyLedger(trx: Transaction<Database>, userId: string, en
     if (!ins) continue; // duplikat ref
     applied = true;
     try {
-      await trx
-        .insertInto('wallets')
-        .values({ user_id: userId, resource: e.resource, balance: Math.max(0, e.delta) as never })
-        .onConflict((oc) => oc.columns(['user_id', 'resource']).doUpdateSet({ balance: sql`wallets.balance + ${e.delta}` as never }))
-        .execute();
+      // UPDATE najpierw: CHECK na INSERT działa przed ON CONFLICT, więc debet istniejącego wiersza nie może iść tą drogą
+      const upd = await trx
+        .updateTable('wallets')
+        .set({ balance: sql`balance + ${e.delta}` as never })
+        .where('user_id', '=', userId)
+        .where('resource', '=', e.resource)
+        .executeTakeFirst();
+      if (Number(upd.numUpdatedRows) === 0) {
+        // brak wiersza: dodatni wpis go tworzy, ujemny łamie CHECK (balance >= 0) => brak środków
+        // ON CONFLICT przy dodatnim wpisie: wyścig o pierwszy wiersz portfela nie psuje salda
+        await trx
+          .insertInto('wallets')
+          .values({ user_id: userId, resource: e.resource, balance: e.delta as never })
+          .onConflict((oc) => oc.columns(['user_id', 'resource']).doUpdateSet({ balance: sql`wallets.balance + ${e.delta}` as never }))
+          .execute();
+      }
     } catch (err) {
       if ((err as { code?: string }).code === '23514') throw new InsufficientFunds(e.resource);
       throw err;

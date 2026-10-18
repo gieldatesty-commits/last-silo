@@ -42,7 +42,7 @@ describe('postać i silos', () => {
     expect(res.statusCode).toBe(201);
     const v = res.json();
     expect(v.player).toMatchObject({ nickname: 'Kopacz', archetype: 'gornik', level: 1, stats: { sila: 5, technika: 3, percepcja: 2, wytrwalosc: 4 } });
-    expect(v.wallet).toEqual({ ore: 300, steam: 100, tokens: 0 });
+    expect(v.wallet).toEqual({ ore: 300, steam: 100, tokens: 0, samples: 0 });
     expect(v.buildings).toHaveLength(6);
     expect(v.buildings.every((b: { level: number }) => b.level === 1)).toBe(true);
     expect(v.silo.lat).toBeGreaterThanOrEqual(-90);

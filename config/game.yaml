@@ -1,10 +1,11 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.5.0"
+version: "0.6.0"
 
 resources:
   - { id: ore, name: Ruda }
   - { id: steam, name: Para }
   - { id: tokens, name: Żetony }
+  - { id: samples, name: Próbki rdzeniowe }
 
 economy:
   start_ore: 300
@@ -55,9 +56,9 @@ dives:
   routes:
     - { id: plytki,       name: Płytki,       zone: gorne,    min_level: 1, seconds: 180,   steam: 3,  difficulty: 2.5,  tokens: [0, 0] }
     - { id: sredni,       name: Średni,       zone: gorne,    min_level: 2, seconds: 900,   steam: 10, difficulty: 4.0,  tokens: [0, 2] }
-    - { id: gleboki,      name: Głęboki,      zone: gorne,    min_level: 3, seconds: 3600,  steam: 22, difficulty: 5.5,  tokens: [4, 10] }
-    - { id: przepasc,     name: Przepaść,     zone: glebokie, min_level: 5, seconds: 14400, steam: 45, difficulty: 8.0,  tokens: [20, 40] }
-    - { id: pelna_zmiana, name: Pełna zmiana, zone: glebokie, min_level: 7, seconds: 28800, steam: 70, difficulty: 11.0, tokens: [45, 80] }
+    - { id: gleboki,      name: Głęboki,      zone: gorne,    min_level: 3, seconds: 3600,  steam: 22, difficulty: 5.5,  tokens: [4, 10], samples: [0, 2] }
+    - { id: przepasc,     name: Przepaść,     zone: glebokie, min_level: 5, seconds: 14400, steam: 45, difficulty: 8.0,  tokens: [20, 40], samples: [2, 5] }
+    - { id: pelna_zmiana, name: Pełna zmiana, zone: glebokie, min_level: 7, seconds: 28800, steam: 70, difficulty: 11.0, tokens: [45, 80], samples: [4, 9] }
 
 effects:
   ore_per_hour: { base: 40, growth: 1.3 }                 # Szyb główny
@@ -125,6 +126,25 @@ research:
     - { id: ekonomika_prac_2,  name: Organizacja robót II,  branch: inzynieria, lab: 5, ore: 2500, tokens: 15, seconds: 10800, requires: [ekonomika_prac_1], effect: { upgrade_cost_pct: -5 } }
     - { id: metalurgia,        name: Metalurgia,            branch: inzynieria, lab: 2, ore: 500,  tokens: 3,  seconds: 1800,  effect: { repair_pct: -10 }, unlocks: [helm_wzmocniony] }
     - { id: precyzja,          name: Precyzyjna obróbka,    branch: inzynieria, lab: 3, ore: 1000, tokens: 6,  seconds: 5400,  requires: [metalurgia], effect: { quality: 0.04 } }
-    - { id: rezonans_skal,     name: Rezonans skał,         branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, seconds: 9000,  requires: [sejsmika], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }
-    - { id: wiertla_rdzeniowe, name: Wiertła rdzeniowe,     branch: rdzeniowcy, lab: 5, ore: 3200, tokens: 22, seconds: 14400, requires: [metalurgia, rezonans_skal], unlocks: [wiertlo_rdzeniowe] }
-    - { id: izolacja_rdzenia,  name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, seconds: 21600, requires: [metalurgia, rezonans_skal], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }
+    # --- gałąź Rdzeniowców: próbki rdzeniowe pochodzą ze zjazdów w głębokich strefach ---
+    - { id: obserwacja_rdzeniowcow, name: Obserwacja Rdzeniowców, branch: rdzeniowcy, lab: 3, ore: 700,  tokens: 4,  samples: 3,  seconds: 5400,  requires: [sejsmika] }
+    - { id: rezonans_skal,      name: Rezonans skał,          branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, samples: 4,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }
+    - { id: anatomia_rdzeniowcow, name: Anatomia Rdzeniowców, branch: rdzeniowcy, lab: 4, ore: 1500, tokens: 10, samples: 8,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { samples_pct: 20 } }
+    - { id: jezyk_wibracji_1,   name: Język wibracji I,       branch: rdzeniowcy, lab: 4, ore: 2000, tokens: 15, samples: 6,  seconds: 10800, requires: [obserwacja_rdzeniowcow], effect: { winded_pct: -25 } }
+    - { id: jezyk_wibracji_2,   name: Język wibracji II,      branch: rdzeniowcy, lab: 5, ore: 3500, tokens: 25, samples: 12, seconds: 16200, requires: [jezyk_wibracji_1, rezonans_skal], effect: { winded_pct: -25, dive_power: 0.3 } }
+    - { id: jezyk_wibracji_3,   name: Język wibracji III,     branch: rdzeniowcy, lab: 6, ore: 6000, tokens: 40, samples: 20, seconds: 28800, requires: [jezyk_wibracji_2, anatomia_rdzeniowcow], effect: { dive_power: 0.4 } }
+    - { id: wiertla_rdzeniowe,  name: Wiertła rdzeniowe,      branch: rdzeniowcy, lab: 5, ore: 3200, tokens: 22, samples: 10, seconds: 14400, requires: [metalurgia, rezonans_skal], unlocks: [wiertlo_rdzeniowe] }
+    - { id: izolacja_rdzenia,   name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, samples: 15, seconds: 21600, requires: [metalurgia, anatomia_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }
+
+# Kodeks Rdzeniowców: wpisy odkrywane badaniami (fabuła; gracz poznaje gatunek stopniowo)
+codex:
+  - { id: pierwszy_slad, tech: obserwacja_rdzeniowcow, title: Pierwszy ślad, text: "Drgania, które brałeś za pracę skał, mają rytm. Powtarzają się w tych samych odstępach i zawsze z tego samego kierunku — z dołu. Coś tam jest i nie jest to maszyna: nie słychać żadnego silnika, tylko ciężki, powolny puls." }
+  - { id: gniazda, tech: obserwacja_rdzeniowcow, title: Gniazda, text: "Obserwacje z kilku zjazdów układają się w obraz: istoty żyją gromadnie przy żyłach gorąca. Nie budują — drążą. Nie znają metalu ani ognia, ale ich korytarze są dziwnie regularne. Nazywamy je Rdzeniowcami, bo nikt nie widział ich wyżej niż kilka kilometrów od jądra." }
+  - { id: piesn_kamienia, tech: rezonans_skal, title: Pieśń kamienia, text: "Rdzeniowcy nie mają głosu. Mówią skałą: uderzają, tarą, wprawiają ją w drżenie, które niesie się przez kilometry litej warstwy. Nasze lampy wibracyjne rejestrują to jako szum; dostrojone do ich pasma zaczynają tworzyć wzory." }
+  - { id: cialo_z_zaru, tech: anatomia_rdzeniowcow, title: Ciało z żaru, text: "Próbki nie przypominają niczego znanego: skorupa z mineralnej łuski, wnętrze utrzymujące temperaturę, w której stopiłby się nasz hełm. To nie zwierzęta. Narzędzia z kości, których tu nie ma, byłyby zresztą zbędne — ich dłonie są narzędziami." }
+  - { id: pierwsze_slowa, tech: jezyk_wibracji_1, title: Pierwsze słowa, text: "Trzy wzory powtarzają się najczęściej. Jeden towarzyszy cieple, drugi ruchowi w głąb, trzeci pojawia się tuż przed tym, nim dzieje się coś złego. Ten ostatni zapisaliśmy jako: OBCY. To my." }
+  - { id: granica, tech: jezyk_wibracji_2, title: Granica, text: "Wzór, który uważaliśmy za agresję, to ostrzeżenie. Rdzeniowcy wyznaczają granice drganiami, a nasze najgłębsze zjazdy przekraczają je bez pytania. Zadyszka po nieudanym zjeździe nie jest jednak karą — to skutek zderzenia ze ścianą dźwięku, którą budują, żebyśmy zawrócili." }
+  - { id: echo_z_gory, tech: jezyk_wibracji_2, title: Echo z góry, text: "W zapisach jest coś, co nie pasuje do Rdzeniowców: regularne, sztuczne impulsy dochodzące z boku, z ogromnej odległości. Zbyt równe, by były naturalne, zbyt słabe, by były ich dziełem. Ktoś jeszcze drąży w tej skorupie." }
+  - { id: starsi, tech: jezyk_wibracji_3, title: Starsi, text: "Najgłębsze wzory mają jedno źródło. Kiedy ono mówi, reszta milknie. Rdzeniowcy nazywają je w swoim języku czymś, co oddajemy jako STARSZY. Jest ich niewielu, są najstarsi i najgłębiej — a to, co chroni jądro, chroni też coś, o czym nie wiemy jeszcze nic." }
+  - { id: cena_wiertla, tech: wiertla_rdzeniowe, title: Cena wiertła, text: "Wiertło rdzeniowe działa, bo wibruje w paśmie, które skała znosi najlepiej. Dla Rdzeniowców brzmi to jak krzyk. Możemy z niego korzystać. Pytanie, czy powinniśmy." }
+  - { id: cieplo_rdzenia, tech: izolacja_rdzenia, title: Ciepło rdzenia, text: "Kombinezon izolowany pozwala zejść głębiej, niż jakikolwiek człowiek schodził. Na dole nie ma ciemności, jakiej się spodziewano — jest ciepłe, bursztynowe światło i dźwięk, który czuć w kościach. Rdzeniowcy nie atakują. Czekają, aż wyjaśnimy, po co przyszliśmy." }

@@ -52,6 +52,7 @@ export const GameConfigSchema = z
             steam: pos,
             difficulty: pos,
             tokens: z.tuple([z.number().int().min(0), z.number().int().min(0)]),
+            samples: z.tuple([z.number().int().min(0), z.number().int().min(0)]).default([0, 0]),
           }),
         )
         .min(1),
@@ -85,6 +86,7 @@ export const GameConfigSchema = z
           lab: z.number().int().min(1),
           ore: z.number().int().min(0),
           tokens: z.number().int().min(0),
+          samples: z.number().int().min(0).default(0),
           seconds: pos,
           requires: z.array(z.string()).default([]),
           unlocks: z.array(z.string()).default([]),
@@ -96,11 +98,14 @@ export const GameConfigSchema = z
               quality: z.number().optional(),
               repair_pct: z.number().optional(),
               upgrade_cost_pct: z.number().optional(),
+              winded_pct: z.number().optional(),
+              samples_pct: z.number().optional(),
             })
             .default({}),
         }),
       ),
     }),
+    codex: z.array(z.object({ id: z.string(), tech: z.string(), title: z.string(), text: z.string() })),
     world: z.object({
       expected_players: pos,
       radius_km: pos,
@@ -138,6 +143,7 @@ export const GameConfigSchema = z
     if (new Set(rids).size !== rids.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id receptur' });
     const tids = new Set(cfg.research.techs.map((t) => t.id));
     if (tids.size !== cfg.research.techs.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id badań' });
+    for (const c of cfg.codex) if (!tids.has(c.tech)) ctx.addIssue({ code: 'custom', message: `kodeks ${c.id}: nieznane badanie ${c.tech}` });
     const recipeIds = new Set(cfg.items.recipes.map((r) => r.id));
     for (const t of cfg.research.techs) {
       for (const q of t.requires) if (!tids.has(q)) ctx.addIssue({ code: 'custom', message: `badanie ${t.id}: nieznany wymóg ${q}` });

@@ -155,3 +155,79 @@ describe('dział nauki', () => {
     expect(cost1).toBeLessThan(cost0);
   });
 });
+
+describe('Rdzeniowcy: próbki i kodeks', () => {
+  it('próbki wypadają tylko z głębokich tras i tylko przy sukcesie', async () => {
+    const { resolveDive } = await import('../src/game/dive.js');
+    const st = { sila: 20, technika: 20, percepcja: 20, wytrwalosc: 20 };
+    const pool0 = { remaining: 1000, total: 1000 };
+    const route = (id: string) => config.dives.routes.find((r) => r.id === id)!;
+    let sawPositive = false;
+    for (let seed = 1; seed < 200; seed++) {
+      const deep = resolveDive(config, route('pelna_zmiana'), st, 1, seed, pool0);
+      if (deep.success) {
+        expect(deep.samples).toBeGreaterThanOrEqual(4);
+        expect(deep.samples).toBeLessThanOrEqual(9);
+        sawPositive = true;
+      } else expect(deep.samples).toBe(0);
+      expect(resolveDive(config, route('plytki'), st, 1, seed, pool0).samples).toBe(0);
+    }
+    expect(sawPositive).toBe(true);
+    // mnożnik z Anatomii Rdzeniowców
+    const base = resolveDive(config, route('pelna_zmiana'), st, 1, 3, pool0);
+    const more = resolveDive(config, route('pelna_zmiana'), st, 1, 3, pool0, 0, 1.2);
+    expect(more.samples).toBeGreaterThanOrEqual(base.samples);
+    // dodatkowe losowanie nie zmienia dotychczasowych wyników
+    expect(more.ore).toBe(base.ore);
+    expect(more.tokens).toBe(base.tokens);
+  });
+
+  it('badania rdzeniowców kosztują próbki; kodeks odkrywa się z badaniami', async () => {
+    const { id, h } = await newPlayer();
+    await setLab(id, 3);
+    await grant(id, 20000, 50);
+    let codex = (await app.inject({ url: '/codex', headers: h })).json();
+    expect(codex.unlocked).toBe(0);
+    expect(codex.total).toBe(config.codex.length);
+    expect(JSON.stringify(codex)).not.toContain('Drgania, które');
+    expect(codex.entries[0].hint).toContain('Obserwacja Rdzeniowców');
+
+    for (const [i, t] of ['geologia_1', 'sejsmika'].entries()) {
+      expect((await post(h, `/research/${t}/start`, `cdx-pre-000${i}`)).statusCode).toBe(201);
+      tick(tech(t).seconds);
+      await research(h);
+    }
+    // brak próbek
+    const poor = await post(h, '/research/obserwacja_rdzeniowcow/start', 'cdx-res-0001');
+    expect(poor.statusCode).toBe(402);
+    expect(poor.json().error).toBe('insufficient_samples');
+
+    await db.transaction().execute((trx) => applyLedger(trx, id, [{ resource: 'samples', delta: 5, reason: 'admin_adjust', ref: 'cdx-grant' }], 't'));
+    expect((await post(h, '/research/obserwacja_rdzeniowcow/start', 'cdx-res-0002')).statusCode).toBe(201);
+    expect((await app.inject({ url: '/silo', headers: h })).json().wallet.samples).toBe(5 - tech('obserwacja_rdzeniowcow').samples);
+    tick(tech('obserwacja_rdzeniowcow').seconds);
+    codex = (await app.inject({ url: '/codex', headers: h })).json();
+    expect(codex.unlocked).toBe(2);
+    expect(codex.entries.filter((e: { unlocked: boolean }) => e.unlocked).map((e: { id: string }) => e.id)).toEqual(['pierwszy_slad', 'gniazda']);
+    expect(codex.entries[0].text.length).toBeGreaterThan(40);
+    expect(await auditLedger(db)).toEqual([]);
+  });
+
+  it('Język wibracji skraca zadyszkę', () => {
+    const fx = computeEffects(config, ['jezyk_wibracji_1', 'jezyk_wibracji_2']);
+    expect(fx.winded).toBeCloseTo(0.5, 9);
+    expect(computeEffects(config, ['anatomia_rdzeniowcow']).samples).toBeCloseTo(1.2, 9);
+  });
+});
+
+describe('księga: pobranie z pustego portfela', () => {
+  it('odrzuca debet na zasobie bez wiersza portfela i nie zostawia wpisu', async () => {
+    const { id } = await newPlayer();
+    await expect(
+      db.transaction().execute((trx) => applyLedger(trx, id, [{ resource: 'samples', delta: -1, reason: 'admin_adjust', ref: 'dbt-1' }], 't')),
+    ).rejects.toThrow(/insufficient_funds/);
+    const rows = await db.selectFrom('ledger_entries').selectAll().where('user_id', '=', id).where('ref', '=', 'dbt-1').execute();
+    expect(rows).toHaveLength(0);
+    expect(await auditLedger(db)).toEqual([]);
+  });
+});
