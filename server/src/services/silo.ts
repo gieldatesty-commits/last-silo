@@ -7,6 +7,7 @@ import { rng } from '../game/rng.js';
 import { addXp, diveChance, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
+import { equippedBonus, wearEquipped } from './gear.js';
 import { randomInt } from 'node:crypto';
 
 export class GameError extends Error {
@@ -172,7 +173,9 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
     const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
     const pool = await lockPool(trx, cfg, route);
-    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier, Number(d.seed), { remaining: pool.remaining, total: pool.total });
+    const bonus = await equippedBonus(trx, cfg.items.recipes, userId);
+    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus);
+    await wearEquipped(trx, userId);
 
     await applyLedger(
       trx,
@@ -343,6 +346,7 @@ export async function listRoutes(ctx: Ctx, userId: string) {
   const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
   const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
   const pools = await ctx.db.selectFrom('world_pools').selectAll().execute();
+  const bonus = await equippedBonus(ctx.db, cfg.items.recipes, userId);
   return cfg.dives.routes.map((r) => {
     const pool = pools.find((x) => x.zone === r.zone);
     return {
@@ -353,7 +357,7 @@ export async function listRoutes(ctx: Ctx, userId: string) {
       locked: p.level < r.min_level,
       seconds: r.seconds,
       steam: steamCost(r, arch.dive_steam_multiplier),
-      chancePct: Math.round(diveChance(stats, r.difficulty) * 100),
+      chancePct: Math.round(diveChance(stats, r.difficulty, bonus) * 100),
       ore: [Math.round(routeRewards(cfg, r).oreMin * arch.dive_ore_multiplier), Math.round(routeRewards(cfg, r).oreMax * arch.dive_ore_multiplier)],
       tokens: r.tokens,
       xp: routeRewards(cfg, r).xp,

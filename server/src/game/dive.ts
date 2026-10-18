@@ -51,9 +51,9 @@ export interface DiveOutcome {
  * Nagroda rudy skalowana zdrowiem WSPÓLNEJ puli strefy: max(floor, pozostało/całość).
  * Powyżej podłogi pula ubywa o przyznaną rudę, poniżej – "ślady" bez ubywania.
  */
-export function resolveDive(c: GameConfig, route: Route, stats: Stats, oreMultiplier: number, seed: number, pool: { remaining: number; total: number }): DiveOutcome {
+export function resolveDive(c: GameConfig, route: Route, stats: Stats, oreMultiplier: number, seed: number, pool: { remaining: number; total: number }, itemBonus = 0): DiveOutcome {
   const r = rng(seed);
-  const chance = diveChance(stats, route.difficulty);
+  const chance = diveChance(stats, route.difficulty, itemBonus);
   const success = r() < chance;
   const uOre = r();
   const uTok = r();

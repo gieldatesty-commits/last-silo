@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.3.1"
+version: "0.4.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -88,3 +88,17 @@ archetypes:
   - id: alchemik
     name: Alchemik
     stats: { sila: 2, technika: 4, percepcja: 3, wytrwalosc: 4 }
+
+# Warsztat: przedmioty dają bonus do mocy zjazdu (a więc do szansy), zużywają się i wymagają napraw
+items:
+  inventory_max: 24
+  repair_cost_fraction: 0.4        # pełna naprawa = ta część kosztu rudy receptury (proporcjonalnie do ubytku)
+  quality: { min: 0.85, max: 1.05, min_step: 0.02, max_step: 0.04 }   # zakres jakości rośnie z poziomem Warsztatu
+  slots: [narzedzie, ochrona, lampa]
+  recipes:
+    - { id: kilof,              name: Kilof,                 slot: narzedzie, workshop: 1, ore: 150,  tokens: 0,  bonus: 0.6, durability: 20 }
+    - { id: wiertlo_udarowe,    name: Wiertło udarowe,       slot: narzedzie, workshop: 4, ore: 1400, tokens: 12, bonus: 1.6, durability: 30 }
+    - { id: kask_gornika,       name: Kask górnika,          slot: ochrona,   workshop: 2, ore: 300,  tokens: 2,  bonus: 0.6, durability: 25 }
+    - { id: kombinezon_pancerny, name: Kombinezon pancerny,  slot: ochrona,   workshop: 5, ore: 2000, tokens: 18, bonus: 1.5, durability: 35 }
+    - { id: lampa_karbidowa,    name: Lampa karbidowa,       slot: lampa,     workshop: 1, ore: 200,  tokens: 0,  bonus: 0.5, durability: 20 }
+    - { id: lampa_wibracyjna,   name: Lampa wibracyjna,      slot: lampa,     workshop: 3, ore: 800,  tokens: 8,  bonus: 1.2, durability: 30 }

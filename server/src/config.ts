@@ -56,6 +56,24 @@ export const GameConfigSchema = z
         )
         .min(1),
     }),
+    items: z.object({
+      inventory_max: z.number().int().min(1),
+      repair_cost_fraction: z.number().min(0).max(2),
+      quality: z.object({ min: pos, max: pos, min_step: z.number().min(0), max_step: z.number().min(0) }),
+      slots: z.array(z.string()).min(1),
+      recipes: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          slot: z.string(),
+          workshop: z.number().int().min(1),
+          ore: z.number().int().min(0),
+          tokens: z.number().int().min(0),
+          bonus: pos,
+          durability: z.number().int().min(1),
+        }),
+      ),
+    }),
     world: z.object({
       expected_players: pos,
       radius_km: pos,
@@ -88,6 +106,9 @@ export const GameConfigSchema = z
         ctx.addIssue({ code: 'custom', message: `duplikaty id w ${key}` });
       }
     }
+    for (const r of cfg.items.recipes) if (!cfg.items.slots.includes(r.slot)) ctx.addIssue({ code: 'custom', message: `receptura ${r.id}: nieznany slot ${r.slot}` });
+    const rids = cfg.items.recipes.map((r) => r.id);
+    if (new Set(rids).size !== rids.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id receptur' });
     const have = new Set(cfg.buildings.map((b) => b.id));
     for (const t of BUILDING_TYPES) {
       if (!have.has(t)) ctx.addIssue({ code: 'custom', message: `brak budynku ${t} w configu` });

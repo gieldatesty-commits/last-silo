@@ -55,6 +55,17 @@ export interface Database {
     state: Generated<'active' | 'resolved'>;
     result: unknown | null;
   };
+  items: {
+    id: Generated<string>;
+    user_id: string;
+    recipe_id: string;
+    slot: string;
+    quality: number;
+    durability: number;
+    max_durability: number;
+    equipped: Generated<boolean>;
+    created_at: Generated<Date>;
+  };
   world_pools: { zone: string; resource: string; total: number; remaining: number };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {

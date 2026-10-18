@@ -6,6 +6,7 @@ import type { Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
 import { idempotent } from './idempotency.js';
 import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
+import { craftTx, equipTx, listItems, repairTx } from './services/items.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -134,6 +135,33 @@ export function buildApp(deps: AppDeps) {
     if (!res.replay) await afterDiveCommitted(ctx, userId, (res.body as { endsAt: string }).endsAt);
     return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
   });
+
+  const idemRoute = (userId: string, key: unknown) => typeof key === 'string' && key.length >= 8 && key.length <= 100;
+
+  app.get('/items', { onRequest: auth }, async (req) => listItems(ctx, req.user.sub));
+
+  app.post('/items/craft', { onRequest: auth }, async (req, reply) => {
+    const { recipeId } = z.object({ recipeId: z.string().min(1) }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await craftTx(trx, ctx, userId, recipeId) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+
+  for (const action of ['equip', 'unequip', 'repair'] as const) {
+    app.post(`/items/:id/${action}`, { onRequest: auth }, async (req, reply) => {
+      const { id } = z.object({ id: z.string().min(1).max(20) }).parse(req.params);
+      const key = req.headers['idempotency-key'];
+      if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+      const userId = req.user.sub;
+      const res = await idempotent(db, userId, key as string, async (trx) => ({
+        status: 200,
+        body: action === 'repair' ? await repairTx(trx, ctx, userId, id) : await equipTx(trx, ctx, userId, id, action === 'equip'),
+      }));
+      return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+    });
+  }
 
   // Rozdanie wolnych punktów statystyk
   app.post('/players/stats', { onRequest: auth }, async (req) => {
