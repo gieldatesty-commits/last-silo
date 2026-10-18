@@ -345,3 +345,5 @@ Prywatność: minimalizacja danych, zgodnie z polityką prywatności i RODO; ano
 5. Abonament (kolejki akcji, panel cechu, alerty cen).
 6. Sezony z resetem i bonusami startowymi.
 7. iOS.
+
+> Aktualizacja 18.10.2026 (kolejność po MVP wg `swiat-v0.2-silosy.md`, sekcja 14): karawany → dawne technologie → luźne sojusze → kolej między silosami → sezon „Wyjście” (powierzchnia). Zakres MVP bez zmian.

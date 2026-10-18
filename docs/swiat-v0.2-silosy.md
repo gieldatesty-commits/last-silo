@@ -15,7 +15,7 @@ Jesteś operatorem własnego, odizolowanego silosu wierconego w głąb planety. 
 | Postęp w głąb | wspólne poziomy (Przedproże…Otchłań) | **głębokość silosu** (rośnie z poziomem Szybu głównego) |
 | Wróg PvE | Wielka Maszyna, Kolosy | **plemiona Rdzeniowców** i ich Starsi (bossowie) |
 | Oś sezonu | budzenie się Maszyny | **wyścig do Jądra** (patrz 5) |
-| Walka o teren | cechy zajmują węzły | brak terenu do „betonowania"; cechy jako sieć silosów (po MVP) |
+| Walka o teren | cechy zajmują węzły | brak terenu do „betonowania"; **luźne sojusze** bez geografii (po MVP) |
 
 Zaleta ukryta w zmianie: losowe rozmieszczenie rozwiązuje skargę z BW, że najlepsze klany „zabetonowały" strefy – nie ma stref do przejęcia.
 
@@ -71,7 +71,7 @@ Budynek **Radiostacja** (6. budynek MVP), poziomy:
 | 1 | Odbiornik | nasłuch: wykrywasz **sygnały** nadających silosów (kierunek + przybliżony dystans); słyszysz też „werble" Rdzeniowców |
 | 2 | Nadajnik | zaczynasz nadawać: inni mogą Cię wykryć; odblokowuje rynek, wiadomości, ranking, **bycie celem najazdu** |
 | 3 | Szyfr / zagłuszanie | zmniejszasz szansę wykrycia przez innych (koszt: mniej kontaktów) |
-| 4 | Przekaźniki | większy zasięg; wstępnie: łącza cechowe (po MVP) |
+| 4 | Przekaźniki | większy zasięg, łączność z sojusznikami, warunek budowy kolei (sekcja 13) |
 
 Zasady:
 - **Najazd wymaga kontaktu:** atakujący musi mieć Odbiornik, a cel musi nadawać (lub zostać wykryty skanem za parę).
@@ -81,14 +81,46 @@ Zasady:
 
 Wpływ na onboarding (zastępuje dni 1–7 ze specu): dni 1–2 sam w silosie (budowa, zjazdy) → dzień 3 Odbiornik i pierwsze „sygnały z oddali" → dni 4–5 Nadajnik, pierwszy kontakt, rynek → dni 6–7 pierwszy najazd lub pierwszy handel.
 
-## 10. Rozstrzygnięte i otwarte
+## 10. Ukryty cel: odzyskanie powierzchni (decyzja 18.10)
+- Gracze zaczynają przekonani, że chodzi o wiercenie w głąb i przetrwanie. **Prawdziwy cel – powrót na powierzchnię – odsłania się stopniowo** przez kodeks, znaleziska i etapy sezonu.
+- **Silosy zbudowała dawna cywilizacja**; powierzchnia jest dla graczy utracona lub niedostępna (dlaczego – celowo tajemnica, możliwy związek z Rdzeniowcami). **[propozycja]**
+- **Wspólny licznik „Powrót":** rośnie od dostaw zasobów, dawnych technologii i ukończonych odcinków kolei do wspólnych projektów. Progi są ukryte (jak pule zasobów) i odsłaniają kolejne etapy fabuły.
+- **Układ sezonów [propozycja]:** sezon 1 „Pod ziemią" (wiercenie, kontakt, handel, pierwsze karawany) → sezon 2 „Wyjście" (wyprawy na powierzchnię, pierwsze przyczółki) → dalej podbój. Po sezonie resetuje się siła graczy, ale **postęp ludzkości** (odblokowane technologie, kodeks, część kolei jako „stacje historyczne") zostaje.
+- Nie wchodzi do MVP; MVP musi tylko zostawić miejsce w danych (`world_progress`, wpisy kodeksu).
+
+## 11. Karawany (po MVP, etap 2)
+- **Karawana** to wyprawa z załogą i ładunkiem na zadany dystans (timer zależny od odległości), działająca jak „zjazd", ale **poziomo po powierzchni lub w tunelach starej cywilizacji**.
+- Dwa zastosowania: (a) **wyprawa po zasoby do ruin dawnej cywilizacji** (składy – ukryte, skończone pule jak w sekcji 8), (b) **dostawa towaru** do innego silosu (handel fizyczny, nie tylko na rynku).
+- **Ryzyko w drodze:** zdarzenia losowe, plemiona, a z czasem **przechwycenie przez innych graczy** (PvP o niższej stawce niż najazd na silos). Ochrona: eskorta, trasy przez sojuszników, kolej (sekcja 13).
+- Wspiera ekonomię: nowe ujścia (utrzymanie załogi, straty w drodze) i nowe źródła (składy ruin).
+- Zasady antyniszczeniowe: limit przechwyceń na gracza dziennie, część ładunku zawsze chroniona, brak utraty załogi „na stałe" w pierwszej wersji.
+
+## 12. Dawne technologie (po MVP, etap 3)
+- Z ruin wracają **fragmenty** (schematy). Odszyfrowanie w Laboratorium za zasoby i czas daje **dawne technologie**: nowe budynki, receptury, usprawnienia łączności, warunki budowy kolei.
+- Fragmenty są skończone (część puli sezonu), można nimi handlować – to kolejny powód do kontaktu z innymi.
+- Zasada balansu: technologie to **opcje i skróty, nie czysta moc** (unika „płacenia za moc" i power creepu); najsilniejsze wymagają współpracy sojuszu.
+
+## 13. Kolej między silosami (po MVP, etap 5)
+- **Linia kolejowa** łączy dwa silosy, które mają ze sobą kontakt (sekcja 9) i **wspólnie** ją zbudowały; koszt rośnie z dystansem; wymaga dawnej technologii i zasobów obu stron.
+- **Efekty:** karawany między połączonymi silosami są kilkukrotnie szybsze i bezpieczniejsze, możliwy handel masowy, **stacje** jako nowy budynek.
+- **Dlaczego sojusze:** koleje są naturalnym projektem sojuszu (luźne sojusze zyskują wspólny cel bez mechaniki terytorium).
+- **Utrzymanie:** koszt cykliczny (ujście ekonomii); linia może być uszkodzona przez plemiona lub sabotaż.
+- **Sieć kolejowa** jako całość zasila licznik „Powrót" – droga na powierzchnię prowadzi przez wspólną infrastrukturę.
+
+## 14. Kolejność prac (uwaga o zakresie)
+To są trzy duże systemy (karawany, dawne technologie, kolej), a projekt jest solo + AI. Rekomendowana kolejność: **MVP (silos, zjazdy, Radiostacja, najazdy, rynek) → karawany jako zwykły typ zadania → dawne technologie → sojusze → kolej → sezon „Wyjście"**. Każdy krok wchodzi dopiero po wynikach bety poprzedniego.
+
+## 15. Rozstrzygnięte i otwarte
 **Rozstrzygnięte:**
 1. Dlaczego gracze walczą: ograniczone, ukryte zasoby świata (sekcja 8).
 2. Planeta: stylizowana, bez nazw.
-3. Cechy (po MVP): sieć łączy między silosami (rozwinięcie Przekaźników) – *przyjęte przy założeniu, że „ok" oznaczało pierwszą opcję; popraw, jeśli chodziło o luźny sojusz*.
-4. Odkrywanie: przez łączność (sekcja 9). Wrogość gatunku: nadal do ustalenia (propozycja: z początku wroga, po sezonie 1 możliwa wymiana).
+3. **Sojusze: luźne, bez geografii** (nie sieć tuneli).
+4. Odkrywanie innych: przez łączność (sekcja 9).
+5. Ukryty cel: odzyskanie powierzchni; karawany, dawne technologie i kolej jako drogi do niego (sekcje 10–13).
 
 **Otwarte:**
-- **Nazwa gry:** kandydat „Last Silo" (liczba pojedyncza brzmi naturalniej niż „Last Silos"). Uwaga na skojarzenia z serią „Silo" (książki i serial); to nie musi blokować, ale wymaga sprawdzenia w UPRP/EUIPO i Google Play. Wyszukiwanie z 18.10 nie znalazło gry o tej nazwie, ale to nie jest formalne badanie.
+- **Co jest na powierzchni** i kto/co ją „trzyma"? Opcje: (a) nic żywego, tylko skażenie i ruiny, (b) pozostałości systemów dawnej cywilizacji, (c) ślad Rdzeniowców. Rekomenduję (a) z elementami (c): spójne z prymitywnym gatunkiem z głębi i bez powrotu do wrogich maszyn.
+- Czy „podbój" to podbój **terytorium** (przyczółki przejmowane przez sojusze), czy **wspólny projekt** z licznikiem postępu? Rekomenduję licznik, bo daje wspólny cel bez betonowania stref.
 - Czy nadawanie ma przyciągać plemiona (ryzyko)?
-- Wielkość ukrytych pul (do ustalenia w symulatorze ekonomii, M1).
+- **Nazwa gry:** kandydat „Last Silo"; sprawdzić UPRP/EUIPO/Google Play (skojarzenia z serią „Silo").
+- Wielkość ukrytych pul (symulator ekonomii, M1).
