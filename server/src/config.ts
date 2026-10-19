@@ -74,6 +74,8 @@ export const GameConfigSchema = z
           bonus: pos,
           durability: z.number().int().min(1),
           tech: z.string().optional(),
+          radio: z.number().int().min(1).optional(),
+          materials: z.record(z.string(), z.number().int().min(1)).default({}),
         }),
       ),
     }),
@@ -88,6 +90,8 @@ export const GameConfigSchema = z
           ore: z.number().int().min(0),
           tokens: z.number().int().min(0),
           samples: z.number().int().min(0).default(0),
+          radio: z.number().int().min(1).optional(),
+          materials: z.record(z.string(), z.number().int().min(1)).default({}),
           seconds: pos,
           requires: z.array(z.string()).default([]),
           unlocks: z.array(z.string()).default([]),
@@ -106,6 +110,16 @@ export const GameConfigSchema = z
         }),
       ),
     }),
+    geology: z.object({
+      materials: z.array(z.string()).min(3),
+      richness: z.object({ main: pos, secondary: pos, trace: pos }),
+      mat_per_hour: pos,
+      min_route_level: z.number().int().min(1),
+      local_variance: z.number().min(0).max(0.9),
+      field_frequency: pos,
+      field_seed: z.number().int(),
+    }),
+    exchange: z.object({ radio: z.number().int().min(1), buy_ore: z.record(z.string(), pos) }),
     codex: z.array(z.object({ id: z.string(), tech: z.string(), title: z.string(), text: z.string() })),
     radio: z.object({
       levels: z.object({ receiver: z.number().int().min(1), transmitter: z.number().int().min(1), cipher: z.number().int().min(1), relays: z.number().int().min(1) }),
@@ -167,8 +181,12 @@ export const GameConfigSchema = z
       }
     }
     for (const r of cfg.items.recipes) if (!cfg.items.slots.includes(r.slot)) ctx.addIssue({ code: 'custom', message: `receptura ${r.id}: nieznany slot ${r.slot}` });
-    const rids = cfg.items.recipes.map((r) => r.id);
-    if (new Set(rids).size !== rids.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id receptur' });
+    const recipeIdList = cfg.items.recipes.map((r) => r.id);
+    if (new Set(recipeIdList).size !== recipeIdList.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id receptur' });
+    const resourceIds = new Set(cfg.resources.map((r) => r.id));
+    for (const m of cfg.geology.materials) if (!resourceIds.has(m)) ctx.addIssue({ code: 'custom', message: `geologia: brak zasobu ${m}` });
+    for (const m of cfg.geology.materials) if (!cfg.exchange.buy_ore[m]) ctx.addIssue({ code: 'custom', message: `wymiana: brak ceny ${m}` });
+    for (const x of [...cfg.items.recipes, ...cfg.research.techs]) for (const m of Object.keys(x.materials)) if (!cfg.geology.materials.includes(m)) ctx.addIssue({ code: 'custom', message: `${x.id}: nieznany materiał ${m}` });
     const tids = new Set(cfg.research.techs.map((t) => t.id));
     if (tids.size !== cfg.research.techs.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id badań' });
     for (const c of cfg.codex) if (!tids.has(c.tech)) ctx.addIssue({ code: 'custom', message: `kodeks ${c.id}: nieznane badanie ${c.tech}` });

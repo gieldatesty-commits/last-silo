@@ -20,6 +20,10 @@ export function qualityRange(cfg: GameConfig, workshopLevel: number, bonus = 0) 
 export const repairCost = (cfg: GameConfig, rc: Recipe, durability: number, maxDurability: number, mult = 1) =>
   Math.ceil(rc.ore * cfg.items.repair_cost_fraction * mult * ((maxDurability - durability) / maxDurability));
 
+export async function radioLevel(db: Trx | Ctx['db'], userId: string): Promise<number> {
+  return (await db.selectFrom('buildings').select('level').where('user_id', '=', userId).where('type', '=', 'radiostacja').executeTakeFirst())?.level ?? 1;
+}
+
 async function workshopLevel(trx: Trx, userId: string): Promise<number> {
   const b = await trx.selectFrom('buildings').select('level').where('user_id', '=', userId).where('type', '=', 'warsztat').executeTakeFirst();
   return b?.level ?? 1;
@@ -47,6 +51,7 @@ export async function listItems(ctx: Ctx, userId: string) {
   await ctx.db.transaction().execute((trx) => settle(trx, cfg, userId, ctx.now()));
   const items = await ctx.db.selectFrom('items').selectAll().where('user_id', '=', userId).orderBy('id').execute();
   const wl = (await ctx.db.selectFrom('buildings').select('level').where('user_id', '=', userId).where('type', '=', 'warsztat').executeTakeFirst())?.level ?? 1;
+  const rl = await radioLevel(ctx.db, userId);
   const fx = await loadEffects(ctx.db, cfg, userId);
   const qr = qualityRange(cfg, wl, fx.quality);
   return {
@@ -54,7 +59,7 @@ export async function listItems(ctx: Ctx, userId: string) {
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
     quality: { min: Math.round(qr.min * 100) / 100, max: Math.round(qr.max * 100) / 100 },
-    recipes: cfg.items.recipes.map((r) => ({ id: r.id, name: r.name, slot: r.slot, workshop: r.workshop, ore: r.ore, tokens: r.tokens, bonus: r.bonus, durability: r.durability, locked: wl < r.workshop || (!!r.tech && !fx.unlocked.has(r.id)), needsTech: r.tech ?? null })),
+    recipes: cfg.items.recipes.map((r) => ({ id: r.id, name: r.name, slot: r.slot, workshop: r.workshop, ore: r.ore, tokens: r.tokens, materials: r.materials, radio: r.radio ?? null, bonus: r.bonus, durability: r.durability, locked: wl < r.workshop || (!!r.tech && !fx.unlocked.has(r.id)) || (!!r.radio && rl < r.radio), needsTech: r.tech ?? null })),
   };
 }
 
@@ -67,6 +72,7 @@ export async function craftTx(trx: Trx, ctx: Ctx, userId: string, recipeId: stri
   if (wl < rc.workshop) throw new GameError(409, 'workshop_too_low');
   const fx = await loadEffects(trx, cfg, userId);
   if (rc.tech && !fx.unlocked.has(rc.id)) throw new GameError(409, 'recipe_locked');
+  if (rc.radio && (await radioLevel(trx, userId)) < rc.radio) throw new GameError(409, 'radio_too_low');
   const count = await trx.selectFrom('items').select((e) => e.fn.countAll<string>().as('n')).where('user_id', '=', userId).executeTakeFirstOrThrow();
   if (Number(count.n) >= cfg.items.inventory_max) throw new GameError(409, 'inventory_full');
   const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
@@ -84,6 +90,7 @@ export async function craftTx(trx: Trx, ctx: Ctx, userId: string, recipeId: stri
       [
         { resource: 'ore', delta: -rc.ore, reason: 'craft_cost', ref: `craft:${it.id}` },
         { resource: 'tokens', delta: -rc.tokens, reason: 'craft_cost', ref: `craft:${it.id}:tokens` },
+        ...Object.entries(rc.materials).map(([m, n]) => ({ resource: m, delta: -n, reason: 'craft_cost' as const, ref: `craft:${it.id}:mat:${m}` })),
       ],
       cfg.version,
     );

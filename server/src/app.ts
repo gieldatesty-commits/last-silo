@@ -8,6 +8,7 @@ import { idempotent } from './idempotency.js';
 import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
 import { afterRaidCommitted, listRaids, listTargets, startRaidTx } from './services/raids.js';
 import { contactTx, getRadio, ranking, setBroadcast } from './services/radio.js';
+import { exchangeBuyTx, getGeology } from './services/trade.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
 import { craftTx, equipTx, listItems, repairTx } from './services/items.js';
@@ -193,6 +194,15 @@ export function buildApp(deps: AppDeps) {
     const userId = req.user.sub;
     const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await startRaidTx(trx, ctx, userId, targetId) }));
     if (!res.replay) await afterRaidCommitted(ctx, userId, targetId, (res.body as { endsAt: string }).endsAt);
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+  app.get('/geology', { onRequest: auth }, async (req) => getGeology(ctx, req.user.sub));
+  app.post('/exchange/buy', { onRequest: auth }, async (req, reply) => {
+    const { material, qty } = z.object({ material: z.string().min(1), qty: z.number().int().min(1).max(500) }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await exchangeBuyTx(trx, ctx, userId, material, qty) }));
     return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
   });
   app.get('/codex', { onRequest: auth }, async (req) => getCodex(ctx, req.user.sub));

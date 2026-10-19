@@ -1,11 +1,14 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.8.0"
+version: "0.9.0"
 
 resources:
   - { id: ore, name: Ruda }
   - { id: steam, name: Para }
   - { id: tokens, name: Żetony }
   - { id: samples, name: Próbki rdzeniowe }
+  - { id: miedz, name: Miedź }
+  - { id: krysztal, name: Kryształy }
+  - { id: siarka, name: Siarka }
 
 economy:
   start_ore: 300
@@ -109,17 +112,17 @@ items:
   recipes:   # tech: receptura odblokowana badaniem w Laboratorium
     - { id: kilof,               name: Kilof,                slot: narzedzie, workshop: 1, ore: 150,  tokens: 0,  bonus: 0.6, durability: 20 }
     - { id: mlot_pneumatyczny,   name: Młot pneumatyczny,    slot: narzedzie, workshop: 3, ore: 600,  tokens: 4,  bonus: 1.0, durability: 25 }
-    - { id: wiertlo_udarowe,     name: Wiertło udarowe,      slot: narzedzie, workshop: 4, ore: 1400, tokens: 12, bonus: 1.6, durability: 30 }
-    - { id: wiertlo_rdzeniowe,   name: Wiertło rdzeniowe,    slot: narzedzie, workshop: 6, ore: 4500, tokens: 40, bonus: 2.6, durability: 40, tech: wiertla_rdzeniowe }
+    - { id: wiertlo_udarowe,     name: Wiertło udarowe,      slot: narzedzie, workshop: 4, ore: 1400, tokens: 12, bonus: 1.6, durability: 30, radio: 5, materials: { miedz: 15, krysztal: 6 } }
+    - { id: wiertlo_rdzeniowe,   name: Wiertło rdzeniowe,    slot: narzedzie, workshop: 6, ore: 4500, tokens: 40, bonus: 2.6, durability: 40, radio: 5, materials: { miedz: 40, krysztal: 25 }, tech: wiertla_rdzeniowe }
     - { id: kask_gornika,        name: Kask górnika,         slot: ochrona,   workshop: 2, ore: 300,  tokens: 2,  bonus: 0.6, durability: 25 }
     - { id: helm_wzmocniony,     name: Hełm wzmocniony,      slot: ochrona,   workshop: 3, ore: 700,  tokens: 5,  bonus: 1.0, durability: 30, tech: metalurgia }
-    - { id: kombinezon_pancerny, name: Kombinezon pancerny,  slot: ochrona,   workshop: 5, ore: 2000, tokens: 18, bonus: 1.5, durability: 35 }
-    - { id: kombinezon_izolowany, name: Kombinezon izolowany, slot: ochrona,  workshop: 7, ore: 5500, tokens: 50, bonus: 2.4, durability: 45, tech: izolacja_rdzenia }
+    - { id: kombinezon_pancerny, name: Kombinezon pancerny,  slot: ochrona,   workshop: 5, ore: 2000, tokens: 18, bonus: 1.5, durability: 35, radio: 5, materials: { miedz: 20, siarka: 8 } }
+    - { id: kombinezon_izolowany, name: Kombinezon izolowany, slot: ochrona,  workshop: 7, ore: 5500, tokens: 50, bonus: 2.4, durability: 45, radio: 5, materials: { siarka: 35, krysztal: 20 }, tech: izolacja_rdzenia }
     - { id: lampa_karbidowa,     name: Lampa karbidowa,      slot: lampa,     workshop: 1, ore: 200,  tokens: 0,  bonus: 0.5, durability: 20 }
     - { id: lampa_wibracyjna,    name: Lampa wibracyjna,     slot: lampa,     workshop: 3, ore: 800,  tokens: 8,  bonus: 1.2, durability: 30 }
-    - { id: lampa_rezonansowa,   name: Lampa rezonansowa,    slot: lampa,     workshop: 6, ore: 3800, tokens: 35, bonus: 2.0, durability: 40, tech: rezonans_skal }
+    - { id: lampa_rezonansowa,   name: Lampa rezonansowa,    slot: lampa,     workshop: 6, ore: 3800, tokens: 35, bonus: 2.0, durability: 40, radio: 5, materials: { krysztal: 25, siarka: 10 }, tech: rezonans_skal }
     - { id: detektor_zylowy,     name: Detektor żył,         slot: sprzet,    workshop: 2, ore: 450,  tokens: 3,  bonus: 0.7, durability: 25 }
-    - { id: skaner_sejsmiczny,   name: Skaner sejsmiczny,    slot: sprzet,    workshop: 5, ore: 2600, tokens: 22, bonus: 1.6, durability: 35, tech: sejsmika }
+    - { id: skaner_sejsmiczny,   name: Skaner sejsmiczny,    slot: sprzet,    workshop: 5, ore: 2600, tokens: 22, bonus: 1.6, durability: 35, radio: 5, materials: { miedz: 18, krysztal: 15 }, tech: sejsmika }
 
 # Dział nauki (Laboratorium): jedno badanie naraz; czas skraca się o 5% za każdy poziom Laboratorium (max −50%)
 research:
@@ -127,12 +130,12 @@ research:
   techs:
     - { id: geologia_1,        name: Geologia I,            branch: gornictwo, lab: 1, ore: 200,  tokens: 0,  seconds: 600,   effect: { dive_ore_pct: 3 } }
     - { id: geologia_2,        name: Geologia II,           branch: gornictwo, lab: 3, ore: 900,  tokens: 6,  seconds: 3600,  requires: [geologia_1], effect: { dive_ore_pct: 4 } }
-    - { id: geologia_3,        name: Geologia III,          branch: gornictwo, lab: 5, ore: 3500, tokens: 25, seconds: 14400, requires: [geologia_2], effect: { dive_ore_pct: 5 } }
+    - { id: geologia_3,        name: Geologia III,          branch: gornictwo, lab: 5, ore: 3500, tokens: 25, seconds: 14400, radio: 5, materials: { miedz: 20 }, requires: [geologia_2], effect: { dive_ore_pct: 5 } }
     - { id: sejsmika,          name: Sejsmika,              branch: gornictwo, lab: 3, ore: 800,  tokens: 5,  seconds: 3600,  requires: [geologia_1], effect: { dive_power: 0.3 }, unlocks: [skaner_sejsmiczny] }
     - { id: hydraulika_1,      name: Hydraulika I,          branch: inzynieria, lab: 1, ore: 250,  tokens: 0,  seconds: 900,   effect: { dive_steam_pct: -4 } }
-    - { id: hydraulika_2,      name: Hydraulika II,         branch: inzynieria, lab: 4, ore: 1500, tokens: 10, seconds: 7200,  requires: [hydraulika_1], effect: { dive_steam_pct: -4 } }
+    - { id: hydraulika_2,      name: Hydraulika II,         branch: inzynieria, lab: 4, ore: 1500, tokens: 10, seconds: 7200, radio: 5, materials: { krysztal: 12 },  requires: [hydraulika_1], effect: { dive_steam_pct: -4 } }
     - { id: ekonomika_prac_1,  name: Organizacja robót I,   branch: inzynieria, lab: 2, ore: 400,  tokens: 0,  seconds: 1800,  effect: { upgrade_cost_pct: -5 } }
-    - { id: ekonomika_prac_2,  name: Organizacja robót II,  branch: inzynieria, lab: 5, ore: 2500, tokens: 15, seconds: 10800, requires: [ekonomika_prac_1], effect: { upgrade_cost_pct: -5 } }
+    - { id: ekonomika_prac_2,  name: Organizacja robót II,  branch: inzynieria, lab: 5, ore: 2500, tokens: 15, seconds: 10800, radio: 5, materials: { miedz: 15, siarka: 8 }, requires: [ekonomika_prac_1], effect: { upgrade_cost_pct: -5 } }
     - { id: metalurgia,        name: Metalurgia,            branch: inzynieria, lab: 2, ore: 500,  tokens: 3,  seconds: 1800,  effect: { repair_pct: -10 }, unlocks: [helm_wzmocniony] }
     - { id: precyzja,          name: Precyzyjna obróbka,    branch: inzynieria, lab: 3, ore: 1000, tokens: 6,  seconds: 5400,  requires: [metalurgia], effect: { quality: 0.04 } }
     # --- gałąź Rdzeniowców: próbki rdzeniowe pochodzą ze zjazdów w głębokich strefach ---
@@ -140,10 +143,10 @@ research:
     - { id: rezonans_skal,      name: Rezonans skał,          branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, samples: 4,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }
     - { id: anatomia_rdzeniowcow, name: Anatomia Rdzeniowców, branch: rdzeniowcy, lab: 4, ore: 1500, tokens: 10, samples: 8,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { samples_pct: 20 } }
     - { id: jezyk_wibracji_1,   name: Język wibracji I,       branch: rdzeniowcy, lab: 4, ore: 2000, tokens: 15, samples: 6,  seconds: 10800, requires: [obserwacja_rdzeniowcow], effect: { winded_pct: -25 } }
-    - { id: jezyk_wibracji_2,   name: Język wibracji II,      branch: rdzeniowcy, lab: 5, ore: 3500, tokens: 25, samples: 12, seconds: 16200, requires: [jezyk_wibracji_1, rezonans_skal], effect: { winded_pct: -25, dive_power: 0.3 } }
-    - { id: jezyk_wibracji_3,   name: Język wibracji III,     branch: rdzeniowcy, lab: 6, ore: 6000, tokens: 40, samples: 35, seconds: 28800, requires: [jezyk_wibracji_2, anatomia_rdzeniowcow], effect: { dive_power: 0.4 } }
-    - { id: wiertla_rdzeniowe,  name: Wiertła rdzeniowe,      branch: rdzeniowcy, lab: 5, ore: 3200, tokens: 22, samples: 10, seconds: 14400, requires: [metalurgia, rezonans_skal], unlocks: [wiertlo_rdzeniowe] }
-    - { id: izolacja_rdzenia,   name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, samples: 25, seconds: 21600, requires: [metalurgia, anatomia_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }
+    - { id: jezyk_wibracji_2,   name: Język wibracji II,      branch: rdzeniowcy, lab: 5, ore: 3500, tokens: 25, samples: 12, seconds: 16200, radio: 5, materials: { krysztal: 15 }, requires: [jezyk_wibracji_1, rezonans_skal], effect: { winded_pct: -25, dive_power: 0.3 } }
+    - { id: jezyk_wibracji_3,   name: Język wibracji III,     branch: rdzeniowcy, lab: 6, ore: 6000, tokens: 40, samples: 35, seconds: 28800, radio: 5, materials: { krysztal: 30, siarka: 20 }, requires: [jezyk_wibracji_2, anatomia_rdzeniowcow], effect: { dive_power: 0.4 } }
+    - { id: wiertla_rdzeniowe,  name: Wiertła rdzeniowe,      branch: rdzeniowcy, lab: 5, ore: 3200, tokens: 22, samples: 10, seconds: 14400, radio: 5, materials: { miedz: 25, krysztal: 15 }, requires: [metalurgia, rezonans_skal], unlocks: [wiertlo_rdzeniowe] }
+    - { id: izolacja_rdzenia,   name: Izolacja przed rdzeniem, branch: rdzeniowcy, lab: 6, ore: 4500, tokens: 35, samples: 25, seconds: 21600, radio: 5, materials: { siarka: 25, miedz: 15 }, requires: [metalurgia, anatomia_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [kombinezon_izolowany] }
 
 # Kodeks Rdzeniowców: wpisy odkrywane badaniami (fabuła; gracz poznaje gatunek stopniowo)
 codex:
@@ -186,3 +189,21 @@ raids:
   xp_win: 14
   xp_loss: 4
   defender_xp_win: 6
+
+# Geologia i materiały. Regionalny profil silosu wynika z jego położenia na kuli (gładkie pola → sąsiedzi mają podobny profil),
+# gracz widzi tylko jakościowy opis. Materiały są WYMAGANE dopiero od Radiostacji poz. 5 (receptury i badania z `radio: 5`),
+# więc do tego momentu różnorodność surowców prawie nie wpływa na grę.
+geology:
+  materials: [miedz, krysztal, siarka]
+  richness: { main: 1.0, secondary: 0.4, trace: 0.1 }   # mnożnik wydobycia dla najbogatszego / drugiego / trzeciego materiału w regionie
+  mat_per_hour: 0.5          # materiał z godziny zjazdu (× reward_mult trasy × bogactwo); porażka daje fail_reward_fraction tej ilości
+  min_route_level: 3         # trasy poniżej tego poziomu nie dają materiałów
+  local_variance: 0.2        # losowe ±20% per silos
+  field_frequency: 2.2       # mniejsza = większe regiony
+  field_seed: 20260101
+
+# Wymiana z Handlarzem Przekaźnikowym (NPC) – gwarantuje, że brak lokalnego materiału nie blokuje gry, i wyznacza sufit cen rynku.
+# Tylko kupno za rudę (ruda ginie, materiały powstają); od Radiostacji poz. 5.
+exchange:
+  radio: 5
+  buy_ore: { miedz: 140, krysztal: 160, siarka: 150 }

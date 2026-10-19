@@ -12,6 +12,7 @@ import { addXp, diveChance, poolTotal, resolveDive, steamCost, type Stats } from
 import { rng } from '../game/rng.js';
 import { computeEffects, researchSeconds } from '../game/research.js';
 import { placeSilo } from '../game/world.js';
+import { geologyProfile } from '../game/geology.js';
 import { attackPower, audible, defensePower, distanceKm, inLeague, isBroadcasting, playerPower, raidWinChance } from '../game/radio.js';
 import { protectedShare, oreCap } from '../game/formulas.js';
 
@@ -22,6 +23,7 @@ const N = arg('players', cfg.world.expected_players);
 const R = rng(arg('seed', 1));
 const SUB = arg('sub', 0); // odsetek graczy z abonamentem (3 sloty)
 const NOGEAR = arg('nogear', 0) === 1;
+const NOMATS = arg('nomats', 0) === 1; // wyłącza materiały (punkt odniesienia)
 const NORAIDS = arg('noraids', 0) === 1; // wyłącza najazdy (punkt odniesienia) // bez sprzętu i badań (punkt odniesienia)
 
 type Style = 'hardcore' | 'regularny' | 'okazjonalny';
@@ -56,6 +58,11 @@ interface P {
   raidDay: number;
   raidsToday: number;
   lastRaid: Map<number, number>;
+  mats: Record<string, number>;
+  profile: Record<string, number>;
+  exchangeOre: number;
+  radio5At: number;
+  firstTier2At: number;
   raid: { attempts: number; wins: number; looted: number; lost: number; against: number; lootedTokens: number };
 }
 
@@ -71,7 +78,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
     samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0 }, dives: 0, wins: 0, chanceSum: 0,
-    lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
+    lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
 
@@ -82,6 +89,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     placed.push(pos);
     p.lat = pos.lat;
     p.lon = pos.lon;
+    p.profile = geologyProfile(cfg, pos, Math.floor(R() * 1e9));
   }
 }
 
@@ -109,7 +117,8 @@ function act(p: P, nowMs: number) {
     const route = cfg.dives.routes.find((x) => x.id === d.routeId)!;
     const pool = pools.get(route.zone)!;
     const fx = fxOf(p);
-    const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier * fx.diveOre, d.seed, pool, bonusOf(p), fx.samples);
+    const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier * fx.diveOre, d.seed, pool, bonusOf(p), fx.samples, NOMATS ? {} : p.profile);
+    for (const [m, n] of Object.entries(out.materials)) p.mats[m] = (p.mats[m] ?? 0) + n;
     for (const g of p.gear.values()) if (g.dur > 0) g.dur--;
     p.samples += out.samples;
     p.dives++;
@@ -208,6 +217,24 @@ function tryRaid(p: P, nowMs: number) {
 /** Bot: badania (najtańsze dostępne), wytwarzanie najlepszego dostępnego sprzętu na slot, naprawy przy niskiej trwałości. */
 function spendGear(p: P, nowMs: number) {
   const fx = fxOf(p);
+  if (p.radio5At < 0 && p.silo.levels.radiostacja >= 5) p.radio5At = nowMs;
+  /** Czy gracz może spełnić wymóg radia/materiałów (kupując braki u NPC za rudę); zwraca koszt wymiany albo null. */
+  const matPlan = (radio: number | undefined, mats: Record<string, number>): { exch: number } | null => {
+    if (NOMATS) return { exch: 0 };
+    if (radio && p.silo.levels.radiostacja < radio) return null;
+    let exch = 0;
+    for (const [m, n] of Object.entries(mats)) exch += Math.max(0, n - (p.mats[m] ?? 0)) * cfg.exchange.buy_ore[m]!;
+    return { exch };
+  };
+  const takeMats = (mats: Record<string, number>, exch: number) => {
+    if (NOMATS) return;
+    for (const [m, n] of Object.entries(mats)) {
+      const have = p.mats[m] ?? 0;
+      p.mats[m] = Math.max(0, have - n);
+    }
+    if (exch > 0) { p.silo = { ...p.silo, oreReal: p.silo.oreReal - exch }; p.exchangeOre += exch; }
+    if (Object.keys(mats).length && p.firstTier2At < 0) p.firstTier2At = nowMs;
+  };
   const ore = () => p.silo.oreReal;
   const pay = (k: keyof P['spent'], n: number) => { p.silo = { ...p.silo, oreReal: p.silo.oreReal - n }; p.spent[k] += n; };
   // zakończ badanie
@@ -224,10 +251,11 @@ function spendGear(p: P, nowMs: number) {
   if (!p.research) {
     const lab = p.silo.levels.laboratorium;
     const avail = cfg.research.techs
-      .filter((t) => !p.done.has(t.id) && lab >= t.lab && t.requires.every((q) => p.done.has(q)) && p.tokens >= t.tokens && p.samples >= t.samples && ore() >= t.ore * 2)
+      .filter((t) => { const pl = matPlan(t.radio, t.materials); return !p.done.has(t.id) && lab >= t.lab && t.requires.every((q) => p.done.has(q)) && p.tokens >= t.tokens && p.samples >= t.samples && pl !== null && ore() >= (t.ore + pl.exch) * 2; })
       .sort((a, b) => a.ore - b.ore);
     const t = avail[0];
     if (t) {
+      takeMats(t.materials, matPlan(t.radio, t.materials)!.exch);
       pay('research', t.ore); p.tokens -= t.tokens; p.samples -= t.samples;
       p.research = { id: t.id, endsAt: nowMs + researchSeconds(cfg, t.seconds, lab) * 1000 };
     }
@@ -238,9 +266,10 @@ function spendGear(p: P, nowMs: number) {
     const cur = p.gear.get(slot);
     const curBonus = cur ? cfg.items.recipes.find((r) => r.id === cur.recipe)!.bonus : 0;
     const best = cfg.items.recipes
-      .filter((r) => r.slot === slot && r.workshop <= wl && (!r.tech || fx.unlocked.has(r.id)) && r.bonus > curBonus && ore() >= r.ore * 2 && p.tokens >= r.tokens)
+      .filter((r) => { const pl = matPlan(r.radio, r.materials); return r.slot === slot && r.workshop <= wl && (!r.tech || fx.unlocked.has(r.id)) && r.bonus > curBonus && pl !== null && ore() >= (r.ore + pl.exch) * 2 && p.tokens >= r.tokens; })
       .sort((a, b) => b.bonus - a.bonus)[0];
     if (best) {
+      takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
       pay('craft', best.ore); p.tokens -= best.tokens;
       const q = qualityMid(wl, fx.quality);
       p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability });
@@ -296,4 +325,18 @@ if (!NORAIDS) {
     const m = (f: (p: P) => number) => (g.reduce((a, p) => a + f(p), 0) / g.length).toFixed(0);
     console.log(`  ${s.padEnd(12)} najazdów ${m((p) => p.raid.attempts).padStart(4)} | łup ${m((p) => p.raid.looted).padStart(6)} | strata ${m((p) => p.raid.lost).padStart(6)} | napady na niego ${m((p) => p.raid.against).padStart(4)}`);
   }
+}
+
+{
+  const avg = (f: (p: P) => number) => players.reduce((a, p) => a + f(p), 0) / players.length;
+  const reached = players.filter((p) => p.radio5At >= 0);
+  const dayOf = (ms: number) => ((ms - t0) / 86_400_000).toFixed(1);
+  console.log(`\nMateriały: Radiostacja 5 osiągnięta przez ${reached.length}/${players.length}, średnio w dniu ${reached.length ? (reached.reduce((a, p) => a + (p.radio5At - t0) / 86_400_000, 0) / reached.length).toFixed(1) : '-'}`);
+  const tier2 = players.filter((p) => p.firstTier2At >= 0);
+  console.log(`  pierwsza rzecz wymagająca materiałów: ${tier2.length}/${players.length} graczy, średnio w dniu ${tier2.length ? (tier2.reduce((a, p) => a + (p.firstTier2At - t0) / 86_400_000, 0) / tier2.length).toFixed(1) : '-'}`);
+  console.log(`  zapas: ${['miedz', 'krysztal', 'siarka'].map((m) => `${m} ${avg((p) => p.mats[m] ?? 0).toFixed(0)}`).join(' | ')} | wymiana NPC: śr. ${avg((p) => p.exchangeOre).toFixed(0)} rudy na gracza (${(100 * avg((p) => p.exchangeOre) / Math.max(1, avg((p) => p.diveOre + p.prodOre))).toFixed(1)}% dochodu)`);
+  const mainCounts: Record<string, number> = {};
+  for (const p of players) { const top = Object.entries(p.profile).sort((a, b) => b[1] - a[1])[0]![0]; mainCounts[top] = (mainCounts[top] ?? 0) + 1; }
+  console.log(`  regiony (obfity materiał): ${Object.entries(mainCounts).map(([m, n]) => `${m} ${n}`).join(', ')}`);
+  void dayOf;
 }

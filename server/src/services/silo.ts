@@ -5,6 +5,7 @@ import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
 import { initialLevels, oreCap, orePerHour, protectedShare, steamCap, steamRegen, upgradeCost, upgradeSeconds, type Levels } from '../game/formulas.js';
 import { rng } from '../game/rng.js';
 import { addXp, diveChance, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
+import { describeProfile, geologyProfile } from '../game/geology.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { resolveDueRaids } from './raids.js';
@@ -188,7 +189,9 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const pool = await lockPool(trx, cfg, route);
     const fx = await loadEffects(trx, cfg, userId);
     const bonus = (await equippedBonus(trx, cfg.items.recipes, userId)) + fx.divePower;
-    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples);
+    const sRow = await trx.selectFrom('silos').select('seed').where('user_id', '=', userId).executeTakeFirstOrThrow();
+    const profile = geologyProfile(cfg, { lat: p.silo_lat!, lon: p.silo_lon! }, Number(sRow.seed));
+    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
     await wearEquipped(trx, userId);
 
     await applyLedger(
@@ -198,6 +201,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
         { resource: 'ore', delta: out.ore, reason: 'dive_reward', ref: `dive:${d.id}` },
         { resource: 'tokens', delta: out.tokens, reason: 'dive_reward', ref: `dive:${d.id}:tokens` },
         { resource: 'samples', delta: out.samples, reason: 'dive_reward', ref: `dive:${d.id}:samples` },
+        ...Object.entries(out.materials).map(([m, n]) => ({ resource: m, delta: n, reason: 'dive_reward' as const, ref: `dive:${d.id}:mat:${m}` })),
       ],
       cfg.version,
     );
@@ -206,7 +210,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const lv = addXp(cfg, p.level, Number(p.xp), out.xp);
     await trx.updateTable('players').set({ level: lv.level, xp: String(lv.xpInLevel), free_points: p.free_points + lv.points }).where('user_id', '=', userId).execute();
     if (!out.success) await trx.updateTable('silos').set({ winded_until: new Date(d.ends_at.getTime() + cfg.dives.winded_seconds * fx.winded * 1000) }).where('user_id', '=', userId).execute();
-    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, samples: out.samples, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
+    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, samples: out.samples, materials: out.materials, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
     await trx.updateTable('dives').set({ state: 'resolved', result: JSON.stringify(result) }).where('id', '=', d.id).execute();
     await trx.insertInto('notifications').values({ user_id: userId, type: 'dive_done', payload: JSON.stringify({ routeId: route.id, ...result }), sent_at: null, read_at: null }).execute();
     await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_done', props: JSON.stringify({ routeId: route.id, ...result }) }).execute();
@@ -254,7 +258,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
       freePoints: p.free_points,
     },
     silo: { lat: p.silo_lat, lon: p.silo_lon, depth: p.depth, deposit: depositHint(st.state.depositRemaining, st.state.depositTotal, cfg.economy.deposit.floor_fraction) },
-    wallet: { ore: st.oreInt, steam: Math.floor(st.state.steam + EPS), tokens, samples },
+    wallet: { ore: st.oreInt, steam: Math.floor(st.state.steam + EPS), tokens, samples, ...Object.fromEntries(await Promise.all(cfg.geology.materials.map(async (m) => [m, await walletBalance(trx, userId, m)]))) },
     caps: { ore: oreCap(cfg, lv.magazyn), steam: steamCap(cfg, lv.generator_pary) },
     rates: { orePerHour: Math.round(orePerHour(cfg, lv.szyb_glowny) * x * 100) / 100, steamPerMin: steamRegen(cfg, lv.generator_pary) },
     protectedShare: protectedShare(cfg, lv.magazyn),
