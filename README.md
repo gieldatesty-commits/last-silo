@@ -38,6 +38,7 @@ docker compose up -d --build
 | POST | `/raids` | start najazdu `{targetId}`; rozstrzygany leniwie po dojeździe; `Idempotency-Key` |
 | GET | `/ranking?type=power\|loot` | ranking nadających (Nadajnik) |
 | GET | `/geology` | jakościowy opis geologii okolicy: który materiał obfituje (bez liczb) |
+| POST | `/items/:id/upgrade` | wzmocnienie przedmiotu o tier (tier 1–5; Warsztat 5+t, Radiostacja 5; koszt: ruda, żetony, materiały); `Idempotency-Key` |
 | POST | `/exchange/buy` | zakup materiału u NPC za rudę `{material, qty}`; od Radiostacji 5; `Idempotency-Key` |
 | GET | `/codex` | Kodeks Rdzeniowców: wpisy odkrywane badaniami (zablokowane bez treści, tylko podpowiedź) |
 | GET | `/research` | drzewo badań Laboratorium: stan, wymogi, koszt, czas (skracany poziomem Laboratorium) |
@@ -47,6 +48,7 @@ docker compose up -d --build
 Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
+- [x] Balans v1.0 (docs/balans-v1.0.md): wolniejsze poziomy, budynki do 10, regeneracja pul, wzmacnianie przedmiotów, łagodniejsze najazdy; sezon ok. 180 dni
 - [x] Materiały i geologia: miedź/kryształy/siarka, profil regionu z położenia na kuli, wymagane dopiero od Radiostacji 5; wymiana z NPC; spec w docs/swiat-v0.3-surowce.md (energia geotermalna zaplanowana)
 - [x] M3 (serwer): Radiostacja (Odbiornik/Nadajnik/Szyfr/Przekaźniki), kontakt, najazdy async z łupem i ochroną, ranking; symulacja najazdów (`--noraids=1` wyłącza)
 - [x] Balans 0.7.0: 6 tras wysokich poziomów (strefa rdzenia, od poziomu 9 do 25, mnożnik nagrody), tańsze naprawy, mniej próbek; wyniki w docs/balans-v0.7.md

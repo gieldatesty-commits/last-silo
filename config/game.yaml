@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "0.9.0"
+version: "1.0.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -24,7 +24,8 @@ world:
   placement_candidates: 20 # best-candidate sampling: wybieramy najdalszy od sąsiadów
 
 upgrades:
-  max_level: 8
+  max_level: 10            # Warsztat, Wartownia, Laboratorium, Radiostacja do 10 (Laboratorium 10 = maks. skrócenie badań −45%)
+  max_level_by_building: { szyb_glowny: 8, generator_pary: 8, magazyn: 8 }   # budynki produkcyjne zostają na 8 (bez eksplozji dochodu)
   cost_growth: 1.6         # koszt(L) = base_cost * cost_growth^(L-1), L = poziom docelowy
   time_base_seconds: 180   # czas(L) = time_base * time_growth^(L-2); L2 = 3 min ... L8 ≈ 3,2 h
   time_growth: 2.0
@@ -32,7 +33,7 @@ upgrades:
 
 progression:
   xp_base: 12              # XP z poziomu L na L+1 = xp_base * L^xp_exp
-  xp_exp: 2.0
+  xp_exp: 2.2
   max_level: 30
   points_per_level: 3
 
@@ -54,9 +55,9 @@ dives:
     spread: 0.2               # losowość nagrody ±20%
   # Dwie wspólne, ukryte pule rudy. Każdy nowy silos dokłada do nich swój udział (pool_per_player), więc spóźnieni gracze nie zastają pustych stref.
   zones:
-    gorne:    { name: Górne strefy,    pool_per_player: 30000 }   # Płytki, Średni, Głęboki
-    glebokie: { name: Głębokie strefy, pool_per_player: 48000 }   # Przepaść, Pełna zmiana
-    jadro:    { name: Strefa rdzenia,  pool_per_player: 150000 }  # trasy od poziomu 9: nagroda × reward_mult
+    gorne:    { name: Górne strefy,    pool_per_player: 30000, regen_per_day: 0.005 }   # Płytki, Średni, Głęboki
+    glebokie: { name: Głębokie strefy, pool_per_player: 48000, regen_per_day: 0.005 }   # Przepaść, Pełna zmiana
+    jadro:    { name: Strefa rdzenia,  pool_per_player: 150000, regen_per_day: 0.003 }  # trasy od poziomu 9: nagroda × reward_mult
   routes:
     - { id: plytki,       name: Płytki,       zone: gorne,    min_level: 1, seconds: 180,   steam: 3,  difficulty: 2.5,  tokens: [0, 0] }
     - { id: sredni,       name: Średni,       zone: gorne,    min_level: 2, seconds: 900,   steam: 10, difficulty: 4.0,  tokens: [0, 2] }
@@ -109,6 +110,17 @@ items:
   repair_cost_fraction: 0.18       # pełna naprawa = ta część kosztu rudy receptury (proporcjonalnie do ubytku)
   quality: { min: 0.85, max: 1.05, min_step: 0.02, max_step: 0.04 }   # zakres jakości rośnie z poziomem Warsztatu
   slots: [narzedzie, ochrona, lampa, sprzet]
+  # Wzmacnianie: stały cel dla rudy i materiałów w późnej grze. Tier t wymaga Warsztatu (workshop_base + t) i Radiostacji `radio`.
+  upgrade:
+    max_tier: 5
+    workshop_base: 5
+    radio: 5
+    ore_fraction: 0.6        # koszt rudy tieru 1 = ruda receptury × 0,6; każdy kolejny tier × growth
+    growth: 1.7
+    tokens_per_tier: 15
+    materials_per_tier: { miedz: 6, krysztal: 5, siarka: 4 }   # × numer tieru
+    bonus_per_tier: 0.10     # +10% bonusu przedmiotu za tier
+    repair_per_tier: 0.15    # +15% kosztu naprawy za tier
   recipes:   # tech: receptura odblokowana badaniem w Laboratorium
     - { id: kilof,               name: Kilof,                slot: narzedzie, workshop: 1, ore: 150,  tokens: 0,  bonus: 0.6, durability: 20 }
     - { id: mlot_pneumatyczny,   name: Młot pneumatyczny,    slot: narzedzie, workshop: 3, ore: 600,  tokens: 4,  bonus: 1.0, durability: 25 }
@@ -180,7 +192,7 @@ raids:
   steam: 30
   league_tolerance: 0.4         # moc celu w przedziale ±40% mocy atakującego
   loot_fraction: 0.05           # część NIECHRONIONEJ rudy i żetonów obrońcy
-  loot_cap_ore: 4000
+  loot_cap_ore: 3000
   loot_cap_tokens: 80
   protection_minutes: 360       # ochrona obrońcy po przegranej
   same_target_cooldown_minutes: 180

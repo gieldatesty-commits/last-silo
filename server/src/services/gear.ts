@@ -3,6 +3,7 @@ import type { Database } from '../db.js';
 
 import type { GameConfig } from '../config.js';
 import { computeEffects } from '../game/research.js';
+import { itemBonus } from '../game/upgrade.js';
 
 export async function loadEffects(db: Trx, cfg: GameConfig, userId: string) {
   const rows = await db.selectFrom('research').select('tech_id').where('user_id', '=', userId).where('state', '=', 'done').execute();
@@ -12,13 +13,14 @@ export async function loadEffects(db: Trx, cfg: GameConfig, userId: string) {
 type Trx = Transaction<Database> | import('kysely').Kysely<Database>;
 
 /** Bonus do mocy zjazdu z założonych, niezepsutych przedmiotów (bonus receptury × jakość). */
-export async function equippedBonus(db: Trx, cfgRecipes: { id: string; bonus: number }[], userId: string): Promise<number> {
-  const rows = await db.selectFrom('items').select(['recipe_id', 'quality', 'durability']).where('user_id', '=', userId).where('equipped', '=', true).execute();
+export async function equippedBonus(db: Trx, cfg: GameConfig, userId: string): Promise<number> {
+  const cfgRecipes = cfg.items.recipes;
+  const rows = await db.selectFrom('items').select(['recipe_id', 'quality', 'durability', 'tier']).where('user_id', '=', userId).where('equipped', '=', true).execute();
   let sum = 0;
   for (const it of rows) {
     if (it.durability <= 0) continue;
     const rc = cfgRecipes.find((r) => r.id === it.recipe_id);
-    if (rc) sum += rc.bonus * it.quality;
+    if (rc) sum += itemBonus(cfg, rc, it.quality, it.tier);
   }
   return sum;
 }

@@ -101,3 +101,10 @@ export function routeRewards(c: GameConfig, route: Route) {
 
 /** Całkowita pula strefy dla danej liczby graczy (każdy silos dokłada swój udział). */
 export const poolTotal = (c: GameConfig, zone: string, players: number) => c.dives.zones[zone]!.pool_per_player * players;
+
+/** Regeneracja wspólnej puli strefy: odnawia `regen_per_day` całkowitej puli na dobę, do pełna. */
+export function regenPool(c: GameConfig, zone: string, remaining: number, total: number, dtMs: number): number {
+  const rate = c.dives.zones[zone]?.regen_per_day ?? 0;
+  if (rate <= 0 || dtMs <= 0) return remaining;
+  return Math.min(total, remaining + total * rate * (dtMs / 86_400_000));
+}

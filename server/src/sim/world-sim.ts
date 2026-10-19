@@ -6,9 +6,10 @@
  */
 import { readFileSync } from 'node:fs';
 import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js';
-import { initialLevels, upgradeCost, upgradeSeconds } from '../game/formulas.js';
+import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
-import { addXp, diveChance, poolTotal, resolveDive, steamCost, type Stats } from '../game/dive.js';
+import { itemBonus, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { addXp, diveChance, poolTotal, regenPool, resolveDive, steamCost, type Stats } from '../game/dive.js';
 import { rng } from '../game/rng.js';
 import { computeEffects, researchSeconds } from '../game/research.js';
 import { placeSilo } from '../game/world.js';
@@ -45,10 +46,10 @@ interface P {
   diveOre: number;
   prodOre: number;
   samples: number;
-  gear: Map<string, { recipe: string; quality: number; dur: number; max: number }>;
+  gear: Map<string, { recipe: string; quality: number; dur: number; max: number; tier: number }>;
   done: Set<string>;
   research: { id: string; endsAt: number } | null;
-  spent: { buildings: number; research: number; craft: number; repair: number };
+  spent: { buildings: number; research: number; craft: number; repair: number; upgrade: number };
   dives: number;
   wins: number;
   chanceSum: number;
@@ -77,7 +78,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     style, arch,
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
-    samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0 }, dives: 0, wins: 0, chanceSum: 0,
+    samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
     lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
@@ -93,10 +94,10 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
   }
 }
 
-const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: poolTotal(cfg, z, N), total: poolTotal(cfg, z, N) }]));
+const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: poolTotal(cfg, z, N), total: poolTotal(cfg, z, N), at: 0 }]));
 let seedCounter = 1000;
 
-const gearBonus = (p: P) => [...p.gear.values()].reduce((sum, g) => (g.dur > 0 ? sum + cfg.items.recipes.find((r) => r.id === g.recipe)!.bonus * g.quality : sum), 0);
+const gearBonus = (p: P) => [...p.gear.values()].reduce((sum, g) => (g.dur > 0 ? sum + itemBonus(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier) : sum), 0);
 const fxOf = (p: P) => computeEffects(cfg, p.done);
 const bonusOf = (p: P) => gearBonus(p) + fxOf(p).divePower;
 const qualityMid = (wl: number, extra: number) => {
@@ -116,6 +117,8 @@ function act(p: P, nowMs: number) {
     const d = p.queue.shift()!;
     const route = cfg.dives.routes.find((x) => x.id === d.routeId)!;
     const pool = pools.get(route.zone)!;
+    pool.remaining = regenPool(cfg, route.zone, pool.remaining, pool.total, nowMs - pool.at);
+    pool.at = Math.max(pool.at, nowMs);
     const fx = fxOf(p);
     const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier * fx.diveOre, d.seed, pool, bonusOf(p), fx.samples, NOMATS ? {} : p.profile);
     for (const [m, n] of Object.entries(out.materials)) p.mats[m] = (p.mats[m] ?? 0) + n;
@@ -152,7 +155,7 @@ function act(p: P, nowMs: number) {
   // ulepszenia: najniższy z (szyb, magazyn, generator), potem reszta
   if (p.pending.length < cfg.upgrades.queue_slots) {
     const order: BuildingType[] = ['szyb_glowny', 'magazyn', 'generator_pary', ...BUILDING_TYPES.filter((b) => !['szyb_glowny', 'magazyn', 'generator_pary'].includes(b))];
-    const cand = order.filter((b) => p.silo.levels[b] < cfg.upgrades.max_level).sort((a, b) => p.silo.levels[a] - p.silo.levels[b])[0];
+    const cand = order.filter((b) => p.silo.levels[b] < maxLevelOf(cfg, b)).sort((a, b) => p.silo.levels[a] - p.silo.levels[b])[0];
     if (cand) {
       const cost = upgradeCost(cfg, cand, p.silo.levels[cand] + 1, p.arch.upgrade_cost_multiplier * fxOf(p).upgradeCost);
       if (p.silo.oreReal >= cost) {
@@ -243,7 +246,7 @@ function spendGear(p: P, nowMs: number) {
   for (const g of p.gear.values()) {
     const rc = cfg.items.recipes.find((r) => r.id === g.recipe)!;
     if (g.dur <= g.max * 0.2) {
-      const c = Math.ceil(rc.ore * cfg.items.repair_cost_fraction * fx.repair * ((g.max - g.dur) / g.max));
+      const c = Math.ceil(rc.ore * cfg.items.repair_cost_fraction * fx.repair * tierRepairMult(cfg, g.tier) * ((g.max - g.dur) / g.max));
       if (ore() >= c * 2) { pay('repair', c); g.dur = g.max; }
     }
   }
@@ -272,7 +275,18 @@ function spendGear(p: P, nowMs: number) {
       takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
       pay('craft', best.ore); p.tokens -= best.tokens;
       const q = qualityMid(wl, fx.quality);
-      p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability });
+      p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability, tier: 0 });
+    }
+  }
+  // wzmacnianie przedmiotów (tier): najtańsze możliwe, gdy stać z zapasem
+  for (const g of p.gear.values()) {
+    if (g.tier >= cfg.items.upgrade.max_tier) continue;
+    const rc = cfg.items.recipes.find((r) => r.id === g.recipe)!;
+    const uc = upgradeTierCost(cfg, rc, g.tier + 1);
+    const pl = matPlan(uc.radio, uc.materials);
+    if (wl >= uc.workshop && pl !== null && ore() >= (uc.ore + pl.exch) * 3 && p.tokens >= uc.tokens) {
+      takeMats(uc.materials, pl.exch);
+      pay('upgrade', uc.ore); p.tokens -= uc.tokens; g.tier++;
     }
   }
 }
@@ -287,7 +301,7 @@ console.log(`Symulacja ${days} dni, ${N} graczy (30% hardcore, 50% regularni, 20
 for (let t = TICK; t <= days * 86_400_000; t += TICK) {
   const hour = (t / 3_600_000) % 24;
   if (hour >= 8 && hour < 23) for (const p of players) if (R() < ONLINE_P[p.style]) act(p, t0 + t);
-  if (t % 86_400_000 === 0) { const d = t / 86_400_000; if ([1, 2, 3, 5, 7, 10, 14, 21].includes(d) || d === days) report(d); }
+  if (t % 86_400_000 === 0) { const d = t / 86_400_000; if ([1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150].includes(d) || d === days) report(d); }
 }
 console.log('\nWykorzystanie puli stref (wydobyto / pula całkowita):');
 for (const [zone, pl] of pools) {
@@ -306,7 +320,7 @@ const avgAll = (f: (p: P) => number) => players.reduce((a, p) => a + f(p), 0) / 
 const sp = (k: keyof P['spent']) => avgAll((p) => p.spent[k]);
 const income = avgAll((p) => p.diveOre + p.prodOre);
 console.log('\nWydatki średnio na gracza (ruda) i udział w dochodzie:');
-for (const [k, label] of [['buildings', 'budynki'], ['research', 'badania'], ['craft', 'wytwarzanie'], ['repair', 'naprawy']] as const) console.log(`  ${label.padEnd(12)} ${Math.round(sp(k)).toString().padStart(7)}  (${(100 * sp(k) / income).toFixed(0)}% dochodu)`);
+for (const [k, label] of [['buildings', 'budynki'], ['research', 'badania'], ['craft', 'wytwarzanie'], ['repair', 'naprawy'], ['upgrade', 'wzmocnienia']] as const) console.log(`  ${label.padEnd(12)} ${Math.round(sp(k)).toString().padStart(7)}  (${(100 * sp(k) / income).toFixed(0)}% dochodu)`);
 console.log(`  dochód łączny ${Math.round(income)} | zostaje w magazynie ${Math.round(avgAll((p) => p.silo.oreReal))}`);
 console.log(`\nZjazdy: śr. ${avgAll((p) => p.dives).toFixed(0)} na gracza | sukcesy ${(100 * avgAll((p) => p.wins) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}% | śr. szansa ${(100 * avgAll((p) => p.chanceSum) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}%`);
 console.log(`Badania: śr. ${avgAll((p) => p.done.size).toFixed(1)} z ${cfg.research.techs.length} | próbki w zapasie ${avgAll((p) => p.samples).toFixed(1)} | wpisy kodeksu ${avgAll((p) => cfg.codex.filter((c) => p.done.has(c.tech)).length).toFixed(1)} z ${cfg.codex.length}`);

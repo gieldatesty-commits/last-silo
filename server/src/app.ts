@@ -11,7 +11,7 @@ import { contactTx, getRadio, ranking, setBroadcast } from './services/radio.js'
 import { exchangeBuyTx, getGeology } from './services/trade.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
-import { craftTx, equipTx, listItems, repairTx } from './services/items.js';
+import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -154,7 +154,7 @@ export function buildApp(deps: AppDeps) {
     return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
   });
 
-  for (const action of ['equip', 'unequip', 'repair'] as const) {
+  for (const action of ['equip', 'unequip', 'repair', 'upgrade'] as const) {
     app.post(`/items/:id/${action}`, { onRequest: auth }, async (req, reply) => {
       const { id } = z.object({ id: z.string().min(1).max(20) }).parse(req.params);
       const key = req.headers['idempotency-key'];
@@ -162,7 +162,7 @@ export function buildApp(deps: AppDeps) {
       const userId = req.user.sub;
       const res = await idempotent(db, userId, key as string, async (trx) => ({
         status: 200,
-        body: action === 'repair' ? await repairTx(trx, ctx, userId, id) : await equipTx(trx, ctx, userId, id, action === 'equip'),
+        body: action === 'repair' ? await repairTx(trx, ctx, userId, id) : action === 'upgrade' ? await upgradeTx(trx, ctx, userId, id) : await equipTx(trx, ctx, userId, id, action === 'equip'),
       }));
       return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
     });

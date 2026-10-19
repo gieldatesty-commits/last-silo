@@ -5,7 +5,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js';
-import { initialLevels, upgradeCost, upgradeSeconds } from '../game/formulas.js';
+import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
 
 const cfg = parseGameConfig(readFileSync(process.env.GAME_CONFIG_PATH ?? '../config/game.yaml', 'utf8'));
@@ -35,7 +35,7 @@ function run(depositTotal: number, checkEveryHours: number): Result {
     if (pending.length < cfg.upgrades.queue_slots) {
       // strategia: ulepszaj najniższy z (szyb, magazyn); gdy są na maksie – generator, warsztat, wartownia
       const order: BuildingType[] = ['szyb_glowny', 'magazyn', ...BUILDING_TYPES.filter((b) => b !== 'szyb_glowny' && b !== 'magazyn')];
-      const cand = order.filter((b) => s.levels[b] < cfg.upgrades.max_level).sort((a, b) => s.levels[a] - s.levels[b])[0];
+      const cand = order.filter((b) => s.levels[b] < maxLevelOf(cfg, b)).sort((a, b) => s.levels[a] - s.levels[b])[0];
       if (cand) {
         const cost = upgradeCost(cfg, cand, s.levels[cand] + 1);
         if (s.oreReal >= cost) {

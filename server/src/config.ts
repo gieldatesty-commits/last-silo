@@ -40,7 +40,7 @@ export const GameConfigSchema = z
         min_route_minutes: pos,
         spread: z.number().min(0).max(0.9),
       }),
-      zones: z.record(z.string(), z.object({ name: z.string(), pool_per_player: pos })),
+      zones: z.record(z.string(), z.object({ name: z.string(), pool_per_player: pos, regen_per_day: z.number().min(0).max(0.2).default(0) })),
       routes: z
         .array(
           z.object({
@@ -63,6 +63,17 @@ export const GameConfigSchema = z
       repair_cost_fraction: z.number().min(0).max(2),
       quality: z.object({ min: pos, max: pos, min_step: z.number().min(0), max_step: z.number().min(0) }),
       slots: z.array(z.string()).min(1),
+      upgrade: z.object({
+        max_tier: z.number().int().min(1).max(10),
+        workshop_base: z.number().int().min(1),     // poziom Warsztatu wymagany do tieru t = workshop_base + t
+        radio: z.number().int().min(1),             // minimalny poziom Radiostacji
+        ore_fraction: pos,                          // koszt rudy tieru 1 = ore receptury × ore_fraction
+        growth: pos,                                // mnożnik kosztu rudy na kolejny tier
+        tokens_per_tier: z.number().int().min(0),
+        materials_per_tier: z.record(z.string(), z.number().int().min(0)),
+        bonus_per_tier: z.number().min(0).max(1),   // +X% bonusu przedmiotu za tier
+        repair_per_tier: z.number().min(0).max(2),  // +X% kosztu naprawy za tier
+      }),
       recipes: z.array(
         z.object({
           id: z.string(),
@@ -156,6 +167,7 @@ export const GameConfigSchema = z
     }),
     upgrades: z.object({
       max_level: z.number().int().min(2).max(50),
+      max_level_by_building: z.record(z.string(), z.number().int().min(2).max(50)).default({}),
       cost_growth: pos,
       time_base_seconds: pos,
       time_growth: pos,

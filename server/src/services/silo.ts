@@ -2,9 +2,9 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { Database, Db } from '../db.js';
 import { BUILDING_TYPES, type BuildingType, type GameConfig } from '../config.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
-import { initialLevels, oreCap, orePerHour, protectedShare, steamCap, steamRegen, upgradeCost, upgradeSeconds, type Levels } from '../game/formulas.js';
+import { initialLevels, maxLevelOf, oreCap, orePerHour, protectedShare, steamCap, steamRegen, upgradeCost, upgradeSeconds, type Levels } from '../game/formulas.js';
 import { rng } from '../game/rng.js';
-import { addXp, diveChance, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
+import { addXp, diveChance, regenPool, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
 import { describeProfile, geologyProfile } from '../game/geology.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
@@ -168,13 +168,18 @@ export async function settleCore(trx: Trx, cfg: GameConfig, userId: string, now:
 
 const ZONE_RESOURCE = 'ore';
 
-async function lockPool(trx: Trx, cfg: GameConfig, route: Route) {
+async function lockPool(trx: Trx, cfg: GameConfig, route: Route, now: Date) {
   await trx
     .insertInto('world_pools')
     .values({ zone: route.zone, resource: ZONE_RESOURCE, total: 0, remaining: 0 })
     .onConflict((oc) => oc.columns(['zone', 'resource']).doNothing())
     .execute();
-  return trx.selectFrom('world_pools').selectAll().where('zone', '=', route.zone).where('resource', '=', ZONE_RESOURCE).forUpdate().executeTakeFirstOrThrow();
+  const row = await trx.selectFrom('world_pools').selectAll().where('zone', '=', route.zone).where('resource', '=', ZONE_RESOURCE).forUpdate().executeTakeFirstOrThrow();
+  const dt = now.getTime() - row.regen_at.getTime();
+  if (dt <= 0) return row;
+  const remaining = regenPool(cfg, route.zone, Number(row.remaining), Number(row.total), dt);
+  await trx.updateTable('world_pools').set({ remaining, regen_at: now }).where('zone', '=', route.zone).where('resource', '=', ZONE_RESOURCE).execute();
+  return { ...row, remaining };
 }
 
 /** Rozstrzyga zjazdy, których czas minął. Zwraca sumę przyznanej rudy (do widoku). */
@@ -186,9 +191,9 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const p = await trx.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
     const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;
     const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
-    const pool = await lockPool(trx, cfg, route);
+    const pool = await lockPool(trx, cfg, route, now);
     const fx = await loadEffects(trx, cfg, userId);
-    const bonus = (await equippedBonus(trx, cfg.items.recipes, userId)) + fx.divePower;
+    const bonus = (await equippedBonus(trx, cfg, userId)) + fx.divePower;
     const sRow = await trx.selectFrom('silos').select('seed').where('user_id', '=', userId).executeTakeFirstOrThrow();
     const profile = geologyProfile(cfg, { lat: p.silo_lat!, lon: p.silo_lon! }, Number(sRow.seed));
     const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
@@ -269,8 +274,8 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
         type: b.id,
         name: b.name,
         level,
-        maxLevel: cfg.upgrades.max_level,
-        next: level >= cfg.upgrades.max_level ? null : { level: next, cost: upgradeCost(cfg, b.id, next, arch.upgrade_cost_multiplier * fx.upgradeCost), seconds: upgradeSeconds(cfg, next) },
+        maxLevel: maxLevelOf(cfg, b.id),
+        next: level >= maxLevelOf(cfg, b.id) ? null : { level: next, cost: upgradeCost(cfg, b.id, next, arch.upgrade_cost_multiplier * fx.upgradeCost), seconds: upgradeSeconds(cfg, next) },
       };
     }),
     queue: diveRows.map((d) => ({ id: String(d.id), routeId: d.route_id, startsAt: d.started_at, endsAt: d.ends_at, running: d.started_at <= st.state.at })),
@@ -297,7 +302,7 @@ export async function startUpgradeTx(trx: Trx, ctx: Ctx, userId: string, type: B
   const pendingCount = Number((await trx.selectFrom('jobs').select((e) => e.fn.countAll().as('n')).where('user_id', '=', userId).where('state', '=', 'pending').executeTakeFirstOrThrow()).n);
   if (pendingCount >= cfg.upgrades.queue_slots) throw new GameError(409, 'queue_full');
   const level = st.state.levels[type];
-  if (level >= cfg.upgrades.max_level) throw new GameError(409, 'max_level');
+  if (level >= maxLevelOf(cfg, type)) throw new GameError(409, 'max_level');
   const toLevel = level + 1;
   const p = await trx.selectFrom('players').select('archetype').where('user_id', '=', userId).executeTakeFirstOrThrow();
   const mult = cfg.archetypes.find((a) => a.id === p.archetype)!.upgrade_cost_multiplier * (await loadEffects(trx, cfg, userId)).upgradeCost;
@@ -371,7 +376,7 @@ export async function listRoutes(ctx: Ctx, userId: string) {
   const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
   const pools = await ctx.db.selectFrom('world_pools').selectAll().execute();
   const fx = await loadEffects(ctx.db, cfg, userId);
-  const bonus = (await equippedBonus(ctx.db, cfg.items.recipes, userId)) + fx.divePower;
+  const bonus = (await equippedBonus(ctx.db, cfg, userId)) + fx.divePower;
   return cfg.dives.routes.map((r) => {
     const pool = pools.find((x) => x.zone === r.zone);
     return {

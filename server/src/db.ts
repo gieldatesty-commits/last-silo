@@ -66,6 +66,7 @@ export interface Database {
     durability: number;
     max_durability: number;
     equipped: Generated<boolean>;
+    tier: Generated<number>;
     created_at: Generated<Date>;
   };
   research: { user_id: string; tech_id: string; state: 'active' | 'done'; ends_at: Date };
@@ -81,7 +82,7 @@ export interface Database {
     state: Generated<'active' | 'resolved'>;
     result: unknown | null;
   };
-  world_pools: { zone: string; resource: string; total: number; remaining: number };
+  world_pools: { zone: string; resource: string; total: number; remaining: number; regen_at: Generated<Date> };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {
     id: Generated<string>;

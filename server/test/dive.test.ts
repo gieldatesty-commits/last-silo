@@ -51,7 +51,7 @@ describe('opłacalność tras', () => {
     expect(byLvl[byLvl.length - 1]!.min_level).toBeLessThanOrEqual(c.progression.max_level);
   });
   it('koszt pary mieści się w limicie generatora na odpowiednim poziomie', () => {
-    const l8cap = c.effects.steam.cap_base + c.effects.steam.cap_step * (c.upgrades.max_level - 1);
+    const l8cap = c.effects.steam.cap_base + c.effects.steam.cap_step * ((c.upgrades.max_level_by_building.generator_pary ?? c.upgrades.max_level) - 1);
     for (const r of byLen) expect(r.steam).toBeLessThanOrEqual(l8cap);
   });
 });

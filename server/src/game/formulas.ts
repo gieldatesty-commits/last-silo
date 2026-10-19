@@ -28,3 +28,6 @@ export const upgradeSeconds = (c: GameConfig, toLevel: number) =>
   Math.round(c.upgrades.time_base_seconds * c.upgrades.time_growth ** (toLevel - 2));
 
 export const initialLevels = (): Levels => ({ szyb_glowny: 1, generator_pary: 1, magazyn: 1, warsztat: 1, wartownia: 1, laboratorium: 1, radiostacja: 1 });
+
+/** Maksymalny poziom budynku: wyjątek z `max_level_by_building`, inaczej `max_level`. */
+export const maxLevelOf = (c: GameConfig, type: string) => c.upgrades.max_level_by_building[type] ?? c.upgrades.max_level;
