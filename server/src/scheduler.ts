@@ -1,8 +1,10 @@
 import { PgBoss } from 'pg-boss';
 import type { Ctx, Scheduler } from './services/silo.js';
 import { settleUser } from './services/silo.js';
+import { seasonTick } from './services/season.js';
 
 const QUEUE = 'settle-silo';
+const SEASON_QUEUE = 'season-tick';
 
 export interface RunningScheduler extends Scheduler {
   stop(): Promise<void>;
@@ -24,7 +26,24 @@ export async function startScheduler(ctx: Omit<Ctx, 'scheduler'>, connectionStri
   const full: Ctx = { ...ctx, scheduler: self };
 
   await boss.work<{ userId: string }>(QUEUE, async (jobs) => {
-    for (const j of jobs) await settleUser(full, j.data.userId);
+    // jeden zepsuty wpis (np. gracz skasowany przez reset sezonu) nie może wywracać całej paczki
+    let firstError: unknown;
+    for (const j of jobs) {
+      try {
+        await settleUser(full, j.data.userId);
+      } catch (e) {
+        if ((e as { code?: string }).code === 'no_player') continue;
+        firstError ??= e;
+      }
+    }
+    if (firstError) throw firstError;
+  });
+
+  // sezon: sprawdzaj co 5 minut (zamknięcie, start następnego)
+  await boss.createQueue(SEASON_QUEUE);
+  await boss.schedule(SEASON_QUEUE, '*/5 * * * *');
+  await boss.work(SEASON_QUEUE, async () => {
+    await seasonTick(full);
   });
 
   // po restarcie: zaplanuj ponownie wszystkie niezakończone zadania

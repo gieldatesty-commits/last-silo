@@ -92,7 +92,9 @@ export async function createPlayer(ctx: Ctx, userId: string, nickname: string, a
         .onConflict((oc) => oc.columns(['zone', 'resource']).doUpdateSet({ total: sql`world_pools.total + ${z.pool_per_player}` as never, remaining: sql`world_pools.remaining + ${z.pool_per_player}` as never }))
         .execute();
     }
-    await applyLedger(trx, userId, [{ resource: 'ore', delta: cfg.economy.start_ore, reason: 'starting_grant', ref: 'start' }], cfg.version);
+    const carry = (await trx.selectFrom('players').select('carry_bonus_ore').where('user_id', '=', userId).executeTakeFirstOrThrow()).carry_bonus_ore;
+    await applyLedger(trx, userId, [{ resource: 'ore', delta: cfg.economy.start_ore, reason: 'starting_grant', ref: 'start' }, ...(carry > 0 ? [{ resource: 'ore', delta: Math.min(carry, cfg.season.max_bonus_ore), reason: 'starting_grant' as const, ref: 'season_bonus' }] : [])], cfg.version);
+    if (carry > 0) await trx.updateTable('players').set({ carry_bonus_ore: 0 }).where('user_id', '=', userId).execute();
     await trx
       .insertInto('events_log')
       .values({ user_id: userId, name: 'player_created', props: JSON.stringify({ archetype: arch.id }) })

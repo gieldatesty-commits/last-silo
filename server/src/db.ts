@@ -23,7 +23,10 @@ export interface Database {
     subscription_until: Date | null;
     radio_on: Generated<boolean>;
     protected_until: Date | null;
+    carry_bonus_ore: Generated<number>;
   };
+  seasons: { id: number; started_at: Date; ends_at: Date; state: Generated<'active' | 'ended'>; closed_at: Date | null };
+  season_results: { season_id: number; user_id: string; nickname: string; rank: number; players_total: number; power: number; level: number; loot: Generated<string>; title: string | null; start_bonus_ore: Generated<number> };
   wallets: { user_id: string; resource: string; balance: Generated<string> };
   ledger_entries: {
     id: Generated<string>;

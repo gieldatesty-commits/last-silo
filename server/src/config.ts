@@ -130,6 +130,14 @@ export const GameConfigSchema = z
       field_frequency: pos,
       field_seed: z.number().int(),
     }),
+    season: z.object({
+      length_days: z.number().int().min(1),
+      intermission_hours: z.number().min(0),
+      max_bonus_ore: z.number().int().min(0),     // twardy limit bonusu startowego (wygoda, nie przewaga)
+      rewards: z
+        .array(z.object({ id: z.string(), name: z.string(), max_rank: z.number().int().min(1).optional(), top_percent: z.number().min(0).max(100).optional(), min_level: z.number().int().min(1).default(1), start_bonus_ore: z.number().int().min(0) }))
+        .min(1),
+    }),
     exchange: z.object({ radio: z.number().int().min(1), buy_ore: z.record(z.string(), pos) }),
     codex: z.array(z.object({ id: z.string(), tech: z.string(), title: z.string(), text: z.string() })),
     radio: z.object({
@@ -208,6 +216,10 @@ export const GameConfigSchema = z
       for (const u of t.unlocks) if (!recipeIds.has(u)) ctx.addIssue({ code: 'custom', message: `badanie ${t.id}: nieznana receptura ${u}` });
     }
     for (const r of cfg.items.recipes) if (r.tech && !tids.has(r.tech)) ctx.addIssue({ code: 'custom', message: `receptura ${r.id}: nieznane badanie ${r.tech}` });
+    for (const r of cfg.season.rewards) {
+      if (r.max_rank === undefined && r.top_percent === undefined) ctx.addIssue({ code: 'custom', message: `sezon: nagroda ${r.id} bez max_rank/top_percent` });
+      if (r.start_bonus_ore > cfg.season.max_bonus_ore) ctx.addIssue({ code: 'custom', message: `sezon: bonus ${r.id} powyżej max_bonus_ore` });
+    }
     const have = new Set(cfg.buildings.map((b) => b.id));
     for (const t of BUILDING_TYPES) {
       if (!have.has(t)) ctx.addIssue({ code: 'custom', message: `brak budynku ${t} w configu` });

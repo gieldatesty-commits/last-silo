@@ -11,6 +11,7 @@ import { contactTx, getRadio, ranking, setBroadcast } from './services/radio.js'
 import { exchangeBuyTx, getGeology } from './services/trade.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
+import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
 import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
 
 declare module '@fastify/jwt' {
@@ -61,6 +62,19 @@ export function buildApp(deps: AppDeps) {
     if (status && status < 500) return reply.code(status).send({ error: 'bad_request' });
     console.error(err);
     return reply.code(500).send({ error: 'internal' });
+  });
+
+  // Bramka sezonu: po końcu sezonu akcje zmieniające stan są zablokowane do startu następnego (przerwa na podsumowanie).
+  let seasonCache: { endsAt: number; active: boolean; checkedAt: number } | null = null;
+  app.addHook('onRequest', async (req, reply) => {
+    if (req.method !== 'POST' || req.url.startsWith('/auth')) return;
+    const nowMs = ctx.now().getTime();
+    if (!seasonCache || !seasonCache.active || nowMs >= seasonCache.endsAt || nowMs - seasonCache.checkedAt > 30_000 || nowMs < seasonCache.checkedAt) {
+      await seasonTick(ctx);
+      const s = await currentSeason(ctx);
+      seasonCache = { endsAt: s.ends_at.getTime(), active: s.state === 'active' && nowMs < s.ends_at.getTime(), checkedAt: nowMs };
+    }
+    if (!seasonCache.active) return reply.code(409).send({ error: 'season_ended' });
   });
 
   const auth = async (req: FastifyRequest, reply: FastifyReply) => {
@@ -181,6 +195,9 @@ export function buildApp(deps: AppDeps) {
     const { on } = z.object({ on: z.boolean() }).parse(req.body);
     return setBroadcast(ctx, req.user.sub, on);
   });
+  app.get('/season', { onRequest: auth }, async (req) => seasonView(ctx, req.user.sub));
+  app.get('/season/results', { onRequest: auth }, async (req) => seasonResults(ctx, req.user.sub));
+
   app.get('/ranking', { onRequest: auth }, async (req) => {
     const { type } = z.object({ type: z.enum(['power', 'loot']).default('power') }).parse(req.query);
     return ranking(ctx, req.user.sub, type);

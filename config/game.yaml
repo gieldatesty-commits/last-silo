@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.0.0"
+version: "1.1.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -201,6 +201,18 @@ raids:
   xp_win: 14
   xp_loss: 4
   defender_xp_win: 6
+
+# Sezony: ok. 180 dni, potem podsumowanie (przerwa) i reset świata. Konto, tytuły i mały bonus startowy zostają.
+# Nagrody wg miejsca w rankingu mocy; pierwsza pasująca. Bonus to wygoda na starcie (ruda), nie przewaga w walce.
+season:
+  length_days: 180
+  intermission_hours: 48
+  max_bonus_ore: 500
+  rewards:
+    - { id: mistrz_glebi,    name: Mistrz Głębi,    max_rank: 1,      start_bonus_ore: 400 }
+    - { id: starszy_sztygar, name: Starszy sztygar, top_percent: 10,  min_level: 10, start_bonus_ore: 300 }
+    - { id: sztygar,         name: Sztygar,         top_percent: 33,  min_level: 10, start_bonus_ore: 200 }
+    - { id: weteran,         name: Weteran sezonu,  top_percent: 100, min_level: 5,  start_bonus_ore: 100 }
 
 # Geologia i materiały. Regionalny profil silosu wynika z jego położenia na kuli (gładkie pola → sąsiedzi mają podobny profil),
 # gracz widzi tylko jakościowy opis. Materiały są WYMAGANE dopiero od Radiostacji poz. 5 (receptury i badania z `radio: 5`),

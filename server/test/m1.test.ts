@@ -193,6 +193,7 @@ describe('scheduler pg-boss', () => {
   afterAll(async () => sch?.stop());
 
   it('o czasie rozlicza ukończone ulepszenie bez udziału klienta', async () => {
+    await pool.query('TRUNCATE seasons CASCADE'); // sezon z zegarem testowym nie może kolidować z czasem rzeczywistym
     const real = new Date();
     const app2 = buildApp({ db, config, jwtSecret: 'test-secret-1234567890', now: () => new Date() });
     const reg = (await app2.inject({ method: 'POST', url: '/auth/guest' })).json();

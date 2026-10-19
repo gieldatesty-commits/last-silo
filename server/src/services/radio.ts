@@ -15,7 +15,7 @@ interface Peer {
   power: number;
 }
 
-async function loadPeers(db: Trx | Ctx['db']): Promise<Peer[]> {
+export async function loadPeers(db: Trx | Ctx['db']): Promise<Peer[]> {
   const players = await db.selectFrom('players').selectAll().where('archetype', 'is not', null).where('silo_lat', 'is not', null).execute();
   const blds = await db.selectFrom('buildings').select(['user_id', 'type', 'level']).execute();
   const by = new Map<string, Record<string, number>>();
