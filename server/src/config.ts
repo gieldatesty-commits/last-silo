@@ -150,6 +150,18 @@ export const GameConfigSchema = z
       max_active: z.number().int().min(1),        // przesyłki w drodze na kupującego
       ambush: z.object({ base: z.number().min(0).max(1), per_1000km: z.number().min(0).max(1), max: z.number().min(0).max(1), loss_fraction: z.number().min(0).max(1) }),
     }),
+    contracts: z.object({
+      radio: z.number().int().min(1),
+      min_level: z.number().int().min(1),
+      offers_per_player: z.number().min(0).max(5),    // wspólna tablica: oferty na dobę = max(min_offers, ceil(gracze × to)); każda do wzięcia przez jednego gracza
+      min_offers: z.number().int().min(1),
+      seed: z.number().int(),
+      max_active: z.number().int().min(1),            // zlecenia w drodze jednocześnie
+      qty: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+      km: z.tuple([z.number().int().min(500), z.number().int().min(500)]),   // dystans do faktorii (pasma 500 km)
+      reward_base: pos,                               // nagroda za sztukę = cena NPC × (base + per_1000km × km/1000)
+      reward_per_1000km: z.number().min(0),
+    }),
     season: z.object({
       length_days: z.number().int().min(1),
       intermission_hours: z.number().min(0),

@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.3.0"
+version: "1.4.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -225,6 +225,20 @@ caravans:
   insurance_fee: 0.06         # ubezpieczenie: 6% wartości towaru, zasadzka nie odbiera nic
   max_active: 6
   ambush: { base: 0.01, per_1000km: 0.01, max: 0.12, loss_fraction: 0.4 }
+
+# Zlecenia karawanowe (NPC): wspólna dzienna tablica „dostarcz N sztuk X do faktorii w kierunku Y, dystans Z”; ofert jest mało (ok. 1 na 6 graczy),
+# więc to nisza dla aktywnych handlarzy, a nie powszechne źródło rudy. Nagroda za sztukę rośnie z dystansem i przewyższa cenę NPC (przewóz ok. 4% ceny/1000 km).
+contracts:
+  radio: 5
+  min_level: 5
+  offers_per_player: 0.05     # oferty na dobę = max(min_offers, ceil(liczba graczy × 0,05)); pierwszy, który zabierze ładunek, bierze zlecenie
+  min_offers: 3
+  seed: 20260101
+  max_active: 2
+  qty: [6, 15]
+  km: [1500, 8000]
+  reward_base: 1.05
+  reward_per_1000km: 0.06
 
 # Sezony: ok. 180 dni, potem podsumowanie (przerwa) i reset świata. Konto, tytuły i mały bonus startowy zostają.
 # Nagrody wg miejsca w rankingu mocy; pierwsza pasująca. Bonus to wygoda na starcie (ruda), nie przewaga w walce.

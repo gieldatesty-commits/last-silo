@@ -9,6 +9,8 @@ import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js
 import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
 import { itemBonus, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { dayIndex, genOffers } from '../game/contracts.js';
+const takenOffers = new Set<string>();
 import { ambushChance, shipFeePerUnit, shipKm, shipMinutes, survivingQty } from '../game/caravan.js';
 import { distanceKm as distKm } from '../game/world.js';
 import { addXp, diveChance, poolTotal, regenPool, resolveDive, steamCost, type Stats } from '../game/dive.js';
@@ -38,6 +40,9 @@ interface P {
   style: Style;
   trader: boolean;
   tradeStart: number;
+  cseed: number;
+  contractOre: number;
+  contractsDone: Set<string>;
   arch: (typeof cfg.archetypes)[number];
   silo: SiloState;
   pending: PendingUpgrade[];
@@ -82,7 +87,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
   const arch = cfg.archetypes[i % cfg.archetypes.length]!;
   const total = Math.round(cfg.economy.deposit.local_total * (1 + (R() * 2 - 1) * cfg.economy.deposit.variance));
   return {
-    style, arch, trader: false, tradeStart: -1,
+    style, arch, trader: false, tradeStart: -1, cseed: (i + 1) * 7919, contractOre: 0, contractsDone: new Set(),
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
     samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
@@ -108,6 +113,21 @@ const book: Listing[] = [];
 const mkt = { trades: 0, units: 0, gross: 0, fee: 0, botUnits: 0, listed: 0, expired: 0, shipFee: 0, shipped: 0, ambushed: 0, lostUnits: 0, kmSum: 0, npcUnits: 0 };
 interface Ship { buyer: P; m: string; qty: number; at: number; chance: number }
 const ships: Ship[] = [];
+interface Run { p: P; m: string; qty: number; unit: number; at: number; chance: number }
+const runs: Run[] = [];
+const ctr = { accepted: 0, units: 0, ore: 0, ambushed: 0 };
+function deliverRuns(nowMs: number) {
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const r = runs[i]!;
+    if (r.at > nowMs) continue;
+    runs.splice(i, 1);
+    const q = R() < r.chance ? survivingQty(cfg, r.qty) : r.qty;
+    if (q < r.qty) ctr.ambushed++;
+    const ore = q * r.unit;
+    r.p.silo = { ...r.p.silo, oreReal: r.p.silo.oreReal + ore };
+    r.p.contractOre += ore; ctr.ore += ore; ctr.units += q;
+  }
+}
 const incoming = (p: P, m: string) => ships.filter((x) => x.buyer === p && x.m === m).reduce((a, x) => a + x.qty, 0);
 const MARKET_ON = !NOMARKET && !NOMATS;
 function deliverShips(nowMs: number) {
@@ -123,6 +143,7 @@ function deliverShips(nowMs: number) {
 }
 function sweepBook(nowMs: number) {
   deliverShips(nowMs);
+  deliverRuns(nowMs);
   for (let i = book.length - 1; i >= 0; i--) {
     const l = book[i]!;
     if (l.qty <= 0) { book.splice(i, 1); continue; }
@@ -141,22 +162,39 @@ const qualityMid = (wl: number, extra: number) => {
   return (q.min + q.min_step * (wl - 1) + q.max + q.max_step * (wl - 1)) / 2 + extra;
 };
 
+/** Zlecenia karawanowe NPC: gracz bierze oferty, na które ma towar (zwykli gracze tylko z nadwyżki ponad zapas na wytwarzanie). */
+function takeContracts(p: P, nowMs: number) {
+  if (!MARKET_ON || p.silo.levels.radiostacja < cfg.contracts.radio || p.level < cfg.contracts.min_level) return;
+  const day = dayIndex(nowMs);
+  for (const o of genOffers(cfg, day, N)) {
+    const key = `${day}:${o.slot}`;
+    if (takenOffers.has(key)) continue;
+    if (runs.filter((r) => r.p === p).length >= cfg.contracts.max_active) return;
+    const keep = p.trader ? 0 : 60;
+    if ((p.mats[o.material] ?? 0) < o.qty + keep) continue;
+    takenOffers.add(key);
+    p.mats[o.material] = (p.mats[o.material] ?? 0) - o.qty;
+    runs.push({ p, m: o.material, qty: o.qty, unit: o.unitReward, at: nowMs + o.minutes * 60_000, chance: o.ambushChance });
+    ctr.accepted++;
+  }
+}
+
 /** Handlarz: kupuje najtańsze oferty (z przewozem), odsprzedaje po 86% ceny NPC; bez zjazdów. */
 function trade(p: P, nowMs: number) {
   if (ships.filter((x) => x.buyer === p).length < cfg.caravans.max_active && p.silo.oreReal > 800) {
     for (const m of cfg.geology.materials) {
       const npc = cfg.exchange.buy_ore[m]!;
       const have = (p.mats[m] ?? 0) + incoming(p, m);
-      if (have >= 150) continue;
+      if (have >= 80) continue;
       let best: { l: Listing; km: number; total: number } | null = null;
       for (const l of book) {
         if (l.m !== m || l.seller === p || l.qty <= 0) continue;
         const km = shipKm(cfg, distKm({ lat: p.lat, lon: p.lon }, { lat: l.seller.lat, lon: l.seller.lon }, cfg.world.radius_km));
         const total = l.price + shipFeePerUnit(cfg, m, km);
-        if (total <= npc * 0.78 && (!best || total < best.total)) best = { l, km, total };
+        if (total <= npc * 0.95 && (!best || total < best.total)) best = { l, km, total };
       }
       if (!best) continue;
-      const q = Math.min(best.l.qty, 150 - have, 40, Math.floor(p.silo.oreReal / best.total));
+      const q = Math.min(best.l.qty, 80 - have, 40, Math.floor(p.silo.oreReal / best.total));
       if (q < 1) continue;
       const gross = q * best.l.price, fee = Math.max(1, Math.floor(gross * cfg.market.fee)), shipFee = q * shipFeePerUnit(cfg, m, best.km);
       best.l.qty -= q;
@@ -172,8 +210,8 @@ function trade(p: P, nowMs: number) {
     const npc = cfg.exchange.buy_ore[m]!;
     const stock = p.mats[m] ?? 0;
     const mine = book.filter((l) => l.seller === p && l.m === m && l.qty > 0);
-    if (stock >= 10 && mine.length < 2) {
-      const qty = Math.min(cfg.market.max_qty, stock);
+    if (stock >= 90 && mine.length < 2) {
+      const qty = Math.min(cfg.market.max_qty, stock - 80);
       p.mats[m] = stock - qty;
       book.push({ seller: p, m, qty, price: Math.round(npc * 0.88), exp: nowMs + cfg.market.listing_hours * 3_600_000 });
     }
@@ -243,6 +281,7 @@ function act(p: P, nowMs: number) {
   }
   if (!NOGEAR && !(p.trader && p.tradeStart >= 0)) spendGear(p, nowMs);
   if (p.trader && p.tradeStart >= 0 && MARKET_ON) trade(p, nowMs);
+  takeContracts(p, nowMs);
   if (!NORAIDS) tryRaid(p, nowMs);
 }
 
@@ -432,6 +471,8 @@ function spendGear(p: P, nowMs: number) {
 }
 
 const TICK = 10 * 60_000;
+/** losowa kolejność działań w kroku, żeby wyścig o zlecenia nie faworyzował indeksu gracza */
+function order<T>(a: T[]): T[] { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [b[i], b[j]] = [b[j]!, b[i]!]; } return b; }
 const report = (day: number) => {
   const avg = (f: (p: P) => number) => players.reduce((s, p) => s + f(p), 0) / players.length;
   const health = [...pools.entries()].map(([z, v]) => `${z} ${(100 * v.remaining / v.total).toFixed(0)}%`).join(' | ');
@@ -441,7 +482,7 @@ console.log(`Symulacja ${days} dni, ${N} graczy (30% hardcore, 50% regularni, 20
 for (let t = TICK; t <= days * 86_400_000; t += TICK) {
   sweepBook(t0 + t);
   const hour = (t / 3_600_000) % 24;
-  if (hour >= 8 && hour < 23) for (const p of players) if (R() < ONLINE_P[p.style]) act(p, t0 + t);
+  if (hour >= 8 && hour < 23) for (const p of order(players)) if (R() < ONLINE_P[p.style]) act(p, t0 + t);
   if (t % 86_400_000 === 0) { const d = t / 86_400_000; if ([1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150].includes(d) || d === days) report(d); }
 }
 console.log('\nWykorzystanie puli stref (wydobyto / pula całkowita):');
@@ -496,11 +537,15 @@ if (!NORAIDS) {
     console.log(`  karawany: ${mkt.shipped} szt., śr. dystans ${(mkt.kmSum / Math.max(1, mkt.shipped)).toFixed(0)} km | opłaty przewozowe (ujście): ${(mkt.shipFee / players.length).toFixed(0)} rudy na gracza (${(100 * mkt.shipFee / players.length / inc).toFixed(1)}% dochodu) | zasadzki: ${mkt.ambushed}, utracono ${mkt.lostUnits} szt.`);
     console.log(`  bot podłogi: ${mkt.botUnits} szt., ${avg((p) => p.botOre).toFixed(0)} rudy na gracza (${(100 * avg((p) => p.botOre) / inc).toFixed(1)}% dochodu – źródło rudy) | zakupy u graczy: ${avg((p) => p.marketBuyOre).toFixed(0)} rudy na gracza`);
   }
+  if (MARKET_ON) {
+    const inc = Math.max(1, avg((p) => p.diveOre + p.prodOre));
+    console.log(`  zlecenia NPC: przyjęto ${ctr.accepted}, dostarczono ${ctr.units} szt. | nagrody (źródło rudy): ${(ctr.ore / players.length).toFixed(0)} rudy na gracza (${(100 * ctr.ore / players.length / inc).toFixed(1)}% dochodu) | zasadzki: ${ctr.ambushed}`);
+  }
   if (MARKET_ON && TRADERS > 0) {
     const tr = players.filter((p) => p.trader && p.tradeStart >= 0);
     const others = players.filter((p) => !p.trader);
     const dayLen = (p: P) => Math.max(1, days - (p.tradeStart - t0) / 86_400_000);
-    const perDay = tr.map((p) => (p.marketNet - p.marketBuyOre + (p.mats.miedz ?? 0) * 0) / dayLen(p));
+    const perDay = tr.map((p) => (p.marketNet - p.marketBuyOre + p.contractOre) / dayLen(p));
     const inv = tr.reduce((a, p) => a + Object.values(p.mats).reduce((x, y) => x + y, 0), 0) / Math.max(1, tr.length);
     const reg = others.filter((p) => p.style === 'regularny');
     const dive = reg.reduce((a, p) => a + (p.diveOre + p.prodOre) / days, 0) / Math.max(1, reg.length);

@@ -13,6 +13,7 @@ import { exchangeBuyTx, getGeology } from './services/trade.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
 import { buyListingTx, cancelListingTx, createListingTx, listListings, marketOverview, myMarket, sellToBotTx } from './services/market.js';
+import { acceptContractTx, listContracts } from './services/contracts.js';
 import { listShipments } from './services/caravans.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
 import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
@@ -209,6 +210,12 @@ export function buildApp(deps: AppDeps) {
     });
   app.get('/market', { onRequest: auth }, async (req) => marketOverview(ctx, req.user.sub));
   app.get('/market/listings', { onRequest: auth }, async (req) => listListings(ctx, req.user.sub, z.object({ material: z.string().optional() }).parse(req.query).material));
+  app.get('/contracts', { onRequest: auth }, async (req) => listContracts(ctx, req.user.sub));
+  idemPost('/contracts/:day/:slot/accept', 200, (u, p, b, trx) => {
+    const x = z.object({ insure: z.boolean().default(false) }).parse(b ?? {});
+    const prm = z.object({ day: z.coerce.number().int(), slot: z.coerce.number().int() }).parse(p);
+    return acceptContractTx(trx, ctx, u, prm.day, prm.slot, x.insure);
+  });
   app.get('/market/shipments', { onRequest: auth }, async (req) => listShipments(ctx, req.user.sub));
   app.get('/market/mine', { onRequest: auth }, async (req) => myMarket(ctx, req.user.sub));
   idemPost('/market/listings', 201, (u, _p, b, trx) => createListingTx(trx, ctx, u, z.object({ material: z.string().min(1), qty: z.number().int(), unitPrice: z.number().int() }).parse(b)));

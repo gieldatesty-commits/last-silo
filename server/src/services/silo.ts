@@ -10,6 +10,7 @@ import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { resolveDueRaids } from './raids.js';
 import { resolveDueShipments } from './caravans.js';
+import { resolveDueContracts } from './contracts.js';
 import { equippedBonus, loadEffects, wearEquipped } from './gear.js';
 import { randomInt } from 'node:crypto';
 
@@ -114,6 +115,7 @@ export async function settle(trx: Trx, cfg: GameConfig, userId: string, now: Dat
   // najpierw najazdy, które dotarły (blokują oba silosy w stałej kolejności), potem zwykłe rozliczenie
   await resolveDueRaids(trx, cfg, userId, now);
   await resolveDueShipments(trx, cfg, userId, now);
+  await resolveDueContracts(trx, cfg, userId, now);
   return settleCore(trx, cfg, userId, now);
 }
 

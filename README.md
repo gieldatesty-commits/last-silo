@@ -42,6 +42,8 @@ docker compose up -d --build
 | GET | `/market` | rynek: ceny NPC i bota, korytarze, średnia 7 dni, najlepsza oferta, limit bota |
 | GET | `/market/listings` | aktywne oferty materiału (`?material=`), od najtańszej |
 | GET | `/market/shipments` | karawany: przesyłki w drodze i ostatnie dostawy |
+| GET | `/contracts` | zlecenia NPC: dzisiejsza wspólna tablica, aktywne i ostatnie |
+| POST | `/contracts/:day/:slot/accept` | przyjmij zlecenie (`{insure?}`), ładunek jedzie karawaną |
 | GET | `/market/mine` | moje oferty i transakcje |
 | POST | `/market/listings` | wystawienie `{material, qty, unitPrice}`; `Idempotency-Key` |
 | POST | `/market/listings/:id/buy` | kupno `{qty}`; `Idempotency-Key` |
@@ -59,6 +61,7 @@ Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: zło�
 
 ## Status
 - [x] Karawany (docs/karawany-v1.0.md): kupno z rynku to dostawa (czas, opłata, zasadzka, ubezpieczenie), rynek regionalny; handel bez kopania na razie nieopłacalny w symulacji, opisane warianty zmian
+- [x] Zlecenia karawanowe NPC (docs/kontrakty-v1.0.md): wspólna dzienna tablica, nagroda po dotarciu, ok. 7% dochodu w symulacji; handel bez kopania nadal marginalny
 - [x] M4 Rynek (docs/rynek-v1.0.md): oferty materiałów za rudę, prowizja 5%, bot podłogi cen, wygasanie, testy współbieżności; rynek w symulacji
 - [x] Sezony 180 dni (docs/sezony-v1.0.md): licznik, blokada po końcu, ranking mocy, tytuły i bonus startowy, reset świata z archiwum księgi
 - [x] Balans v1.0 (docs/balans-v1.0.md): wolniejsze poziomy, budynki do 10, regeneracja pul, wzmacnianie przedmiotów, łagodniejsze najazdy; sezon ok. 180 dni
