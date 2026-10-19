@@ -25,6 +25,10 @@ String fmtDuration(int seconds) {
   return '$s s';
 }
 
+Map<String, dynamic> asMap(dynamic v) => Map<String, dynamic>.from(v as Map);
+List<Map<String, dynamic>> asList(dynamic v) => (v as List).map(asMap).toList();
+num asNum(dynamic v) => v is num ? v : (num.tryParse('$v') ?? 0);
+
 DateTime parseTime(dynamic v) => DateTime.parse(v as String).toLocal();
 
 /// Odliczanie do [endsAt]. Po dojściu do zera woła [onDone] (raz), żeby odświeżyć stan z serwera.

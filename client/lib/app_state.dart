@@ -70,7 +70,10 @@ class AppState extends ChangeNotifier {
         await _loadGame();
       });
 
-  Future<bool> _act(Future<void> Function() f) async {
+  /// Wykonuje akcję użytkownika z blokadą `busy` i obsługą błędów; po sukcesie odświeża stan gry (zasoby).
+  Future<bool> run(Future<void> Function() f, {bool reloadGame = true}) => _act(f, reloadGame: reloadGame);
+
+  Future<bool> _act(Future<void> Function() f, {bool reloadGame = false}) async {
     if (busy) return false;
     busy = true;
     error = null;
@@ -78,6 +81,7 @@ class AppState extends ChangeNotifier {
     var ok = true;
     try {
       await f();
+      if (reloadGame && hasPlayer) await _loadGame();
     } on ApiException catch (e) {
       error = e.code;
       ok = false;
