@@ -25,6 +25,8 @@ export interface Database {
     protected_until: Date | null;
     carry_bonus_ore: Generated<number>;
   };
+  market_listings: { id: Generated<string>; seller_id: string; material: string; qty: number; qty_initial: number; unit_price: number; state: Generated<'active' | 'sold' | 'cancelled' | 'expired'>; created_at: Generated<Date>; expires_at: Date };
+  market_trades: { id: Generated<string>; listing_id: string | null; buyer_id: string | null; seller_id: string; material: string; qty: number; unit_price: number; gross: string | number; fee: Generated<string | number>; created_at: Generated<Date> };
   seasons: { id: number; started_at: Date; ends_at: Date; state: Generated<'active' | 'ended'>; closed_at: Date | null };
   season_results: { season_id: number; user_id: string; nickname: string; rank: number; players_total: number; power: number; level: number; loot: Generated<string>; title: string | null; start_bonus_ore: Generated<number> };
   wallets: { user_id: string; resource: string; balance: Generated<string> };

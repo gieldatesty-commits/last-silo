@@ -39,6 +39,13 @@ docker compose up -d --build
 | GET | `/ranking?type=power\|loot` | ranking nadających (Nadajnik) |
 | GET | `/geology` | jakościowy opis geologii okolicy: który materiał obfituje (bez liczb) |
 | POST | `/items/:id/upgrade` | wzmocnienie przedmiotu o tier (tier 1–5; Warsztat 5+t, Radiostacja 5; koszt: ruda, żetony, materiały); `Idempotency-Key` |
+| GET | `/market` | rynek: ceny NPC i bota, korytarze, średnia 7 dni, najlepsza oferta, limit bota |
+| GET | `/market/listings` | aktywne oferty materiału (`?material=`), od najtańszej |
+| GET | `/market/mine` | moje oferty i transakcje |
+| POST | `/market/listings` | wystawienie `{material, qty, unitPrice}`; `Idempotency-Key` |
+| POST | `/market/listings/:id/buy` | kupno `{qty}`; `Idempotency-Key` |
+| DELETE | `/market/listings/:id` | anulowanie oferty (zwrot towaru) |
+| POST | `/market/sell-npc` | sprzedaż botowi podłogi cen `{material, qty}`; `Idempotency-Key` |
 | GET | `/season` | sezon: numer, faza (aktywny/przerwa), dzień, dni do końca, bonus do odebrania, tytuły |
 | GET | `/season/results` | wyniki ostatniego sezonu: top 10 i własne miejsce |
 | POST | `/exchange/buy` | zakup materiału u NPC za rudę `{material, qty}`; od Radiostacji 5; `Idempotency-Key` |
@@ -50,6 +57,7 @@ docker compose up -d --build
 Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
+- [x] M4 Rynek (docs/rynek-v1.0.md): oferty materiałów za rudę, prowizja 5%, bot podłogi cen, wygasanie, testy współbieżności; rynek w symulacji
 - [x] Sezony 180 dni (docs/sezony-v1.0.md): licznik, blokada po końcu, ranking mocy, tytuły i bonus startowy, reset świata z archiwum księgi
 - [x] Balans v1.0 (docs/balans-v1.0.md): wolniejsze poziomy, budynki do 10, regeneracja pul, wzmacnianie przedmiotów, łagodniejsze najazdy; sezon ok. 180 dni
 - [x] Materiały i geologia: miedź/kryształy/siarka, profil regionu z położenia na kuli, wymagane dopiero od Radiostacji 5; wymiana z NPC; spec w docs/swiat-v0.3-surowce.md (energia geotermalna zaplanowana)

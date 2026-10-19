@@ -25,6 +25,7 @@ const R = rng(arg('seed', 1));
 const SUB = arg('sub', 0); // odsetek graczy z abonamentem (3 sloty)
 const NOGEAR = arg('nogear', 0) === 1;
 const NOMATS = arg('nomats', 0) === 1; // wyłącza materiały (punkt odniesienia)
+const NOMARKET = arg('nomarket', 0) === 1; // bez rynku graczy i bota podłogi (tylko NPC)
 const NORAIDS = arg('noraids', 0) === 1; // wyłącza najazdy (punkt odniesienia) // bez sprzętu i badań (punkt odniesienia)
 
 type Style = 'hardcore' | 'regularny' | 'okazjonalny';
@@ -62,6 +63,7 @@ interface P {
   mats: Record<string, number>;
   profile: Record<string, number>;
   exchangeOre: number;
+  marketBuyOre: number; marketNet: number; botOre: number; botDay: number; botQty: number;
   radio5At: number;
   firstTier2At: number;
   raid: { attempts: number; wins: number; looted: number; lost: number; against: number; lootedTokens: number };
@@ -79,7 +81,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
     samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
-    lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
+    lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, marketBuyOre: 0, marketNet: 0, botOre: 0, botDay: -1, botQty: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
 
@@ -91,6 +93,18 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     p.lat = pos.lat;
     p.lon = pos.lon;
     p.profile = geologyProfile(cfg, pos, Math.floor(R() * 1e9));
+  }
+}
+
+interface Listing { seller: P; m: string; qty: number; price: number; exp: number }
+const book: Listing[] = [];
+const mkt = { trades: 0, units: 0, gross: 0, fee: 0, botUnits: 0, listed: 0, expired: 0 };
+const MARKET_ON = !NOMARKET && !NOMATS;
+function sweepBook(nowMs: number) {
+  for (let i = book.length - 1; i >= 0; i--) {
+    const l = book[i]!;
+    if (l.qty <= 0) { book.splice(i, 1); continue; }
+    if (l.exp <= nowMs) { l.seller.mats[l.m] = (l.seller.mats[l.m] ?? 0) + l.qty; mkt.expired += l.qty; book.splice(i, 1); }
   }
 }
 
@@ -222,20 +236,43 @@ function spendGear(p: P, nowMs: number) {
   const fx = fxOf(p);
   if (p.radio5At < 0 && p.silo.levels.radiostacja >= 5) p.radio5At = nowMs;
   /** Czy gracz może spełnić wymóg radia/materiałów (kupując braki u NPC za rudę); zwraca koszt wymiany albo null. */
+  /** Wycena braków: najpierw tańsze oferty graczy (poniżej ceny NPC), reszta u NPC. */
+  const quote = (m: string, short: number) => {
+    let left = short, cost = 0;
+    const take: { l: Listing; q: number }[] = [];
+    if (MARKET_ON && short > 0) {
+      for (const l of book.filter((x) => x.m === m && x.seller !== p && x.qty > 0 && x.price < cfg.exchange.buy_ore[m]!).sort((a, b) => a.price - b.price)) {
+        if (left <= 0) break;
+        const q = Math.min(l.qty, left);
+        take.push({ l, q }); cost += q * l.price; left -= q;
+      }
+    }
+    return { take, npcQty: left, cost: cost + left * cfg.exchange.buy_ore[m]! };
+  };
   const matPlan = (radio: number | undefined, mats: Record<string, number>): { exch: number } | null => {
     if (NOMATS) return { exch: 0 };
     if (radio && p.silo.levels.radiostacja < radio) return null;
     let exch = 0;
-    for (const [m, n] of Object.entries(mats)) exch += Math.max(0, n - (p.mats[m] ?? 0)) * cfg.exchange.buy_ore[m]!;
+    for (const [m, n] of Object.entries(mats)) exch += quote(m, Math.max(0, n - (p.mats[m] ?? 0))).cost;
     return { exch };
   };
-  const takeMats = (mats: Record<string, number>, exch: number) => {
+  const takeMats = (mats: Record<string, number>, _exch: number) => {
     if (NOMATS) return;
+    let paid = 0;
     for (const [m, n] of Object.entries(mats)) {
       const have = p.mats[m] ?? 0;
+      const q = quote(m, Math.max(0, n - have));
+      for (const { l, q: u } of q.take) {
+        const gross = u * l.price, fee = Math.max(1, Math.floor(gross * cfg.market.fee));
+        l.qty -= u;
+        l.seller.silo = { ...l.seller.silo, oreReal: l.seller.silo.oreReal + gross - fee };
+        l.seller.marketNet += gross - fee; p.marketBuyOre += gross; paid += gross;
+        mkt.trades++; mkt.units += u; mkt.gross += gross; mkt.fee += fee;
+      }
+      if (q.npcQty > 0) { const c = q.npcQty * cfg.exchange.buy_ore[m]!; p.exchangeOre += c; paid += c; }
       p.mats[m] = Math.max(0, have - n);
     }
-    if (exch > 0) { p.silo = { ...p.silo, oreReal: p.silo.oreReal - exch }; p.exchangeOre += exch; }
+    if (paid > 0) p.silo = { ...p.silo, oreReal: p.silo.oreReal - paid };
     if (Object.keys(mats).length && p.firstTier2At < 0) p.firstTier2At = nowMs;
   };
   const ore = () => p.silo.oreReal;
@@ -289,6 +326,30 @@ function spendGear(p: P, nowMs: number) {
       pay('upgrade', uc.ore); p.tokens -= uc.tokens; g.tier++;
     }
   }
+  // rynek: nadwyżki trafiają na oferty (cena 55–90% ceny NPC), a duże nadwyżki do bota podłogi w dziennym limicie
+  if (MARKET_ON && p.silo.levels.radiostacja >= cfg.market.radio && p.level >= cfg.market.min_level) {
+    const KEEP = 60;
+    for (const m of cfg.geology.materials) {
+      const npc = cfg.exchange.buy_ore[m]!, bid = Math.max(1, Math.floor(npc * cfg.market.bot_bid_fraction));
+      const stock = p.mats[m] ?? 0;
+      const mine = book.filter((l) => l.seller === p && l.qty > 0);
+      if (stock > KEEP + 20 && mine.filter((l) => l.m === m).length < 2 && mine.length < cfg.market.max_active) {
+        const qty = Math.min(cfg.market.max_qty, stock - KEEP);
+        const price = Math.min(npc, Math.max(bid, Math.round(npc * (0.55 + 0.35 * R()))));
+        p.mats[m] = stock - qty;
+        book.push({ seller: p, m, qty, price, exp: nowMs + cfg.market.listing_hours * 3_600_000 });
+        mkt.listed += qty;
+      }
+      const day = Math.floor((nowMs - t0) / 86_400_000);
+      if (p.botDay !== day) { p.botDay = day; p.botQty = 0; }
+      const over = (p.mats[m] ?? 0) - KEEP * 2;
+      const q = Math.min(over, cfg.market.bot_daily_qty - p.botQty);
+      if (q > 0) {
+        p.mats[m] = (p.mats[m] ?? 0) - q; p.botQty += q; p.botOre += q * bid; mkt.botUnits += q;
+        p.silo = { ...p.silo, oreReal: p.silo.oreReal + q * bid };
+      }
+    }
+  }
 }
 
 const TICK = 10 * 60_000;
@@ -299,6 +360,7 @@ const report = (day: number) => {
 };
 console.log(`Symulacja ${days} dni, ${N} graczy (30% hardcore, 50% regularni, 20% okazjonalni)${NOGEAR ? ' | BEZ sprzętu i badań' : ' | ze sprzętem i badaniami'}\n`);
 for (let t = TICK; t <= days * 86_400_000; t += TICK) {
+  sweepBook(t0 + t);
   const hour = (t / 3_600_000) % 24;
   if (hour >= 8 && hour < 23) for (const p of players) if (R() < ONLINE_P[p.style]) act(p, t0 + t);
   if (t % 86_400_000 === 0) { const d = t / 86_400_000; if ([1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150].includes(d) || d === days) report(d); }
@@ -349,6 +411,11 @@ if (!NORAIDS) {
   const tier2 = players.filter((p) => p.firstTier2At >= 0);
   console.log(`  pierwsza rzecz wymagająca materiałów: ${tier2.length}/${players.length} graczy, średnio w dniu ${tier2.length ? (tier2.reduce((a, p) => a + (p.firstTier2At - t0) / 86_400_000, 0) / tier2.length).toFixed(1) : '-'}`);
   console.log(`  zapas: ${['miedz', 'krysztal', 'siarka'].map((m) => `${m} ${avg((p) => p.mats[m] ?? 0).toFixed(0)}`).join(' | ')} | wymiana NPC: śr. ${avg((p) => p.exchangeOre).toFixed(0)} rudy na gracza (${(100 * avg((p) => p.exchangeOre) / Math.max(1, avg((p) => p.diveOre + p.prodOre))).toFixed(1)}% dochodu)`);
+  if (MARKET_ON) {
+    const inc = Math.max(1, avg((p) => p.diveOre + p.prodOre));
+    console.log(`  rynek graczy: ${mkt.trades} transakcji, ${mkt.units} szt. po śr. ${(mkt.gross / Math.max(1, mkt.units)).toFixed(0)} rudy | prowizje (ujście): ${(mkt.fee / players.length).toFixed(0)} rudy na gracza (${(100 * mkt.fee / players.length / inc).toFixed(1)}% dochodu) | wystawiono ${mkt.listed} szt., wygasło ${mkt.expired} szt.`);
+    console.log(`  bot podłogi: ${mkt.botUnits} szt., ${avg((p) => p.botOre).toFixed(0)} rudy na gracza (${(100 * avg((p) => p.botOre) / inc).toFixed(1)}% dochodu – źródło rudy) | zakupy u graczy: ${avg((p) => p.marketBuyOre).toFixed(0)} rudy na gracza`);
+  }
   const mainCounts: Record<string, number> = {};
   for (const p of players) { const top = Object.entries(p.profile).sort((a, b) => b[1] - a[1])[0]![0]; mainCounts[top] = (mainCounts[top] ?? 0) + 1; }
   console.log(`  regiony (obfity materiał): ${Object.entries(mainCounts).map(([m, n]) => `${m} ${n}`).join(', ')}`);

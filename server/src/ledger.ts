@@ -13,6 +13,8 @@ export const LEDGER_REASONS = [
   'upgrade_cost',
   'repair_cost',
   'research_cost',
+  'market_listing',
+  'market_return',
   'market_sale',
   'market_purchase',
   'market_fee',

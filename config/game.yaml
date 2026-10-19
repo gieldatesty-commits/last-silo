@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.1.0"
+version: "1.2.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -201,6 +201,18 @@ raids:
   xp_win: 14
   xp_loss: 4
   defender_xp_win: 6
+
+# Rynek graczy (materiały za rudę, kup teraz). Korytarz cen: od oferty bota podłogi (bot_bid_fraction × cena NPC) do ceny NPC.
+# Kupno u NPC (Handlarz Przekaźnikowy) wyznacza sufit, bot podłogi dolną granicę; prowizja to ujście rudy.
+market:
+  radio: 5
+  min_level: 5
+  fee: 0.05
+  listing_hours: 48
+  max_active: 8
+  max_qty: 200
+  bot_bid_fraction: 0.30
+  bot_daily_qty: 10
 
 # Sezony: ok. 180 dni, potem podsumowanie (przerwa) i reset świata. Konto, tytuły i mały bonus startowy zostają.
 # Nagrody wg miejsca w rankingu mocy; pierwsza pasująca. Bonus to wygoda na starcie (ruda), nie przewaga w walce.

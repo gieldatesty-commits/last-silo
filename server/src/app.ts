@@ -2,7 +2,8 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
-import type { Db } from './db.js';
+import type { Transaction } from 'kysely';
+import type { Database, Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
 import { idempotent } from './idempotency.js';
 import { afterDiveCommitted, afterUpgradeCommitted, createPlayer, diveHistory, GameError, getSilo, listRoutes, spendPoints, startDiveTx, startUpgradeTx, type Ctx, type Scheduler } from './services/silo.js';
@@ -11,6 +12,7 @@ import { contactTx, getRadio, ranking, setBroadcast } from './services/radio.js'
 import { exchangeBuyTx, getGeology } from './services/trade.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
+import { buyListingTx, cancelListingTx, createListingTx, listListings, marketOverview, myMarket, sellToBotTx } from './services/market.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
 import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
 
@@ -67,7 +69,7 @@ export function buildApp(deps: AppDeps) {
   // Bramka sezonu: po końcu sezonu akcje zmieniające stan są zablokowane do startu następnego (przerwa na podsumowanie).
   let seasonCache: { endsAt: number; active: boolean; checkedAt: number } | null = null;
   app.addHook('onRequest', async (req, reply) => {
-    if (req.method !== 'POST' || req.url.startsWith('/auth')) return;
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.url.startsWith('/auth')) return;
     const nowMs = ctx.now().getTime();
     if (!seasonCache || !seasonCache.active || nowMs >= seasonCache.endsAt || nowMs - seasonCache.checkedAt > 30_000 || nowMs < seasonCache.checkedAt) {
       await seasonTick(ctx);
@@ -195,6 +197,29 @@ export function buildApp(deps: AppDeps) {
     const { on } = z.object({ on: z.boolean() }).parse(req.body);
     return setBroadcast(ctx, req.user.sub, on);
   });
+  // Rynek graczy (materiały za rudę); wymaga Radiostacji `market.radio` i poziomu `market.min_level`
+  const idemPost = (path: string, status: number, run: (userId: string, params: Record<string, string>, body: unknown, trx: Transaction<Database>) => Promise<unknown>) =>
+    app.post(path, { onRequest: auth }, async (req, reply) => {
+      const key = req.headers['idempotency-key'];
+      if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+      const userId = req.user.sub;
+      const res = await idempotent(db, userId, key as string, async (trx) => ({ status, body: await run(userId, req.params as Record<string, string>, req.body, trx) }));
+      return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+    });
+  app.get('/market', { onRequest: auth }, async (req) => marketOverview(ctx, req.user.sub));
+  app.get('/market/listings', { onRequest: auth }, async (req) => listListings(ctx, req.user.sub, z.object({ material: z.string().optional() }).parse(req.query).material));
+  app.get('/market/mine', { onRequest: auth }, async (req) => myMarket(ctx, req.user.sub));
+  idemPost('/market/listings', 201, (u, _p, b, trx) => createListingTx(trx, ctx, u, z.object({ material: z.string().min(1), qty: z.number().int(), unitPrice: z.number().int() }).parse(b)));
+  idemPost('/market/listings/:id/buy', 200, (u, p, b, trx) => buyListingTx(trx, ctx, u, p.id!, z.object({ qty: z.number().int() }).parse(b).qty));
+  idemPost('/market/sell-npc', 200, (u, _p, b, trx) => {
+    const x = z.object({ material: z.string().min(1), qty: z.number().int() }).parse(b);
+    return sellToBotTx(trx, ctx, u, x.material, x.qty);
+  });
+  app.delete('/market/listings/:id', { onRequest: auth }, async (req) => {
+    const { id } = z.object({ id: z.string().min(1).max(20) }).parse(req.params);
+    return ctx.db.transaction().execute((trx) => cancelListingTx(trx, ctx, req.user.sub, id));
+  });
+
   app.get('/season', { onRequest: auth }, async (req) => seasonView(ctx, req.user.sub));
   app.get('/season/results', { onRequest: auth }, async (req) => seasonResults(ctx, req.user.sub));
 

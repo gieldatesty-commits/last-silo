@@ -130,6 +130,16 @@ export const GameConfigSchema = z
       field_frequency: pos,
       field_seed: z.number().int(),
     }),
+    market: z.object({
+      radio: z.number().int().min(1),               // minimalny poziom Radiostacji do handlu
+      min_level: z.number().int().min(1),           // minimalny poziom gracza (anty-multikonta)
+      fee: z.number().min(0).max(0.5),              // prowizja od sprzedaży (ujście rudy)
+      listing_hours: z.number().positive(),         // wygasanie wystawień
+      max_active: z.number().int().min(1),          // aktywne wystawienia na gracza
+      max_qty: z.number().int().min(1),             // maksymalna ilość w jednym wystawieniu
+      bot_bid_fraction: z.number().min(0).max(1),   // bot podłogi cen kupuje po tej części ceny NPC; to dolna granica cen
+      bot_daily_qty: z.number().int().min(0),       // ile sztuk na dobę gracz może sprzedać botom
+    }),
     season: z.object({
       length_days: z.number().int().min(1),
       intermission_hours: z.number().min(0),
