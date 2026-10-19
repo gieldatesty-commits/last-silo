@@ -1,7 +1,7 @@
 name: lastsilo
 description: Last Silo - klient Android
 publish_to: none
-version: 0.1.0+1
+version: 0.2.0+2
 environment:
   sdk: ">=3.4.0 <4.0.0"
 dependencies:
@@ -9,7 +9,6 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: any
   http: ^1.2.0
   flutter_secure_storage: ^9.2.0
 dev_dependencies:
@@ -17,4 +16,3 @@ dev_dependencies:
     sdk: flutter
 flutter:
   uses-material-design: true
-  generate: true

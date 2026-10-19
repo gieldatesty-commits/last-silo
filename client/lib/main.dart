@@ -1,58 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'api.dart';
+import 'app_state.dart';
+import 'screens/onboarding.dart';
+import 'screens/shell.dart';
+import 'strings.dart';
 
 void main() => runApp(const LastSiloApp());
 
-class LastSiloApp extends StatelessWidget {
+class LastSiloApp extends StatefulWidget {
   const LastSiloApp({super.key});
   @override
+  State<LastSiloApp> createState() => _LastSiloAppState();
+}
+
+class _LastSiloAppState extends State<LastSiloApp> {
+  late final AppState state = AppState(Api())..bootstrap();
+
+  @override
   Widget build(BuildContext context) => MaterialApp(
-        onGenerateTitle: (c) => AppLocalizations.of(c).appTitle,
+        title: 'Last Silo',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(colorSchemeSeed: Colors.amber, brightness: Brightness.dark, useMaterial3: true),
+        locale: const Locale('pl'),
+        supportedLocales: const [Locale('pl')],
         localizationsDelegates: const [
-          AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const HomeScreen(),
+        home: ListenableBuilder(
+          listenable: state,
+          builder: (context, _) {
+            if (state.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            if (state.me == null) return _Retry(state: state);
+            if (!state.hasPlayer) return OnboardingScreen(state: state);
+            return Shell(state: state);
+          },
+        ),
       );
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class _Retry extends StatelessWidget {
+  final AppState state;
+  const _Retry({required this.state});
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final _api = Api();
-  Future<Map<String, dynamic>>? _me;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(t.appTitle)),
-      body: Center(
-        child: _me == null
-            ? FilledButton(onPressed: () => setState(() => _me = _api.signInAsGuest()), child: Text(t.connect))
-            : FutureBuilder<Map<String, dynamic>>(
-                future: _me,
-                builder: (context, snap) {
-                  if (snap.connectionState != ConnectionState.done) return Text(t.connecting);
-                  if (snap.hasError) return Text(t.error);
-                  return Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(t.welcome, style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    Text(t.playerId(snap.data!['id'] as String)),
-                  ]);
-                },
-              ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(errorText(state.error ?? 'network'), textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: state.bootstrap, child: const Text('Spróbuj ponownie')),
+            ]),
+          ),
+        ),
+      );
 }
