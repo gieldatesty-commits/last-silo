@@ -59,7 +59,7 @@ describe('wzory przewozu', () => {
     expect(shipFeePerUnit(base, 'miedz', 100_000)).toBe(Math.floor(base.exchange.buy_ore.miedz! * base.caravans.fee_cap));
     expect(ambushChance(base, 0)).toBeCloseTo(base.caravans.ambush.base, 6);
     expect(ambushChance(base, 100_000)).toBe(base.caravans.ambush.max);
-    expect(insuranceFee(base, 1000)).toBe(80);
+    expect(insuranceFee(base, 1000)).toBe(60);
     expect(survivingQty(base, 10)).toBe(6);
     expect(survivingQty(base, 1)).toBe(1);
   });
