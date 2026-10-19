@@ -30,7 +30,7 @@ Cel: świat ma dawać cele i sensowne wybory przez cały sezon (ok. 6 miesięcy)
 - Dochód łączny na gracza 322 tys.: zjazdy 66%, szyb 34%.
 - Wydatki: budynki 21%, badania 8%, wytwarzanie 6%, naprawy 26%, wzmocnienia 19%; w magazynie zostaje 23 tys. (7%).
 - Sukcesy zjazdów 70% (bez sprzętu 51%), najazdy 7% dochodu.
-- Ziarno 2, 150 graczy, 30% abonentów: te same wyniki ±3% (abonament daje wygodę, nie moc; +3% dochodu).
+- Ziarno 2, 150 graczy, 30% abonentów: te same wyniki ±3% (abonament daje wygodę, nie moc; ok. +2% dochodu).
 - 365 dni: poziom 30 dla wszystkich, ruda zalega tylko 18 tys.; w drugim półroczu gra wchodzi w „end-game” (najazdy rosną do 34% dochodu), co jest argumentem za resetem sezonowym.
 
 ## Otwarte sprawy
