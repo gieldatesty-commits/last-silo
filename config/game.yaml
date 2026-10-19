@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.2.0"
+version: "1.3.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -213,6 +213,18 @@ market:
   max_qty: 200
   bot_bid_fraction: 0.30
   bot_daily_qty: 10
+
+# Karawany: kupno z rynku to fizyczna dostawa z silosu sprzedającego do kupującego. Czas, opłata i ryzyko zasadzki rosną z dystansem
+# (liczonym w pasmach jak w radiu, żeby nie zdradzać dokładnych położeń). Handlarz NPC dostarcza natychmiast po pełnej cenie.
+caravans:
+  speed_km_per_h: 600
+  min_minutes: 30
+  max_minutes: 2160           # 36 h
+  fee_per_1000km: 0.04        # opłata za sztukę = cena NPC × 4% × km/1000
+  fee_cap: 0.6
+  insurance_fee: 0.06         # ubezpieczenie: 6% wartości towaru, zasadzka nie odbiera nic
+  max_active: 6
+  ambush: { base: 0.01, per_1000km: 0.01, max: 0.12, loss_fraction: 0.4 }
 
 # Sezony: ok. 180 dni, potem podsumowanie (przerwa) i reset świata. Konto, tytuły i mały bonus startowy zostają.
 # Nagrody wg miejsca w rankingu mocy; pierwsza pasująca. Bonus to wygoda na starcie (ruda), nie przewaga w walce.

@@ -13,6 +13,7 @@ import { exchangeBuyTx, getGeology } from './services/trade.js';
 import { getCodex } from './services/codex.js';
 import { listResearch, startResearchTx } from './services/research.js';
 import { buyListingTx, cancelListingTx, createListingTx, listListings, marketOverview, myMarket, sellToBotTx } from './services/market.js';
+import { listShipments } from './services/caravans.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
 import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
 
@@ -208,9 +209,10 @@ export function buildApp(deps: AppDeps) {
     });
   app.get('/market', { onRequest: auth }, async (req) => marketOverview(ctx, req.user.sub));
   app.get('/market/listings', { onRequest: auth }, async (req) => listListings(ctx, req.user.sub, z.object({ material: z.string().optional() }).parse(req.query).material));
+  app.get('/market/shipments', { onRequest: auth }, async (req) => listShipments(ctx, req.user.sub));
   app.get('/market/mine', { onRequest: auth }, async (req) => myMarket(ctx, req.user.sub));
   idemPost('/market/listings', 201, (u, _p, b, trx) => createListingTx(trx, ctx, u, z.object({ material: z.string().min(1), qty: z.number().int(), unitPrice: z.number().int() }).parse(b)));
-  idemPost('/market/listings/:id/buy', 200, (u, p, b, trx) => buyListingTx(trx, ctx, u, p.id!, z.object({ qty: z.number().int() }).parse(b).qty));
+  idemPost('/market/listings/:id/buy', 200, (u, p, b, trx) => buyListingTx(trx, ctx, u, p.id!, ...((x) => [x.qty, x.insure] as const)(z.object({ qty: z.number().int(), insure: z.boolean().default(false) }).parse(b))));
   idemPost('/market/sell-npc', 200, (u, _p, b, trx) => {
     const x = z.object({ material: z.string().min(1), qty: z.number().int() }).parse(b);
     return sellToBotTx(trx, ctx, u, x.material, x.qty);

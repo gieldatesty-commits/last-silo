@@ -140,6 +140,16 @@ export const GameConfigSchema = z
       bot_bid_fraction: z.number().min(0).max(1),   // bot podłogi cen kupuje po tej części ceny NPC; to dolna granica cen
       bot_daily_qty: z.number().int().min(0),       // ile sztuk na dobę gracz może sprzedać botom
     }),
+    caravans: z.object({
+      speed_km_per_h: pos,
+      min_minutes: pos,
+      max_minutes: pos,
+      fee_per_1000km: z.number().min(0).max(1),   // opłata za sztukę = cena NPC × to × km/1000 (ujście rudy)
+      fee_cap: z.number().min(0).max(2),          // opłata za sztukę nie przekroczy tej części ceny NPC
+      insurance_fee: z.number().min(0).max(1),    // ubezpieczenie: część wartości towaru
+      max_active: z.number().int().min(1),        // przesyłki w drodze na kupującego
+      ambush: z.object({ base: z.number().min(0).max(1), per_1000km: z.number().min(0).max(1), max: z.number().min(0).max(1), loss_fraction: z.number().min(0).max(1) }),
+    }),
     season: z.object({
       length_days: z.number().int().min(1),
       intermission_hours: z.number().min(0),

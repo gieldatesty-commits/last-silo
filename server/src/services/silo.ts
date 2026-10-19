@@ -9,6 +9,7 @@ import { describeProfile, geologyProfile } from '../game/geology.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { resolveDueRaids } from './raids.js';
+import { resolveDueShipments } from './caravans.js';
 import { equippedBonus, loadEffects, wearEquipped } from './gear.js';
 import { randomInt } from 'node:crypto';
 
@@ -112,6 +113,7 @@ interface Settled {
 export async function settle(trx: Trx, cfg: GameConfig, userId: string, now: Date): Promise<Settled> {
   // najpierw najazdy, które dotarły (blokują oba silosy w stałej kolejności), potem zwykłe rozliczenie
   await resolveDueRaids(trx, cfg, userId, now);
+  await resolveDueShipments(trx, cfg, userId, now);
   return settleCore(trx, cfg, userId, now);
 }
 

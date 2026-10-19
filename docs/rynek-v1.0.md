@@ -5,10 +5,10 @@ Handel materiałami (miedź, kryształy, siarka) za rudę. Włączony od **Radio
 ## Zasady
 - **Wystawienie „kup teraz”:** materiał, ilość (≤ 200), cena za sztukę w rudzie. Towar schodzi z portfela od razu (depozyt), wraca po anulowaniu lub wygaśnięciu (48 h). Do 8 aktywnych wystawień.
 - **Korytarz cen:** od oferty bota podłogi (30% ceny NPC) do ceny Handlarza Przekaźnikowego (NPC). Kupowanie drożej niż u NPC nie ma sensu, a poniżej oferty bota sprzedający wolałby sprzedać botowi.
-- **Kupno:** całości lub części oferty. Sprzedający dostaje cenę minus **5% prowizji**; prowizja znika z gry (ujście rudy).
+- **Kupno:** całości lub części oferty; towar jedzie karawaną do silosu kupującego. Sprzedający dostaje cenę minus **5% prowizji**; prowizja znika z gry (ujście rudy).
 - **Bot podłogi cen:** kupuje materiały po stałej cenie (30% ceny NPC), max 10 szt. na dobę na gracza. Zapewnia wyjście także przy małej liczbie graczy i dolną granicę cen.
 - **Handlarz NPC:** nadal sprzedaje materiały po stałej cenie (sufit cen), wiec brak ofert nie blokuje gry.
-- Ceny kontaktu, widoczność i dystans nie wpływają na handel (rynek ogólny); karawany z czasem dostawy i ryzykiem to osobny, późniejszy etap.
+- Kupno to fizyczna dostawa **karawaną** (czas, opłata i ryzyko zależą od dystansu, patrz `karawany-v1.0.md`). Handlarz NPC dostarcza natychmiast po pełnej cenie.
 
 ## API
 | Metoda | Ścieżka | Opis |

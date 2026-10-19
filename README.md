@@ -41,6 +41,7 @@ docker compose up -d --build
 | POST | `/items/:id/upgrade` | wzmocnienie przedmiotu o tier (tier 1–5; Warsztat 5+t, Radiostacja 5; koszt: ruda, żetony, materiały); `Idempotency-Key` |
 | GET | `/market` | rynek: ceny NPC i bota, korytarze, średnia 7 dni, najlepsza oferta, limit bota |
 | GET | `/market/listings` | aktywne oferty materiału (`?material=`), od najtańszej |
+| GET | `/market/shipments` | karawany: przesyłki w drodze i ostatnie dostawy |
 | GET | `/market/mine` | moje oferty i transakcje |
 | POST | `/market/listings` | wystawienie `{material, qty, unitPrice}`; `Idempotency-Key` |
 | POST | `/market/listings/:id/buy` | kupno `{qty}`; `Idempotency-Key` |
@@ -57,6 +58,7 @@ docker compose up -d --build
 Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
 
 ## Status
+- [x] Karawany (docs/karawany-v1.0.md): kupno z rynku to dostawa (czas, opłata, zasadzka, ubezpieczenie), rynek regionalny; handel bez kopania na razie nieopłacalny w symulacji, opisane warianty zmian
 - [x] M4 Rynek (docs/rynek-v1.0.md): oferty materiałów za rudę, prowizja 5%, bot podłogi cen, wygasanie, testy współbieżności; rynek w symulacji
 - [x] Sezony 180 dni (docs/sezony-v1.0.md): licznik, blokada po końcu, ranking mocy, tytuły i bonus startowy, reset świata z archiwum księgi
 - [x] Balans v1.0 (docs/balans-v1.0.md): wolniejsze poziomy, budynki do 10, regeneracja pul, wzmacnianie przedmiotów, łagodniejsze najazdy; sezon ok. 180 dni

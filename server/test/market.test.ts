@@ -6,6 +6,7 @@ import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { applyLedger, auditLedger, walletBalance } from '../src/ledger.js';
 import { botBid, marketFee, priceCorridor } from '../src/game/market.js';
+import { shipFeePerUnit } from '../src/game/caravan.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
 const { db, pool } = createDb(url);
@@ -90,18 +91,23 @@ describe('rynek graczy', () => {
     const bought = await post(buyer.h, `/market/listings/${id}/buy`, { qty: 20 });
     expect(bought.statusCode).toBe(200);
     const fee = marketFee(config, 20 * price);
-    expect(bought.json()).toMatchObject({ qty: 20, paid: 20 * price, fee });
-    expect(await bal(buyer.id, 'ore')).toBe(ore0 - 20 * price);
-    expect(await bal(buyer.id, 'miedz')).toBe(20);
+    const b1 = bought.json();
+    expect(b1).toMatchObject({ qty: 20, paid: 20 * price, fee });
+    expect(b1.shipFee).toBe(20 * shipFeePerUnit(config, 'miedz', b1.distanceKm));
+    expect(await bal(buyer.id, 'ore')).toBe(ore0 - 20 * price - b1.shipFee);
+    expect(await bal(buyer.id, 'miedz')).toBe(0); // towar w drodze
     expect(await bal(seller.id, 'ore')).toBe(config.economy.start_ore + 20 * price - fee);
-    // materiał nie powstaje ani nie znika: 50 u sprzedawcy + 20 u kupującego + 30 w wystawieniu = 100
     const left = (await pool.query('SELECT qty FROM market_listings WHERE id = $1', [id])).rows[0].qty;
-    expect((await bal(seller.id, 'miedz')) + (await bal(buyer.id, 'miedz')) + left).toBe(100);
     expect(left).toBe(30);
 
     const rest = await post(buyer.h, `/market/listings/${id}/buy`, { qty: 30 });
     expect(rest.statusCode).toBe(200);
     expect((await post(buyer.h, `/market/listings/${id}/buy`, { qty: 1 })).json().error).toBe('listing_closed');
+    // karawany docierają po czasie zależnym od dystansu (maks. 36 h); materiał nie powstaje ani nie znika
+    hours(37);
+    await app.inject({ url: '/silo', headers: buyer.h });
+    expect(await bal(buyer.id, 'miedz')).toBe(50);
+    expect((await bal(seller.id, 'miedz')) + (await bal(buyer.id, 'miedz'))).toBe(100);
     expect(await auditLedger(db)).toEqual([]);
 
     const ov = (await app.inject({ url: '/market', headers: buyer.h })).json();
@@ -179,6 +185,9 @@ describe('rynek graczy', () => {
     const id = (await list(s, 'miedz', 30, c.max)).json().id as string;
     const [r1, r2] = await Promise.all([post(b1.h, `/market/listings/${id}/buy`, { qty: 30 }), post(b2.h, `/market/listings/${id}/buy`, { qty: 30 })]);
     expect([r1.statusCode, r2.statusCode].sort()).toEqual([200, 409]);
+    hours(37);
+    await app.inject({ url: '/silo', headers: b1.h });
+    await app.inject({ url: '/silo', headers: b2.h });
     expect((await bal(b1.id, 'miedz')) + (await bal(b2.id, 'miedz'))).toBe(30);
 
     // A kupuje od B, a B od A jednocześnie
@@ -202,7 +211,10 @@ describe('rynek graczy', () => {
     await list(s, 'miedz', 10, c.max);
     await list(o, 'miedz', 10, c.min + 1);
     const l = (await app.inject({ url: '/market/listings?material=miedz', headers: s.h })).json().listings;
-    expect(l.map((x: { unitPrice: number }) => x.unitPrice)).toEqual([c.min + 1, c.max]);
-    expect(l.map((x: { mine: boolean }) => x.mine)).toEqual([false, true]);
+    // własna oferta (bez przewozu) kosztuje c.max, cudza c.min+1 plus przewóz; sort po łącznym koszcie
+    const totals = l.map((x: { totalPerUnit: number }) => x.totalPerUnit);
+    expect([...totals].sort((a: number, b: number) => a - b)).toEqual(totals);
+    expect(l.find((x: { mine: boolean }) => x.mine).shipPerUnit).toBe(0);
+    expect(l.find((x: { mine: boolean }) => !x.mine).shipPerUnit).toBeGreaterThan(0);
   });
 });

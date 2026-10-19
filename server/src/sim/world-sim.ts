@@ -9,6 +9,8 @@ import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js
 import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
 import { itemBonus, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { ambushChance, shipFeePerUnit, shipKm, shipMinutes, survivingQty } from '../game/caravan.js';
+import { distanceKm as distKm } from '../game/world.js';
 import { addXp, diveChance, poolTotal, regenPool, resolveDive, steamCost, type Stats } from '../game/dive.js';
 import { rng } from '../game/rng.js';
 import { computeEffects, researchSeconds } from '../game/research.js';
@@ -25,6 +27,7 @@ const R = rng(arg('seed', 1));
 const SUB = arg('sub', 0); // odsetek graczy z abonamentem (3 sloty)
 const NOGEAR = arg('nogear', 0) === 1;
 const NOMATS = arg('nomats', 0) === 1; // wyłącza materiały (punkt odniesienia)
+const TRADERS = arg('traders', 0); // liczba graczy-handlarzy: po poz. 5 i Radiostacji 5 przestają zjeżdżać i żyją z arbitrażu
 const NOMARKET = arg('nomarket', 0) === 1; // bez rynku graczy i bota podłogi (tylko NPC)
 const NORAIDS = arg('noraids', 0) === 1; // wyłącza najazdy (punkt odniesienia) // bez sprzętu i badań (punkt odniesienia)
 
@@ -33,6 +36,8 @@ const ONLINE_P: Record<Style, number> = { hardcore: 0.5, regularny: 0.06, okazjo
 
 interface P {
   style: Style;
+  trader: boolean;
+  tradeStart: number;
   arch: (typeof cfg.archetypes)[number];
   silo: SiloState;
   pending: PendingUpgrade[];
@@ -77,13 +82,15 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
   const arch = cfg.archetypes[i % cfg.archetypes.length]!;
   const total = Math.round(cfg.economy.deposit.local_total * (1 + (R() * 2 - 1) * cfg.economy.deposit.variance));
   return {
-    style, arch,
+    style, arch, trader: false, tradeStart: -1,
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
     samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
     lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, marketBuyOre: 0, marketNet: 0, botOre: 0, botDay: -1, botQty: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
+
+players.filter((p) => p.style === 'regularny').slice(0, TRADERS).forEach((p) => { p.trader = true; });
 
 {
   const placed: { lat: number; lon: number }[] = [];
@@ -98,9 +105,24 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
 
 interface Listing { seller: P; m: string; qty: number; price: number; exp: number }
 const book: Listing[] = [];
-const mkt = { trades: 0, units: 0, gross: 0, fee: 0, botUnits: 0, listed: 0, expired: 0 };
+const mkt = { trades: 0, units: 0, gross: 0, fee: 0, botUnits: 0, listed: 0, expired: 0, shipFee: 0, shipped: 0, ambushed: 0, lostUnits: 0, kmSum: 0, npcUnits: 0 };
+interface Ship { buyer: P; m: string; qty: number; at: number; chance: number }
+const ships: Ship[] = [];
+const incoming = (p: P, m: string) => ships.filter((x) => x.buyer === p && x.m === m).reduce((a, x) => a + x.qty, 0);
 const MARKET_ON = !NOMARKET && !NOMATS;
+function deliverShips(nowMs: number) {
+  for (let i = ships.length - 1; i >= 0; i--) {
+    const sh = ships[i]!;
+    if (sh.at > nowMs) continue;
+    ships.splice(i, 1);
+    const hit = R() < sh.chance;
+    const q = hit ? survivingQty(cfg, sh.qty) : sh.qty;
+    if (hit && q < sh.qty) { mkt.ambushed++; mkt.lostUnits += sh.qty - q; }
+    sh.buyer.mats[sh.m] = (sh.buyer.mats[sh.m] ?? 0) + q;
+  }
+}
 function sweepBook(nowMs: number) {
+  deliverShips(nowMs);
   for (let i = book.length - 1; i >= 0; i--) {
     const l = book[i]!;
     if (l.qty <= 0) { book.splice(i, 1); continue; }
@@ -118,6 +140,45 @@ const qualityMid = (wl: number, extra: number) => {
   const q = cfg.items.quality;
   return (q.min + q.min_step * (wl - 1) + q.max + q.max_step * (wl - 1)) / 2 + extra;
 };
+
+/** Handlarz: kupuje najtańsze oferty (z przewozem), odsprzedaje po 86% ceny NPC; bez zjazdów. */
+function trade(p: P, nowMs: number) {
+  if (ships.filter((x) => x.buyer === p).length < cfg.caravans.max_active && p.silo.oreReal > 800) {
+    for (const m of cfg.geology.materials) {
+      const npc = cfg.exchange.buy_ore[m]!;
+      const have = (p.mats[m] ?? 0) + incoming(p, m);
+      if (have >= 150) continue;
+      let best: { l: Listing; km: number; total: number } | null = null;
+      for (const l of book) {
+        if (l.m !== m || l.seller === p || l.qty <= 0) continue;
+        const km = shipKm(cfg, distKm({ lat: p.lat, lon: p.lon }, { lat: l.seller.lat, lon: l.seller.lon }, cfg.world.radius_km));
+        const total = l.price + shipFeePerUnit(cfg, m, km);
+        if (total <= npc * 0.78 && (!best || total < best.total)) best = { l, km, total };
+      }
+      if (!best) continue;
+      const q = Math.min(best.l.qty, 150 - have, 40, Math.floor(p.silo.oreReal / best.total));
+      if (q < 1) continue;
+      const gross = q * best.l.price, fee = Math.max(1, Math.floor(gross * cfg.market.fee)), shipFee = q * shipFeePerUnit(cfg, m, best.km);
+      best.l.qty -= q;
+      best.l.seller.silo = { ...best.l.seller.silo, oreReal: best.l.seller.silo.oreReal + gross - fee };
+      best.l.seller.marketNet += gross - fee;
+      p.silo = { ...p.silo, oreReal: p.silo.oreReal - gross - shipFee };
+      p.marketBuyOre += gross + shipFee;
+      mkt.trades++; mkt.units += q; mkt.gross += gross; mkt.fee += fee; mkt.shipFee += shipFee; mkt.shipped += q; mkt.kmSum += best.km * q;
+      ships.push({ buyer: p, m, qty: q, at: nowMs + shipMinutes(cfg, best.km) * 60_000, chance: ambushChance(cfg, best.km) });
+    }
+  }
+  for (const m of cfg.geology.materials) {
+    const npc = cfg.exchange.buy_ore[m]!;
+    const stock = p.mats[m] ?? 0;
+    const mine = book.filter((l) => l.seller === p && l.m === m && l.qty > 0);
+    if (stock >= 10 && mine.length < 2) {
+      const qty = Math.min(cfg.market.max_qty, stock);
+      p.mats[m] = stock - qty;
+      book.push({ seller: p, m, qty, price: Math.round(npc * 0.88), exp: nowMs + cfg.market.listing_hours * 3_600_000 });
+    }
+  }
+}
 
 function act(p: P, nowMs: number) {
   const now = new Date(nowMs);
@@ -156,7 +217,8 @@ function act(p: P, nowMs: number) {
   }
   // uzupełnij kolejkę wg stylu gry
   const maxSec = p.style === 'hardcore' ? 1800 : p.style === 'regularny' ? 4 * 3600 : 8 * 3600;
-  while (p.queue.length < p.slots && nowMs >= p.windedUntil) {
+  if (p.trader && p.tradeStart < 0 && p.level >= cfg.market.min_level && p.silo.levels.radiostacja >= cfg.market.radio) p.tradeStart = nowMs;
+  while (p.queue.length < p.slots && nowMs >= p.windedUntil && p.tradeStart < 0) {
     const opts = cfg.dives.routes.filter((x) => x.min_level <= p.level && x.seconds <= maxSec && diveChance(p.stats, x.difficulty, bonusOf(p)) >= 0.3);
     // hardcore: najwyższa dostępna trasa krótka; reszta: najdłuższa trasa mieszcząca się w ich rytmie (rzadziej wchodzą do gry)
     const route = !opts.length ? cfg.dives.routes[0]! : p.style === 'hardcore' ? opts[opts.length - 1]! : [...opts].sort((a, b) => b.seconds - a.seconds || b.min_level - a.min_level)[0]!;
@@ -167,7 +229,7 @@ function act(p: P, nowMs: number) {
     p.queue.push({ routeId: route.id, endsAt: startsAt + route.seconds * 1000, seed: seedCounter++ });
   }
   // ulepszenia: najniższy z (szyb, magazyn, generator), potem reszta
-  if (p.pending.length < cfg.upgrades.queue_slots) {
+  if (p.pending.length < cfg.upgrades.queue_slots && (!p.trader || p.tradeStart < 0 || p.silo.oreReal > 15000)) {
     const order: BuildingType[] = ['szyb_glowny', 'magazyn', 'generator_pary', ...BUILDING_TYPES.filter((b) => !['szyb_glowny', 'magazyn', 'generator_pary'].includes(b))];
     const cand = order.filter((b) => p.silo.levels[b] < maxLevelOf(cfg, b)).sort((a, b) => p.silo.levels[a] - p.silo.levels[b])[0];
     if (cand) {
@@ -179,7 +241,8 @@ function act(p: P, nowMs: number) {
       }
     }
   }
-  if (!NOGEAR) spendGear(p, nowMs);
+  if (!NOGEAR && !(p.trader && p.tradeStart >= 0)) spendGear(p, nowMs);
+  if (p.trader && p.tradeStart >= 0 && MARKET_ON) trade(p, nowMs);
   if (!NORAIDS) tryRaid(p, nowMs);
 }
 
@@ -236,19 +299,8 @@ function spendGear(p: P, nowMs: number) {
   const fx = fxOf(p);
   if (p.radio5At < 0 && p.silo.levels.radiostacja >= 5) p.radio5At = nowMs;
   /** Czy gracz może spełnić wymóg radia/materiałów (kupując braki u NPC za rudę); zwraca koszt wymiany albo null. */
-  /** Wycena braków: najpierw tańsze oferty graczy (poniżej ceny NPC), reszta u NPC. */
-  const quote = (m: string, short: number) => {
-    let left = short, cost = 0;
-    const take: { l: Listing; q: number }[] = [];
-    if (MARKET_ON && short > 0) {
-      for (const l of book.filter((x) => x.m === m && x.seller !== p && x.qty > 0 && x.price < cfg.exchange.buy_ore[m]!).sort((a, b) => a.price - b.price)) {
-        if (left <= 0) break;
-        const q = Math.min(l.qty, left);
-        take.push({ l, q }); cost += q * l.price; left -= q;
-      }
-    }
-    return { take, npcQty: left, cost: cost + left * cfg.exchange.buy_ore[m]! };
-  };
+  /** Wycena braków: natychmiastowy zakup u NPC po pełnej cenie (karawana z rynku nie zdąży na czas). */
+  const quote = (m: string, short: number) => ({ take: [] as { l: Listing; q: number }[], npcQty: short, cost: short * cfg.exchange.buy_ore[m]! });
   const matPlan = (radio: number | undefined, mats: Record<string, number>): { exch: number } | null => {
     if (NOMATS) return { exch: 0 };
     if (radio && p.silo.levels.radiostacja < radio) return null;
@@ -324,6 +376,33 @@ function spendGear(p: P, nowMs: number) {
     if (wl >= uc.workshop && pl !== null && ore() >= (uc.ore + pl.exch) * 3 && p.tokens >= uc.tokens) {
       takeMats(uc.materials, pl.exch);
       pay('upgrade', uc.ore); p.tokens -= uc.tokens; g.tier++;
+    }
+  }
+  // zaopatrzenie: bot z zapasem rudy kupuje braki z najtańszej oferty (z przewozem), jeśli taniej niż u NPC
+  if (MARKET_ON && p.silo.levels.radiostacja >= cfg.market.radio && p.level >= cfg.market.min_level && p.silo.oreReal > 2500 && ships.filter((x) => x.buyer === p).length < cfg.caravans.max_active) {
+    const TARGET = 45;
+    for (const m of cfg.geology.materials) {
+      const have = (p.mats[m] ?? 0) + incoming(p, m);
+      if (have >= TARGET) continue;
+      const npc = cfg.exchange.buy_ore[m]!;
+      let best: { l: Listing; km: number; total: number } | null = null;
+      for (const l of book) {
+        if (l.m !== m || l.seller === p || l.qty <= 0) continue;
+        const km = shipKm(cfg, distKm({ lat: p.lat, lon: p.lon }, { lat: l.seller.lat, lon: l.seller.lon }, cfg.world.radius_km));
+        const total = l.price + shipFeePerUnit(cfg, m, km);
+        if (total < npc * 0.92 && (!best || total < best.total)) best = { l, km, total };
+      }
+      if (!best) continue;
+      const q = Math.min(best.l.qty, TARGET - have, 30);
+      const gross = q * best.l.price, fee = Math.max(1, Math.floor(gross * cfg.market.fee)), shipFee = q * shipFeePerUnit(cfg, m, best.km);
+      if (p.silo.oreReal < gross + shipFee) continue;
+      best.l.qty -= q;
+      best.l.seller.silo = { ...best.l.seller.silo, oreReal: best.l.seller.silo.oreReal + gross - fee };
+      best.l.seller.marketNet += gross - fee;
+      p.silo = { ...p.silo, oreReal: p.silo.oreReal - gross - shipFee };
+      p.marketBuyOre += gross + shipFee;
+      mkt.trades++; mkt.units += q; mkt.gross += gross; mkt.fee += fee; mkt.shipFee += shipFee; mkt.shipped += q; mkt.kmSum += best.km * q;
+      ships.push({ buyer: p, m, qty: q, at: nowMs + shipMinutes(cfg, best.km) * 60_000, chance: ambushChance(cfg, best.km) });
     }
   }
   // rynek: nadwyżki trafiają na oferty (cena 55–90% ceny NPC), a duże nadwyżki do bota podłogi w dziennym limicie
@@ -414,7 +493,18 @@ if (!NORAIDS) {
   if (MARKET_ON) {
     const inc = Math.max(1, avg((p) => p.diveOre + p.prodOre));
     console.log(`  rynek graczy: ${mkt.trades} transakcji, ${mkt.units} szt. po śr. ${(mkt.gross / Math.max(1, mkt.units)).toFixed(0)} rudy | prowizje (ujście): ${(mkt.fee / players.length).toFixed(0)} rudy na gracza (${(100 * mkt.fee / players.length / inc).toFixed(1)}% dochodu) | wystawiono ${mkt.listed} szt., wygasło ${mkt.expired} szt.`);
+    console.log(`  karawany: ${mkt.shipped} szt., śr. dystans ${(mkt.kmSum / Math.max(1, mkt.shipped)).toFixed(0)} km | opłaty przewozowe (ujście): ${(mkt.shipFee / players.length).toFixed(0)} rudy na gracza (${(100 * mkt.shipFee / players.length / inc).toFixed(1)}% dochodu) | zasadzki: ${mkt.ambushed}, utracono ${mkt.lostUnits} szt.`);
     console.log(`  bot podłogi: ${mkt.botUnits} szt., ${avg((p) => p.botOre).toFixed(0)} rudy na gracza (${(100 * avg((p) => p.botOre) / inc).toFixed(1)}% dochodu – źródło rudy) | zakupy u graczy: ${avg((p) => p.marketBuyOre).toFixed(0)} rudy na gracza`);
+  }
+  if (MARKET_ON && TRADERS > 0) {
+    const tr = players.filter((p) => p.trader && p.tradeStart >= 0);
+    const others = players.filter((p) => !p.trader);
+    const dayLen = (p: P) => Math.max(1, days - (p.tradeStart - t0) / 86_400_000);
+    const perDay = tr.map((p) => (p.marketNet - p.marketBuyOre + (p.mats.miedz ?? 0) * 0) / dayLen(p));
+    const inv = tr.reduce((a, p) => a + Object.values(p.mats).reduce((x, y) => x + y, 0), 0) / Math.max(1, tr.length);
+    const reg = others.filter((p) => p.style === 'regularny');
+    const dive = reg.reduce((a, p) => a + (p.diveOre + p.prodOre) / days, 0) / Math.max(1, reg.length);
+    console.log(`  handlarze: ${tr.length} z ${TRADERS}, start handlu śr. w dniu ${(tr.reduce((a, p) => a + (p.tradeStart - t0) / 86_400_000, 0) / Math.max(1, tr.length)).toFixed(0)} | zysk z handlu śr. ${(perDay.reduce((a, b) => a + b, 0) / Math.max(1, perDay.length)).toFixed(0)} rudy/dobę | zjazdy+szyb u regularnych: ${dive.toFixed(0)} rudy/dobę | ruda handlarza na koniec ${(tr.reduce((a, p) => a + p.silo.oreReal, 0) / Math.max(1, tr.length)).toFixed(0)} | zapas towaru ${inv.toFixed(0)} szt. | poz. ${(tr.reduce((a, p) => a + p.level, 0) / Math.max(1, tr.length)).toFixed(1)}`);
   }
   const mainCounts: Record<string, number> = {};
   for (const p of players) { const top = Object.entries(p.profile).sort((a, b) => b[1] - a[1])[0]![0]; mainCounts[top] = (mainCounts[top] ?? 0) + 1; }

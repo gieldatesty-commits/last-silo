@@ -2,6 +2,9 @@ import { sql, type Selectable, type Transaction } from 'kysely';
 import type { Database } from '../db.js';
 import { applyLedger, InsufficientFunds, type LedgerEntry } from '../ledger.js';
 import { botBid, marketFee, npcPrice, priceCorridor } from '../game/market.js';
+import { ambushChance, insuranceFee, shipFeePerUnit, shipKm, shipMinutes } from '../game/caravan.js';
+import { distanceKm } from '../game/world.js';
+import { randomInt } from 'node:crypto';
 import { radioLevel } from './items.js';
 import { GameError, settle, type Ctx } from './silo.js';
 
@@ -109,20 +112,37 @@ export async function marketOverview(ctx: Ctx, userId: string) {
 
 export async function listListings(ctx: Ctx, userId: string, material?: string) {
   if (material) checkMaterial(ctx, material);
+  const cfg = ctx.config;
   const now = ctx.now();
   return ctx.db.transaction().execute(async (trx) => {
     await guard(trx, ctx, userId);
     await sweepExpired(trx, ctx);
+    const me = await trx.selectFrom('players').select(['silo_lat', 'silo_lon']).where('user_id', '=', userId).executeTakeFirstOrThrow();
     let q = trx
       .selectFrom('market_listings as l')
       .innerJoin('players as p', 'p.user_id', 'l.seller_id')
-      .select(['l.id', 'l.seller_id', 'l.material', 'l.qty', 'l.qty_initial', 'l.unit_price', 'l.state', 'l.created_at', 'l.expires_at', 'p.nickname'])
+      .select(['l.id', 'l.seller_id', 'l.material', 'l.qty', 'l.qty_initial', 'l.unit_price', 'l.state', 'l.created_at', 'l.expires_at', 'p.nickname', 'p.silo_lat', 'p.silo_lon'])
       .where('l.state', '=', 'active')
       .where('l.expires_at', '>', now)
       .where('l.qty', '>', 0);
     if (material) q = q.where('l.material', '=', material);
-    const rows = await q.orderBy('l.unit_price').orderBy('l.id').limit(50).execute();
-    return { listings: rows.map((r) => listingView(r as never, r.nickname, userId)) };
+    const rows = await q.limit(500).execute();
+    const out = rows.map((r) => {
+      const mine = r.seller_id === userId;
+      const km = mine ? 0 : shipKm(cfg, distanceKm({ lat: me.silo_lat!, lon: me.silo_lon! }, { lat: r.silo_lat!, lon: r.silo_lon! }, cfg.world.radius_km));
+      const ship = mine ? 0 : shipFeePerUnit(cfg, r.material, km);
+      return {
+        ...listingView(r as never, r.nickname, userId),
+        distanceKm: km,
+        etaMinutes: mine ? 0 : Math.round(shipMinutes(cfg, km)),
+        shipPerUnit: ship,
+        totalPerUnit: r.unit_price + ship,
+        ambushChance: mine ? 0 : Math.round(ambushChance(cfg, km) * 1000) / 10,
+        npcPrice: npcPrice(cfg, r.material),
+      };
+    });
+    out.sort((a, b) => a.totalPerUnit - b.totalPerUnit || Number(a.id) - Number(b.id));
+    return { listings: out.slice(0, 50) };
   });
 }
 
@@ -188,29 +208,51 @@ export async function cancelListingTx(trx: Trx, ctx: Ctx, userId: string, id: st
   return { id, returned: l.qty, material: l.material };
 }
 
-/** Kupno z wystawienia (całość lub część). Sprzedający dostaje cenę minus prowizję (prowizja znika z gry). */
-export async function buyListingTx(trx: Trx, ctx: Ctx, userId: string, id: string, qty: number) {
+/**
+ * Kupno z wystawienia (całość lub część). Pieniądze płyną od razu (sprzedający dostaje cenę minus prowizję),
+ * a towar jedzie karawaną: czas, opłata przewozowa i ryzyko zasadzki zależą od dystansu. Ubezpieczenie znosi stratę.
+ */
+export async function buyListingTx(trx: Trx, ctx: Ctx, userId: string, id: string, qty: number, insure = false) {
   const cfg = ctx.config;
   if (!/^\d+$/.test(id)) throw new GameError(404, 'no_listing');
   await guard(trx, ctx, userId);
   await sweepExpired(trx, ctx);
   const l = await trx.selectFrom('market_listings').selectAll().where('id', '=', id).forUpdate().executeTakeFirst();
   if (!l) throw new GameError(404, 'no_listing');
-  if (l.state !== 'active' || l.expires_at <= ctx.now()) throw new GameError(409, 'listing_closed');
+  const now = ctx.now();
+  if (l.state !== 'active' || l.expires_at <= now) throw new GameError(409, 'listing_closed');
   if (l.seller_id === userId) throw new GameError(409, 'own_listing');
   if (!Number.isInteger(qty) || qty < 1) throw new GameError(400, 'bad_qty');
   if (qty > l.qty) throw new GameError(409, 'not_enough_qty');
+  const transit = await trx.selectFrom('shipments').select((e) => e.fn.countAll<string>().as('n')).where('buyer_id', '=', userId).where('state', '=', 'transit').executeTakeFirstOrThrow();
+  if (Number(transit.n) >= cfg.caravans.max_active) throw new GameError(409, 'too_many_shipments');
+  const locs = await trx.selectFrom('players').select(['user_id', 'silo_lat', 'silo_lon']).where('user_id', 'in', [userId, l.seller_id]).execute();
+  const bl = locs.find((x) => x.user_id === userId)!;
+  const sl = locs.find((x) => x.user_id === l.seller_id);
+  if (!sl || sl.silo_lat === null || bl.silo_lat === null) throw new GameError(409, 'no_player');
+  const km = shipKm(cfg, distanceKm({ lat: bl.silo_lat, lon: bl.silo_lon! }, { lat: sl.silo_lat, lon: sl.silo_lon! }, cfg.world.radius_km));
+
   const gross = qty * l.unit_price;
   const fee = marketFee(cfg, gross);
+  const shipFee = qty * shipFeePerUnit(cfg, l.material, km);
+  const insFee = insure ? insuranceFee(cfg, gross) : 0;
   const trade = await trx
     .insertInto('market_trades')
-    .values({ listing_id: l.id, buyer_id: userId, seller_id: l.seller_id, material: l.material, qty, unit_price: l.unit_price, gross, fee, created_at: ctx.now() })
+    .values({ listing_id: l.id, buyer_id: userId, seller_id: l.seller_id, material: l.material, qty, unit_price: l.unit_price, gross, fee, created_at: now })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
+  const eta = new Date(now.getTime() + shipMinutes(cfg, km) * 60_000);
+  const ship = await trx
+    .insertInto('shipments')
+    .values({ buyer_id: userId, seller_id: l.seller_id, trade_id: trade.id, material: l.material, qty, km, ship_fee: shipFee, insurance_fee: insFee, insured: insure, seed, ambush_chance: ambushChance(cfg, km), departed_at: now, arrives_at: eta })
     .returning('id')
     .executeTakeFirstOrThrow();
   const ref = `trade:${trade.id}`;
   const buyerEntries: LedgerEntry[] = [
     { resource: 'ore', delta: -gross, reason: 'market_purchase', ref },
-    { resource: l.material, delta: qty, reason: 'market_purchase', ref: `${ref}:mat` },
+    ...(shipFee > 0 ? [{ resource: 'ore', delta: -shipFee, reason: 'caravan_fee' as const, ref: `ship:${ship.id}:fee` }] : []),
+    ...(insFee > 0 ? [{ resource: 'ore', delta: -insFee, reason: 'caravan_fee' as const, ref: `ship:${ship.id}:ins` }] : []),
   ];
   const sellerEntries: LedgerEntry[] = [
     { resource: 'ore', delta: gross, reason: 'market_sale', ref },
@@ -222,8 +264,22 @@ export async function buyListingTx(trx: Trx, ctx: Ctx, userId: string, id: strin
   for (const [uid, entries] of steps) await ledger(trx, ctx, uid, entries);
   const left = l.qty - qty;
   await trx.updateTable('market_listings').set({ qty: left, state: left === 0 ? 'sold' : 'active' }).where('id', '=', id).execute();
-  await trx.insertInto('events_log').values({ user_id: userId, name: 'market_bought', props: JSON.stringify({ material: l.material, qty, unitPrice: l.unit_price }) }).execute();
-  return { listingId: id, material: l.material, qty, unitPrice: l.unit_price, paid: gross, fee };
+  await trx.insertInto('events_log').values({ user_id: userId, name: 'market_bought', props: JSON.stringify({ material: l.material, qty, unitPrice: l.unit_price, km }) }).execute();
+  return {
+    listingId: id,
+    shipmentId: String(ship.id),
+    material: l.material,
+    qty,
+    unitPrice: l.unit_price,
+    paid: gross,
+    fee,
+    shipFee,
+    insuranceFee: insFee,
+    insured: insure,
+    distanceKm: km,
+    ambushChance: Math.round(ambushChance(cfg, km) * 1000) / 10,
+    arrivesAt: eta,
+  };
 }
 
 /** Bot podłogi cen: kupuje materiały od gracza po niskiej, stałej cenie, w dziennym limicie. Zapewnia wyjście także przy małym rynku. */

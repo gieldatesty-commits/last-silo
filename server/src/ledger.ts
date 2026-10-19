@@ -15,6 +15,8 @@ export const LEDGER_REASONS = [
   'research_cost',
   'market_listing',
   'market_return',
+  'caravan_fee',
+  'caravan_delivery',
   'market_sale',
   'market_purchase',
   'market_fee',

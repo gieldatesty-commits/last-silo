@@ -81,7 +81,7 @@ async function closeSeason(trx: Trx, ctx: Ctx, seasonId: number, now: Date) {
 /** Reset świata: księga trafia do archiwum, stan gry znika, konta i wyniki zostają. Gracze zakładają postać od nowa. */
 async function resetWorld(trx: Trx, seasonId: number) {
   await sql`INSERT INTO ledger_archive SELECT e.*, ${seasonId}::integer FROM ledger_entries e`.execute(trx);
-  await sql`TRUNCATE ledger_entries, wallets, dives, jobs, items, research, contacts, raids, silos, buildings, world_pools, market_listings, market_trades, idempotency_keys, notifications`.execute(trx);
+  await sql`TRUNCATE ledger_entries, wallets, dives, jobs, items, research, contacts, raids, silos, buildings, world_pools, shipments, market_listings, market_trades, idempotency_keys, notifications`.execute(trx);
   await sql`UPDATE players SET nickname = NULL, archetype = NULL, sila = NULL, technika = NULL, percepcja = NULL, wytrwalosc = NULL,
     free_points = 0, silo_lat = NULL, silo_lon = NULL, depth = 0, level = 1, xp = 0, config_version = NULL, radio_on = true, protected_until = NULL`.execute(trx);
   await trx.insertInto('events_log').values({ user_id: null, name: 'season_reset', props: JSON.stringify({ seasonId }) }).execute();
