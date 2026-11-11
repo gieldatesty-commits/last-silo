@@ -35,6 +35,7 @@ const _errors = {
   'insufficient_ore': 'Za mało rudy.',
   'insufficient_steam': 'Za mało pary.',
   'queue_full': 'Kolejka jest pełna.',
+  'short_route_only': 'Dodatkowe miejsce w kolejce (Wygoda) przyjmuje tylko krótkie trasy.',
   'max_level': 'Budynek ma już maksymalny poziom.',
   'level_too_low': 'Za niski poziom gracza.',
   'winded': 'Jesteś wyczerpany po nieudanym zjeździe. Odpocznij.',
