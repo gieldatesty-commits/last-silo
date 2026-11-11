@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
-import '../strings.dart';
 import '../widgets.dart';
 import 'contracts_screen.dart';
 import 'market_screen.dart';

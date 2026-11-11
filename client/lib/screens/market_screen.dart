@@ -270,7 +270,7 @@ class _CreateListingDialogState extends State<_CreateListingDialog> {
       title: const Text('Nowa oferta'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField<String>(
-          value: _material,
+          initialValue: _material,
           items: [for (final m in widget.mats) DropdownMenuItem(value: m['id'] as String, child: Text(m['name'] as String))],
           onChanged: (v) => setState(() {
             _material = v!;

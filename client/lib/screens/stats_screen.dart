@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../strings.dart';
-import '../widgets.dart';
 
 /// Postać: cechy i rozdawanie wolnych punktów.
 class StatsScreen extends StatefulWidget {

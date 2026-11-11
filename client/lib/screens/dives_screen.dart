@@ -97,7 +97,7 @@ class _RouteCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text('Szansa ${r['chancePct']}%  ·  ${fmtInt(ore[0])}–${fmtInt(ore[1])} rudy  ·  ${r['xp']} XP'
               '${extras.isEmpty ? '' : '  ·  ${extras.join(', ')}'}'),
-          Text('Czas ${fmtDuration((r['seconds'] as num).toInt())}  ·  ${cost} pary  ·  ${richnessNames[r['zoneRichness']] ?? ''}',
+          Text('Czas ${fmtDuration((r['seconds'] as num).toInt())}  ·  $cost pary  ·  ${richnessNames[r['zoneRichness']] ?? ''}',
               style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           Align(

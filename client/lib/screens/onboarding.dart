@@ -50,14 +50,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             decoration: const InputDecoration(labelText: 'Pseudonim', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 8),
-          for (final e in archetypeInfo.entries)
-            RadioListTile<String>(
-              value: e.key,
-              groupValue: _arch,
-              onChanged: busy ? null : (v) => setState(() => _arch = v!),
-              title: Text(e.value.$1),
-              subtitle: Text(e.value.$2),
-            ),
+          RadioGroup<String>(
+            groupValue: _arch,
+            onChanged: (v) {
+              if (!busy && v != null) setState(() => _arch = v);
+            },
+            child: Column(children: [
+              for (final e in archetypeInfo.entries)
+                RadioListTile<String>(
+                  value: e.key,
+                  enabled: !busy,
+                  title: Text(e.value.$1),
+                  subtitle: Text(e.value.$2),
+                ),
+            ]),
+          ),
           if (_err != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
