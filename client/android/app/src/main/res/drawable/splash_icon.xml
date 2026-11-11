@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WYGENEROWANE: python tool/gen_splash_icon.py <Building.dc.html>; Szyb główny (wariant 3) z makiety. Nie edytuj ręcznie. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="288dp" android:height="288dp" android:viewportWidth="260" android:viewportHeight="260">
+    <group android:translateX="50.0" android:translateY="70.0">
+        <path android:pathData="M28.0,108.0 a52.0,7.0 0 1,0 104.0,0 a52.0,7.0 0 1,0 -104.0,0 Z" android:fillColor="#0A0C12" />
+        <path android:pathData="M54.0,106.0 a26.0,5.0 0 1,0 52.0,0 a26.0,5.0 0 1,0 -52.0,0 Z" android:fillColor="#F0B45A" android:fillAlpha="0.35" />
+        <path android:pathData="M56.0,100.0 h48.0 v8.0 h-48.0 Z" android:fillColor="#1A1F2B" />
+        <path android:pathData="M52 104 L74 24 L86 24 L108 104 L100 104 L82 34 L78 34 L60 104Z" android:fillColor="#55637A" />
+        <path android:pathData="M62 84 L98 84 M67 64 L93 64 M72 44 L88 44" android:strokeColor="#3A4558" android:strokeWidth="3" />
+        <path android:pathData="M68.0,24.0 a12.0,12.0 0 1,0 24.0,0 a12.0,12.0 0 1,0 -24.0,0 Z" android:fillColor="#3A4558" />
+        <path android:pathData="M72.0,24.0 a8.0,8.0 0 1,0 16.0,0 a8.0,8.0 0 1,0 -16.0,0 Z" android:fillColor="#10141D" />
+        <path android:pathData="M77.0,24.0 a3.0,3.0 0 1,0 6.0,0 a3.0,3.0 0 1,0 -6.0,0 Z" android:fillColor="#C8794A" />
+        <path android:pathData="M80 36 L80 98" android:strokeColor="#E8E3D6" android:strokeWidth="1.5" android:strokeAlpha="0.55" />
+        <path android:pathData="M74 98 L86 98 L84 106 L76 106Z" android:fillColor="#C8794A" />
+        <path android:pathData="M108.0,78.0 h26.0 v26.0 h-26.0 Z" android:fillColor="#3A4558" />
+        <path android:pathData="M108.0,74.0 h26.0 v6.0 h-26.0 Z" android:fillColor="#8E4F2E" />
+        <path android:pathData="M114.0,86.0 h8.0 v18.0 h-8.0 Z" android:fillColor="#10141D" />
+        <path android:pathData="M126.0,86.0 h4.0 v8.0 h-4.0 Z" android:fillColor="#F0B45A" />
+        <path android:pathData="M24.0,82.0 h22.0 v22.0 h-22.0 Z" android:fillColor="#3A4558" />
+        <path android:pathData="M24.0,78.0 h22.0 v6.0 h-22.0 Z" android:fillColor="#8E4F2E" />
+        <path android:pathData="M70 14 L90 14 L80 4Z" android:fillColor="#C8794A" />
+        <path android:pathData="M66.0,24.0 a14.0,14.0 0 1,0 28.0,0 a14.0,14.0 0 1,0 -28.0,0 Z" android:strokeColor="#F0B45A" android:strokeWidth="2" />
+    </group>
+</vector>

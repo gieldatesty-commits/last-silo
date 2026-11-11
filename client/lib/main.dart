@@ -4,9 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'api.dart';
 import 'app_state.dart';
+import 'palette.dart';
 import 'screens/onboarding.dart';
+import 'screens/start_screen.dart';
 import 'screens/shell.dart';
-import 'strings.dart';
 
 void main() {
   // licencje czcionek z paczki (SIL OFL 1.1) w ekranie licencji
@@ -31,7 +32,7 @@ class _LastSiloAppState extends State<LastSiloApp> {
   Widget build(BuildContext context) => MaterialApp(
         title: 'Last Silo',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(colorSchemeSeed: Colors.amber, brightness: Brightness.dark, useMaterial3: true),
+        theme: _theme(),
         locale: const Locale('pl'),
         supportedLocales: const [Locale('pl')],
         localizationsDelegates: const [
@@ -42,8 +43,8 @@ class _LastSiloAppState extends State<LastSiloApp> {
         home: ListenableBuilder(
           listenable: state,
           builder: (context, _) {
-            if (state.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-            if (state.me == null) return _Retry(state: state);
+            if (state.loading) return const StartScreen();
+            if (state.me == null) return StartScreen(error: state.error ?? 'network', onRetry: state.bootstrap);
             if (!state.hasPlayer) return OnboardingScreen(state: state);
             return Shell(state: state);
           },
@@ -51,20 +52,35 @@ class _LastSiloAppState extends State<LastSiloApp> {
       );
 }
 
-class _Retry extends StatelessWidget {
-  final AppState state;
-  const _Retry({required this.state});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(errorText(state.error ?? 'network'), textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: state.bootstrap, child: const Text('Spróbuj ponownie')),
-            ]),
-          ),
-        ),
-      );
+/// Motyw całej aplikacji w palecie warstwy wizualnej: tło, czcionka Inter, dolna nawigacja, dialogi i komunikaty,
+/// żeby elementy spoza ekranów z LsTheme (nawigacja, snackbar, okna dialogowe) nie odstawały.
+ThemeData _theme() {
+  final scheme = ColorScheme.fromSeed(seedColor: Ls.amber, brightness: Brightness.dark).copyWith(
+    primary: Ls.amber,
+    onPrimary: Ls.bg,
+    secondary: Ls.copper,
+    surface: Ls.panel,
+    onSurface: Ls.text,
+    error: Ls.warn,
+    outline: Ls.locked,
+  );
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    fontFamily: Ls.body,
+    scaffoldBackgroundColor: Ls.bg,
+    canvasColor: Ls.bg,
+    dividerColor: Ls.border,
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Ls.panel,
+      indicatorColor: Ls.amber.withValues(alpha: 0.18),
+      iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(color: s.contains(WidgetState.selected) ? Ls.amber : Ls.textMuted)),
+      labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(fontSize: 12, fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500, color: s.contains(WidgetState.selected) ? Ls.text : Ls.textMuted)),
+    ),
+    dialogTheme: const DialogThemeData(backgroundColor: Ls.panel, surfaceTintColor: Colors.transparent),
+    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Ls.panel, surfaceTintColor: Colors.transparent),
+    snackBarTheme: const SnackBarThemeData(backgroundColor: Ls.chip, contentTextStyle: TextStyle(color: Ls.text, fontFamily: Ls.body), behavior: SnackBarBehavior.floating),
+    appBarTheme: const AppBarTheme(backgroundColor: Ls.bg, foregroundColor: Ls.text, surfaceTintColor: Colors.transparent),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: Ls.amber),
+  );
 }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tło gry (Ls.bg w lib/palette.dart): ekran startowy Androida w kolorze aplikacji, bez białego błysku -->
+    <color name="ls_bg">#0A0C12</color>
+</resources>
