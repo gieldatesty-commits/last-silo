@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
+import '../palette.dart';
 import '../strings.dart';
+import '../ui.dart';
 import '../widgets.dart';
 
 /// Rynek materiałów: oferty graczy, własne oferty, Handlarz NPC i karawany w drodze.
 /// Zakup z rynku to fizyczna dostawa: czas, opłata przewozowa i ryzyko zasadzki rosną z dystansem.
+/// Logika bez zmian (te same zapytania, askQty/askInsure, act() z Idempotency-Key); zmieniony tylko widok.
 class MarketScreen extends StatelessWidget {
   final AppState state;
   const MarketScreen({super.key, required this.state});
@@ -15,7 +18,15 @@ class MarketScreen extends StatelessWidget {
     return DefaultTabController(
       length: 4,
       child: Column(children: [
-        const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [Tab(text: 'Oferty'), Tab(text: 'Moje'), Tab(text: 'Handlarz'), Tab(text: 'Karawany')]),
+        const TabBar(
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          indicatorColor: Ls.copper,
+          labelColor: Ls.text,
+          unselectedLabelColor: Ls.textMuted,
+          dividerColor: Ls.border,
+          tabs: [Tab(text: 'Oferty'), Tab(text: 'Moje'), Tab(text: 'Handlarz'), Tab(text: 'Karawany')],
+        ),
         Expanded(
           child: TabBarView(children: [
             _Listings(state: state),
@@ -27,6 +38,19 @@ class MarketScreen extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Mała liczba z podpisem w karcie ceny.
+class _Price extends StatelessWidget {
+  const _Price(this.label, this.value, {this.color = Ls.text});
+  final String label;
+  final String value;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 0.8, color: Ls.textFaint)),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color, fontFeatures: const [FontFeature.tabularFigures()])),
+      ]);
 }
 
 class _Listings extends StatefulWidget {
@@ -59,16 +83,30 @@ class _ListingsState extends State<_Listings> {
         return ListenableBuilder(
           listenable: state,
           builder: (context, _) => ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             children: [
-              _PriceTable(mats: mats),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, children: [
-                ChoiceChip(label: const Text('Wszystko'), selected: _material == null, onSelected: (_) => setState(() => _material = null)),
-                for (final m in materialIds) ChoiceChip(label: Text(resName(m)), selected: _material == m, onSelected: (_) => setState(() => _material = m)),
+              const SectionTitle('Ceny (ruda za sztukę)'),
+              for (final m in mats)
+                LsCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${m['name']}', style: lsDisplay.copyWith(fontSize: 15)),
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 18, runSpacing: 8, children: [
+                      _Price('HANDLARZ', '${m['npcPrice']}'),
+                      _Price('SKUP BOTÓW', '${m['botBid']}'),
+                      _Price('ŚR. 7 DNI', m['avg7d'] != null ? '${m['avg7d']}' : 'brak', color: m['avg7d'] != null ? Ls.text : Ls.textMuted),
+                      _Price('NAJTANIEJ', m['bestAsk'] != null ? '${m['bestAsk']}' : 'brak ofert', color: m['bestAsk'] != null ? Ls.amber : Ls.textMuted),
+                    ]),
+                  ]),
+                ),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                _Filter('Wszystko', _material == null, () => setState(() => _material = null)),
+                for (final m in materialIds) _Filter(resName(m), _material == m, () => setState(() => _material = m)),
               ]),
               const SectionTitle('Oferty graczy'),
-              Text('Cena na liście plus przewóz. Ostateczny koszt widać w oknie zakupu.', style: Theme.of(context).textTheme.bodySmall),
+              const Text('Cena na liście plus przewóz. Ostateczny koszt widać w oknie zakupu.', style: lsMuted),
+              const SizedBox(height: 8),
               if (listings.isEmpty) const EmptyNote('Brak ofert.'),
               for (final l in listings) _ListingCard(l: l, state: state, reload: reload),
             ],
@@ -79,27 +117,21 @@ class _ListingsState extends State<_Listings> {
   }
 }
 
-class _PriceTable extends StatelessWidget {
-  final List<Map<String, dynamic>> mats;
-  const _PriceTable({required this.mats});
+class _Filter extends StatelessWidget {
+  const _Filter(this.label, this.selected, this.onTap);
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Ceny (ruda za sztukę)', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 4),
-            for (final m in mats)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  '${m['name']}: Handlarz ${m['npcPrice']}  ·  skup botów ${m['botBid']}  ·  '
-                  '${m['avg7d'] != null ? 'śr. 7 dni ${m['avg7d']}' : 'brak transakcji'}  ·  '
-                  '${m['bestAsk'] != null ? 'najtaniej ${m['bestAsk']}' : 'brak ofert'}',
-                ),
-              ),
-          ]),
-        ),
+  Widget build(BuildContext context) => ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        showCheckmark: false,
+        onSelected: (_) => onTap(),
+        selectedColor: Ls.copper,
+        backgroundColor: Colors.transparent,
+        side: BorderSide(color: selected ? Ls.copper : const Color(0xFF2B3546)),
+        labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Ls.bg : const Color(0xFFC9D0DC)),
       );
 }
 
@@ -115,45 +147,49 @@ class _ListingCard extends StatelessWidget {
     final qty = asNum(l['qty']).toInt();
     final unit = asNum(l['unitPrice']).toInt();
     final ship = asNum(l['shipPerUnit']).toDouble();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${resName(l['material'] as String)} × $qty  ·  $unit rudy/szt.', style: Theme.of(context).textTheme.titleSmall),
-          Text('${mine ? 'Twoja oferta' : 'Sprzedaje ${l['seller']}'}  ·  wygasa za ${fmtDuration(parseTime(l['expiresAt']).difference(DateTime.now()).inSeconds)}'),
-          if (!mine)
-            Text('Przewóz ${ship.toStringAsFixed(1)}/szt.  ·  razem ${asNum(l['totalPerUnit']).toStringAsFixed(1)}/szt.  ·  ${fmtInt(asNum(l['distanceKm']))} km, '
-                '${fmtDuration(asNum(l['etaMinutes']).toInt() * 60)}  ·  zasadzka ${l['ambushChance']}%'),
-          if (!mine)
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.tonal(
-                onPressed: state.busy
-                    ? null
-                    : () async {
-                        final r = await askQty(
-                          context,
-                          title: 'Kup ${resName(l['material'] as String)}',
-                          max: qty,
-                          initial: qty,
-                          insurable: true,
-                          hint: 'Towar dojedzie karawaną. W zasadzce możesz stracić część ładunku.',
-                          summary: (n) => 'Do zapłaty ok. ${fmtInt((n * (unit + ship)).ceil())} rudy (bez ubezpieczenia).',
-                        );
-                        if (r == null || !context.mounted) return;
-                        await act(
-                          state,
-                          () => state.api.post('/market/listings/${l['id']}/buy', body: {'qty': r.qty, 'insure': r.insure}, idempotent: true),
-                          reload,
-                          ctx: context,
-                          okText: 'Karawana wyruszyła',
-                        );
-                      },
-                child: const Text('Kup'),
-              ),
-            ),
+    final left = fmtDuration(parseTime(l['expiresAt']).difference(DateTime.now()).inSeconds);
+    return LsCard(
+      border: mine ? Ls.copper.withValues(alpha: 0.5) : null,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${resName(l['material'] as String)} × $qty', style: lsDisplay.copyWith(fontSize: 16)),
+              Text('${mine ? 'Twoja oferta' : 'Sprzedaje ${l['seller']}'} · wygasa za $left', style: lsMuted),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          _Price('ZA SZTUKĘ', '$unit rudy', color: Ls.amber),
         ]),
-      ),
+        if (!mine) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            LsChip('przewóz ${ship.toStringAsFixed(1)}/szt.'),
+            LsChip('razem ${asNum(l['totalPerUnit']).toStringAsFixed(1)}/szt.'),
+            LsChip('${fmtInt(asNum(l['distanceKm']))} km · ${fmtDuration(asNum(l['etaMinutes']).toInt() * 60)}'),
+            LsChip('zasadzka ${l['ambushChance']}%', color: asNum(l['ambushChance']) >= 10 ? Ls.warn : null),
+          ]),
+          const SizedBox(height: 10),
+          LsButton(
+            'Kup',
+            onPressed: state.busy
+                ? null
+                : () async {
+                    final r = await askQty(
+                      context,
+                      title: 'Kup ${resName(l['material'] as String)}',
+                      max: qty,
+                      initial: qty,
+                      insurable: true,
+                      hint: 'Towar dojedzie karawaną. W zasadzce możesz stracić część ładunku.',
+                      summary: (n) => 'Do zapłaty ok. ${fmtInt((n * (unit + ship)).ceil())} rudy (bez ubezpieczenia).',
+                    );
+                    if (r == null || !context.mounted) return;
+                    await act(state, () => state.api.post('/market/listings/${l['id']}/buy', body: {'qty': r.qty, 'insure': r.insure}, idempotent: true), reload, ctx: context, okText: 'Karawana wyruszyła');
+                  },
+          ),
+        ],
+      ]),
     );
   }
 }
@@ -178,35 +214,38 @@ class _Mine extends StatelessWidget {
         return ListenableBuilder(
           listenable: state,
           builder: (context, _) => ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             children: [
-              FilledButton.icon(
-                icon: const Icon(Icons.add),
-                label: Text('Wystaw ofertę (${listings.length}/${ov['maxActive']})'),
-                onPressed: state.busy ? null : () => _create(context, ov, reload),
-              ),
-              Text('Prowizja ${(asNum(ov['fee']) * 100).round()}% od sprzedaży, oferta wygasa po ${ov['listingHours']} h.', style: Theme.of(context).textTheme.bodySmall),
+              LsButton('Wystaw ofertę (${listings.length} / ${ov['maxActive']})', onPressed: state.busy ? null : () => _create(context, ov, reload)),
+              const SizedBox(height: 6),
+              Text('Prowizja ${(asNum(ov['fee']) * 100).round()}% od sprzedaży, oferta wygasa po ${ov['listingHours']} h.', style: lsMuted),
               const SectionTitle('Aktywne oferty'),
               if (listings.isEmpty) const EmptyNote('Nic nie wystawiasz.'),
               for (final l in listings)
-                Card(
-                  child: ListTile(
-                    title: Text('${resName(l['material'] as String)} × ${l['qty']}  ·  ${l['unitPrice']} rudy/szt.'),
-                    subtitle: Text('wygasa za ${fmtDuration(parseTime(l['expiresAt']).difference(DateTime.now()).inSeconds)}'),
-                    trailing: TextButton(
-                      onPressed: state.busy ? null : () => act(state, () => state.api.delete('/market/listings/${l['id']}'), reload, ctx: context, okText: 'Wycofano ofertę'),
-                      child: const Text('Wycofaj'),
-                    ),
+                LsCard(
+                  child: LsActionRow(
+                    body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${resName(l['material'] as String)} × ${l['qty']} · ${l['unitPrice']} rudy/szt.', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+                      Text('wygasa za ${fmtDuration(parseTime(l['expiresAt']).difference(DateTime.now()).inSeconds)}', style: lsMuted),
+                    ]),
+                    action: LsButton('Wycofaj', secondary: true, expand: false, color: Ls.locked, onPressed: state.busy ? null : () => act(state, () => state.api.delete('/market/listings/${l['id']}'), reload, ctx: context, okText: 'Wycofano ofertę')),
                   ),
                 ),
               const SectionTitle('Ostatnie transakcje'),
               if (trades.isEmpty) const EmptyNote('Brak transakcji.'),
               for (final t in trades)
-                ListTile(
-                  dense: true,
-                  leading: Icon(t['side'] == 'sold' ? Icons.arrow_upward : Icons.arrow_downward),
-                  title: Text('${t['side'] == 'sold' ? 'Sprzedano' : 'Kupiono'} ${t['qty']} × ${resName(t['material'] as String)} po ${t['unitPrice']}'),
-                  subtitle: Text('${t['counterparty'] == 'bot' ? 'bot' : 'gracz'}  ·  ${fmtInt(asNum(t['gross']))} rudy${asNum(t['fee']) > 0 ? ' (prowizja ${fmtInt(asNum(t['fee']))})' : ''}'),
+                LsCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(children: [
+                    Icon(t['side'] == 'sold' ? Icons.north_east : Icons.south_west, color: t['side'] == 'sold' ? const Color(0xFF9CE0B5) : Ls.amber, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${t['side'] == 'sold' ? 'Sprzedano' : 'Kupiono'} ${t['qty']} × ${resName(t['material'] as String)} po ${t['unitPrice']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+                        Text('${t['counterparty'] == 'bot' ? 'bot' : 'gracz'} · ${fmtInt(asNum(t['gross']))} rudy${asNum(t['fee']) > 0 ? ' (prowizja ${fmtInt(asNum(t['fee']))})' : ''}', style: lsMuted),
+                      ]),
+                    ),
+                  ]),
                 ),
             ],
           ),
@@ -312,19 +351,25 @@ class _Npc extends StatelessWidget {
         return ListenableBuilder(
           listenable: state,
           builder: (context, _) => ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             children: [
-              Text('Handlarz Przekaźnikowy sprzedaje po stałej cenie i dowozi od ręki. Skup botów jest tani i ma dzienny limit (zostało: $left szt.).'),
+              const Text('Handlarz Przekaźnikowy sprzedaje po stałej cenie i dowozi od ręki. Skup botów jest tani i ma dzienny limit.', style: lsBody),
+              const SizedBox(height: 8),
+              LsChip('skup botów dziś: zostało $left szt.', ok: left > 0),
+              const SizedBox(height: 12),
               for (final m in mats)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(m['name'] as String, style: Theme.of(context).textTheme.titleSmall),
-                      Text(geo.where((g) => g['id'] == m['id']).map((g) => 'W okolicy: ${localNames[g['local']] ?? g['local']}').join()),
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 8, children: [
-                        FilledButton.tonal(
+                LsCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    // Wrap: przy dużej czcionce chip schodzi pod nazwę zamiast wystawać poza kartę
+                    Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6, children: [
+                      Text(m['name'] as String, style: lsDisplay.copyWith(fontSize: 16)),
+                      for (final g in geo.where((g) => g['id'] == m['id'])) LsChip('w okolicy: ${localNames[g['local']] ?? g['local']}'),
+                    ]),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(
+                        child: LsButton(
+                          'Kup · ${m['npcPrice']}',
                           onPressed: state.busy
                               ? null
                               : () async {
@@ -333,9 +378,13 @@ class _Npc extends StatelessWidget {
                                   if (r == null || !context.mounted) return;
                                   await act(state, () => state.api.post('/exchange/buy', body: {'material': m['id'], 'qty': r.qty}, idempotent: true), reload, ctx: context, okText: 'Kupiono');
                                 },
-                          child: Text('Kup (${m['npcPrice']})'),
                         ),
-                        OutlinedButton(
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: LsButton(
+                          'Sprzedaj · ${m['botBid']}',
+                          secondary: true,
                           onPressed: (state.busy || left <= 0)
                               ? null
                               : () async {
@@ -344,11 +393,10 @@ class _Npc extends StatelessWidget {
                                   if (r == null || !context.mounted) return;
                                   await act(state, () => state.api.post('/market/sell-npc', body: {'material': m['id'], 'qty': r.qty}, idempotent: true), reload, ctx: context, okText: 'Sprzedano');
                                 },
-                          child: Text('Sprzedaj botom (${m['botBid']})'),
                         ),
-                      ]),
+                      ),
                     ]),
-                  ),
+                  ]),
                 ),
             ],
           ),
@@ -370,9 +418,9 @@ class _Caravans extends StatelessWidget {
         final d = asMap(data);
         final list = asList(d['shipments']);
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           children: [
-            Text('Karawany w drodze: ${list.where((s) => s['state'] == 'transit').length}/${d['maxActive']}', style: Theme.of(context).textTheme.titleMedium),
+            LsHeader('Karawany', subtitle: 'Towar kupiony od graczy jedzie do Twojego silosu.', trailing: LsStat('W DRODZE', '${list.where((s) => s['state'] == 'transit').length} / ${d['maxActive']}', alignEnd: true)),
             if (list.isEmpty) const EmptyNote('Nic nie jedzie. Kup coś w zakładce Oferty.'),
             for (final s in list) _ShipmentTile(s: s, reload: reload),
           ],
@@ -392,19 +440,44 @@ class _ShipmentTile extends StatelessWidget {
     final st = s['state'] as String;
     final qty = asNum(s['qty']).toInt();
     final got = asNum(s['deliveredQty']).toInt();
-    final title = '${resName(s['material'] as String)} × $qty  ·  ${fmtInt(asNum(s['distanceKm']))} km${s['insured'] == true ? '  ·  ubezpieczone' : ''}';
+    final title = '${resName(s['material'] as String)} × $qty · ${fmtInt(asNum(s['distanceKm']))} km';
     if (st == 'transit') {
-      return ListTile(
-        leading: const Icon(Icons.local_shipping_outlined),
-        title: Text(title),
-        subtitle: Row(children: [const Text('Dojedzie za '), Countdown(endsAt: parseTime(s['arrivesAt']), onDone: reload)]),
+      final dep = s['departedAt'] == null ? null : parseTime(s['departedAt']);
+      final arr = parseTime(s['arrivesAt']);
+      final total = dep == null ? 0 : arr.difference(dep).inSeconds;
+      final pct = total > 0 ? DateTime.now().difference(dep!).inSeconds / total : null;
+      return LsCard(
+        border: Ls.amber.withValues(alpha: 0.4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.local_shipping_outlined, color: Ls.amber),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text))),
+          ]),
+          if (s['insured'] == true) ...[const SizedBox(height: 6), const LsChip('ubezpieczone', color: Ls.teal)],
+          const SizedBox(height: 8),
+          LsMeter(pct),
+          const SizedBox(height: 4),
+          Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+            const Text('dojedzie za ', style: lsMuted),
+            Countdown(endsAt: arr, onDone: reload, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Ls.amber)),
+          ]),
+        ]),
       );
     }
     final lost = st == 'ambushed';
-    return ListTile(
-      leading: Icon(lost ? Icons.warning_amber : Icons.check_circle_outline, color: lost ? Colors.orangeAccent : Colors.greenAccent),
-      title: Text(title),
-      subtitle: Text(lost ? 'Zasadzka: dotarło $got z $qty szt.' : 'Dostarczono $got szt.'),
+    return LsCard(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(children: [
+        Text(lost ? '!' : '✓', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: lost ? Ls.warnText : const Color(0xFF9CE0B5))),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+            Text(lost ? 'Zasadzka: dotarło $got z $qty szt.' : 'Dostarczono $got szt.', style: lsMuted),
+          ]),
+        ),
+      ]),
     );
   }
 }
