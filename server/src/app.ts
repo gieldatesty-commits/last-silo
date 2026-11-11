@@ -17,6 +17,8 @@ import { acceptContractTx, listContracts } from './services/contracts.js';
 import { listShipments } from './services/caravans.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
 import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
+import { BillingUnavailable } from './billing.js';
+import { subscriptionView, syncToken, verifySubscriptionTx, type Billing } from './services/subscription.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -32,7 +34,20 @@ export interface AppDeps {
   now?: () => Date;
   scheduler?: Scheduler;
   seed?: () => number;
+  /** Google Play Billing; brak = płatności wyłączone (verify/rtdn zwracają 503 billing_disabled) */
+  billing?: Billing | null;
 }
+
+/** Koperta Pub/Sub push z RTDN (docs: developer.android.com/google/play/billing/rtdn-reference). */
+const RtdnEnvelope = z.object({ message: z.object({ data: z.string().min(1), messageId: z.string().optional() }), subscription: z.string().optional() });
+const DeveloperNotification = z.object({
+  packageName: z.string().optional(),
+  subscriptionNotification: z.object({ notificationType: z.number().int(), purchaseToken: z.string().min(1) }).optional(),
+  voidedPurchaseNotification: z.object({ purchaseToken: z.string().min(1), productType: z.number().int().optional() }).optional(),
+  testNotification: z.object({}).passthrough().optional(),
+});
+/** SUBSCRIPTION_REVOKED */
+const RTDN_REVOKED = 12;
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
@@ -71,7 +86,8 @@ export function buildApp(deps: AppDeps) {
   // Bramka sezonu: po końcu sezonu akcje zmieniające stan są zablokowane do startu następnego (przerwa na podsumowanie).
   let seasonCache: { endsAt: number; active: boolean; checkedAt: number } | null = null;
   app.addHook('onRequest', async (req, reply) => {
-    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.url.startsWith('/auth')) return;
+    // płatności działają także w przerwie między sezonami (subskrypcja przeżywa reset, Google wysyła RTDN o każdej porze)
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.url.startsWith('/auth') || req.url.startsWith('/subscription') || req.url.startsWith('/billing')) return;
     const nowMs = ctx.now().getTime();
     if (!seasonCache || !seasonCache.active || nowMs >= seasonCache.endsAt || nowMs - seasonCache.checkedAt > 30_000 || nowMs < seasonCache.checkedAt) {
       await seasonTick(ctx);
@@ -266,6 +282,49 @@ export function buildApp(deps: AppDeps) {
     const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await startResearchTx(trx, ctx, userId, id) }));
     if (!res.replay) await ctx.scheduler.schedule(userId, new Date((res.body as { endsAt: string }).endsAt)).catch(() => undefined);
     return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+
+  // Subskrypcja „Wygoda” (docs/subskrypcja-v1.0.md): wygoda, nie siła; stan zawsze z Google Play
+  const billing = deps.billing ?? null;
+  app.get('/subscription', { onRequest: auth }, async (req) => subscriptionView(ctx, billing, req.user.sub));
+  app.post('/subscription/verify', { onRequest: auth }, async (req, reply) => {
+    if (!billing) return reply.code(503).send({ error: 'billing_disabled' });
+    const body = z.object({ productId: z.string().min(1).max(100), purchaseToken: z.string().min(1).max(4096) }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    try {
+      const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 200, body: await verifySubscriptionTx(trx, ctx, billing, userId, body.productId, body.purchaseToken) }));
+      return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+    } catch (e) {
+      if (e instanceof BillingUnavailable) return reply.code(503).send({ error: 'billing_unavailable' });
+      throw e;
+    }
+  });
+  // Odbiornik RTDN (Pub/Sub push). Treść to tylko sygnał „sprawdź ten token”; stan pobieramy z Google.
+  // 2xx = Pub/Sub nie ponawia; 5xx przy awarii Google = ponowienie później.
+  app.post('/billing/rtdn', async (req, reply) => {
+    if (!billing) return reply.code(503).send({ error: 'billing_disabled' });
+    if (!(await billing.client.verifyPushAuth(req.headers.authorization))) return reply.code(401).send({ error: 'unauthorized' });
+    const env = RtdnEnvelope.safeParse(req.body);
+    if (!env.success) return reply.code(204).send();
+    let n: z.infer<typeof DeveloperNotification>;
+    try {
+      n = DeveloperNotification.parse(JSON.parse(Buffer.from(env.data.message.data, 'base64').toString('utf8')));
+    } catch {
+      return reply.code(204).send(); // śmieć: nie ma sensu ponawiać
+    }
+    if (n.packageName !== undefined && n.packageName !== billing.packageName) return reply.code(204).send();
+    const token = n.subscriptionNotification?.purchaseToken ?? (n.voidedPurchaseNotification?.productType === 2 ? undefined : n.voidedPurchaseNotification?.purchaseToken);
+    if (!token) return reply.code(204).send(); // test, zakup jednorazowy albo inny typ
+    const revoked = n.subscriptionNotification?.notificationType === RTDN_REVOKED || n.voidedPurchaseNotification !== undefined;
+    try {
+      await syncToken(ctx, billing, token, revoked);
+    } catch (e) {
+      if (e instanceof BillingUnavailable) return reply.code(503).send({ error: 'billing_unavailable' });
+      throw e;
+    }
+    return reply.code(204).send();
   });
 
   // Rozdanie wolnych punktów statystyk

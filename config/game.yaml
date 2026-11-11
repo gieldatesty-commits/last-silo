@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.4.0"
+version: "1.4.1"
 
 resources:
   - { id: ore, name: Ruda }
@@ -269,3 +269,10 @@ geology:
 exchange:
   radio: 5
   buy_ore: { miedz: 140, krysztal: 160, siarka: 150 }
+
+# Subskrypcja „Wygoda” (docs/subskrypcja-v1.0.md): tylko wygoda, zero siły. Liczba slotów kolejki zjazdów jest w dives.queue_slots.
+# Cenę i okres ustawia się w Play Console; tu są tylko identyfikatory produktów, które serwer przyjmuje.
+subscription:
+  product_ids: [wygoda]
+  perks: [dive_queue_slot]     # co pokazujemy w GET /subscription (identyfikatory, teksty w kliencie)
+  sync_lookahead_hours: 24     # subscription-sync odświeża wpisy wygasające w tym oknie (siatka bezpieczeństwa dla RTDN)

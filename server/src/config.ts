@@ -171,6 +171,12 @@ export const GameConfigSchema = z
         .min(1),
     }),
     exchange: z.object({ radio: z.number().int().min(1), buy_ore: z.record(z.string(), pos) }),
+    // subskrypcja „Wygoda”: produkty Google Play przyjmowane przez serwer; korzyści to wyłącznie wygoda (sloty w dives.queue_slots)
+    subscription: z.object({
+      product_ids: z.array(z.string().min(1)).min(1),
+      perks: z.array(z.string().min(1)).default([]),
+      sync_lookahead_hours: pos,
+    }),
     codex: z.array(z.object({ id: z.string(), tech: z.string(), title: z.string(), text: z.string() })),
     radio: z.object({
       levels: z.object({ receiver: z.number().int().min(1), transmitter: z.number().int().min(1), cipher: z.number().int().min(1), relays: z.number().int().min(1) }),

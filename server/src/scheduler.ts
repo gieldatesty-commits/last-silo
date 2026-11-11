@@ -2,16 +2,18 @@ import { PgBoss } from 'pg-boss';
 import type { Ctx, Scheduler } from './services/silo.js';
 import { settleUser } from './services/silo.js';
 import { seasonTick } from './services/season.js';
+import { syncDueSubscriptions, type Billing } from './services/subscription.js';
 
 const QUEUE = 'settle-silo';
 const SEASON_QUEUE = 'season-tick';
+const SUB_QUEUE = 'subscription-sync';
 
 export interface RunningScheduler extends Scheduler {
   stop(): Promise<void>;
 }
 
 /** Timery na pg-boss: o `ends_at` budzimy worker, który rozlicza silos. Rozliczenie jest idempotentne. */
-export async function startScheduler(ctx: Omit<Ctx, 'scheduler'>, connectionString: string): Promise<RunningScheduler> {
+export async function startScheduler(ctx: Omit<Ctx, 'scheduler'>, connectionString: string, billing: Billing | null = null): Promise<RunningScheduler> {
   const boss = new PgBoss(connectionString);
   boss.on('error', (e) => console.error('pg-boss', e));
   await boss.start();
@@ -45,6 +47,16 @@ export async function startScheduler(ctx: Omit<Ctx, 'scheduler'>, connectionStri
   await boss.work(SEASON_QUEUE, async () => {
     await seasonTick(full);
   });
+
+  // subskrypcje: siatka bezpieczeństwa, gdy RTDN zawiedzie (wygasające w oknie, grace/on_hold, niepotwierdzone)
+  if (billing) {
+    await boss.createQueue(SUB_QUEUE);
+    await boss.schedule(SUB_QUEUE, '17 * * * *');
+    await boss.work(SUB_QUEUE, async () => {
+      const r = await syncDueSubscriptions(full, billing);
+      if (r.failed > 0) console.error(`subscription-sync: ${r.failed}/${r.checked} nieudanych`);
+    });
+  }
 
   // po restarcie: zaplanuj ponownie wszystkie niezakończone zadania
   const pending = await ctx.db.selectFrom('jobs').select(['user_id', 'ends_at']).where('state', '=', 'pending').execute();
