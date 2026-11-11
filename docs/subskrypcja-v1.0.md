@@ -55,7 +55,7 @@ Tabela `subscriptions`:
 3. Test ręczny na koncie testera licencji: kupno, odnowienie (przyspieszone odnowienia testowe w Play), anulowanie, przywrócenie po reinstalacji (po powiązaniu konta).
 
 ## 7. Kolejność prac
-1. (Decyzja Damiana) powiązanie konta: Google Sign-In vs e-mail. → osobna specyfikacja i zadanie.
+1. Powiązanie konta: **Google Sign-In** (decyzja 2026-11-11), specyfikacja `docs/konto-google-v1.0.md`.
 2. Migracja 014, `PlayBillingClient` + atrapa, `recomputeSubscription`, `/subscription*`, testy, symulacja `--sub`.
 3. RTDN + zadanie `subscription-sync`.
 4. Klient: ekran „Wygoda”, kupno, restore.
