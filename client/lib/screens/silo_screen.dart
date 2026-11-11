@@ -7,18 +7,29 @@ import '../format.dart';
 import '../palette.dart';
 import '../strings.dart';
 
-/// Silos jako przekrój (docs/warstwa-wizualna-v1.0.md §3): zasoby, powierzchnia, linia gruntu i pomieszczenia
-/// pod ziemią. Logika bez zmian: dane z `/silo`, ulepszenie przez `state.upgrade`, odświeżenie pociągnięciem.
-class SiloScreen extends StatelessWidget {
+/// Silos (docs/warstwa-wizualna-v1.0.md §3, zmienione 2026-11-11): wszystkie budynki jako jednakowe karty w siatce
+/// 2 kolumn na tle przekroju (niebo, grunt, podziemie). Kabina windy w szybie po lewej jedzie razem z przewijaniem.
+/// Logika bez zmian: dane z `/silo`, ulepszenie przez `state.upgrade`, odświeżenie pociągnięciem.
+class SiloScreen extends StatefulWidget {
   final AppState state;
   const SiloScreen({super.key, required this.state});
 
-  /// Rozmieszczenie budynków w przekroju (prezentacja). Typy spoza list trafiają pod ziemię na koniec.
-  static const _surface = ['wartownia', 'szyb_glowny', 'radiostacja'];
-  static const _underground = ['generator_pary', 'magazyn', 'warsztat', 'laboratorium'];
+  @override
+  State<SiloScreen> createState() => _SiloScreenState();
+}
+
+class _SiloScreenState extends State<SiloScreen> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     return ListenableBuilder(
       listenable: state,
       builder: (context, _) {
@@ -29,15 +40,9 @@ class SiloScreen extends StatelessWidget {
         final caps = s['caps'] as Map;
         final rates = s['rates'] as Map;
         final job = s['job'] as Map?;
+        // kolejność jak w odpowiedzi serwera (config): Szyb, Generator, Magazyn, Warsztat, Wartownia, Laboratorium, Radiostacja
         final buildings = (s['buildings'] as List).cast<Map>();
-        final ore = (wallet['ore'] as num).toInt();
-        Map? byType(String t) => buildings.where((b) => b['type'] == t).firstOrNull;
-        final rooms = [
-          for (final t in _underground)
-            if (byType(t) case final b?) b,
-          ...buildings.where((b) => !_surface.contains(b['type']) && !_underground.contains(b['type'])),
-        ];
-        final ctl = _UpgradeCtl(state: state, ore: ore, job: job);
+        final ctl = _UpgradeCtl(state: state, ore: (wallet['ore'] as num).toInt(), job: job);
 
         return LsTheme(
           child: ColoredBox(
@@ -45,15 +50,16 @@ class SiloScreen extends StatelessWidget {
             child: RefreshIndicator(
               onRefresh: state.refresh,
               child: ListView(
+                controller: _scroll,
                 padding: EdgeInsets.zero,
                 children: [
                   _Hud(wallet: wallet, caps: caps, rates: rates),
                   _PlayerStrip(player: player),
                   if (s['windedUntil'] != null) _Banner(icon: Icons.air, text: 'Wyczerpany, odpoczywasz jeszcze ', endsAt: parseTime(s['windedUntil']), onDone: state.refresh),
                   if (s['protectedUntil'] != null) _Banner(icon: Icons.shield_outlined, text: 'Ochrona przed najazdami: ', endsAt: parseTime(s['protectedUntil']), onDone: state.refresh),
-                  _Surface(buildings: [for (final t in _surface) byType(t)], ctl: ctl),
+                  const _Sky(),
                   const _Ground(),
-                  _Underground(children: [for (final b in rooms) _RoomCard(b: b, ctl: ctl)]),
+                  _Underground(scroll: _scroll, buildings: buildings, ctl: ctl),
                 ],
               ),
             ),
@@ -163,139 +169,150 @@ class _Banner extends StatelessWidget {
       );
 }
 
-/// Pas powierzchni: Szyb główny w środku (skala 1), Wartownia i Radiostacja po bokach (0.75). Dotknięcie = szczegóły.
-class _Surface extends StatelessWidget {
-  const _Surface({required this.buildings, required this.ctl});
-  final List<Map?> buildings;
-  final _UpgradeCtl ctl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1B2433), Color(0xFF10141D)])),
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
-      child: LayoutBuilder(builder: (context, c) {
-        // szerokości 120 + 160 + 120 (skala 0.75 / 1 / 0.75) i odstępy muszą się zmieścić; na szerokich ekranach nie rosną bez końca
-        final unit = ((c.maxWidth - 12) / 400).clamp(0.0, 1.3);
-        return Row(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          for (var i = 0; i < buildings.length; i++)
-            if (buildings[i] != null) _SurfaceBuilding(b: buildings[i]!, width: 160 * unit * (i == 1 ? 1.0 : 0.75), ctl: ctl),
-        ]);
-      }),
-    );
-  }
-}
-
-class _SurfaceBuilding extends StatelessWidget {
-  const _SurfaceBuilding({required this.b, required this.width, required this.ctl});
-  final Map b;
-  final double width;
-  final _UpgradeCtl ctl;
-
-  @override
-  Widget build(BuildContext context) {
-    final level = (b['level'] as num).toInt();
-    return SizedBox(
-        width: width,
-        child: Semantics(
-          button: true,
-          label: '${b['name']}, poziom $level z ${b['maxLevel']}${ctl.upgrading(b) ? ', ulepszanie w toku' : ''}',
-          excludeSemantics: true,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _showDetails(context, b, ctl),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              BuildingArt.fromApi(b['type'] as String, level, width: width),
-              Text('${b['name']}', style: const TextStyle(fontSize: 12, color: Ls.text), textAlign: TextAlign.center),
-              Text(ctl.upgrading(b) ? 'ulepszanie…' : 'poz. $level', style: TextStyle(fontSize: 11, color: ctl.upgrading(b) ? Ls.amber : Ls.textMuted)),
-              const SizedBox(height: 4),
-            ]),
-          ),
-        ));
-  }
-}
-
-void _showDetails(BuildContext context, Map b, _UpgradeCtl ctl) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Ls.panel,
-    builder: (_) => ListenableBuilder(
-      listenable: ctl.state,
-      builder: (context, _) {
-        // po ulepszeniu stan się zmienia: bierzemy świeży wpis z `/silo`
-        final fresh = ((ctl.state.silo?['buildings'] as List?)?.cast<Map>() ?? const []).where((x) => x['type'] == b['type']).firstOrNull ?? b;
-        final wallet = ctl.state.silo?['wallet'] as Map?;
-        final live = _UpgradeCtl(state: ctl.state, ore: (wallet?['ore'] as num?)?.toInt() ?? ctl.ore, job: ctl.state.silo?['job'] as Map?);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-            child: Row(children: [
-              BuildingArt.fromApi(fresh['type'] as String, (fresh['level'] as num).toInt(), width: 120),
-              const SizedBox(width: 12),
-              Expanded(child: _RoomInfo(b: fresh, ctl: live)),
-            ]),
-          ),
-        );
-      },
-    ),
-  );
-}
-
 class _Ground extends StatelessWidget {
   const _Ground();
   @override
   Widget build(BuildContext context) => const SizedBox(height: 6, child: ColoredBox(color: Color(0xFF3A2A1E)));
 }
 
-/// Pod ziemią: szyb windy po lewej jako dekoracja, karty pomieszczeń po prawej.
+/// Niebo nad Silosem: gwiazdy i sylwetka horyzontu (dekoracja).
+class _Sky extends StatelessWidget {
+  const _Sky();
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: SizedBox(height: 56, width: double.infinity, child: CustomPaint(painter: _SkyPainter())),
+      );
+}
+
+class _SkyPainter extends CustomPainter {
+  final Paint _bg = Paint();
+  final Paint _star = Paint()..color = Ls.text.withValues(alpha: 0.45);
+  final Paint _hill = Paint()..color = const Color(0xFF161C28);
+  final Path _hills = Path();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _bg.shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1B2433), Color(0xFF10141D)]).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, _bg);
+    for (final (x, y, r) in const [(0.15, 0.25, 1.0), (0.38, 0.12, 1.2), (0.66, 0.3, 1.0), (0.87, 0.15, 1.2), (0.52, 0.45, 0.8)]) {
+      canvas.drawCircle(Offset(x * size.width, y * size.height), r, _star);
+    }
+    // sylwetka wzgórz (jak w makiecie Silos.dc.html, przeskalowana do szerokości)
+    final w = size.width / 390, h = size.height;
+    _hills
+      ..reset()
+      ..moveTo(0, h - 18)
+      ..lineTo(70 * w, h - 28)
+      ..lineTo(150 * w, h - 16)
+      ..lineTo(230 * w, h - 32)
+      ..lineTo(310 * w, h - 18)
+      ..lineTo(390 * w, h - 30)
+      ..lineTo(size.width, h)
+      ..lineTo(0, h)
+      ..close();
+    canvas.drawPath(_hills, _hill);
+  }
+
+  @override
+  bool shouldRepaint(_SkyPainter old) => false;
+}
+
+/// Podziemie: szyb windy po lewej i siatka kart (2 kolumny, karty w rzędzie równej wysokości).
 class _Underground extends StatelessWidget {
-  const _Underground({required this.children});
-  final List<Widget> children;
+  const _Underground({required this.scroll, required this.buildings, required this.ctl});
+  final ScrollController scroll;
+  final List<Map> buildings;
+  final _UpgradeCtl ctl;
+
+  static const _gap = 8.0;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF171B26), Color(0xFF0E1118)])),
       padding: const EdgeInsets.only(bottom: 16),
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const ExcludeSemantics(child: _Elevator()),
-          const SizedBox(width: 10),
-          Expanded(child: Column(children: children)),
-          const SizedBox(width: 8),
-        ]),
-      ),
+      child: Stack(children: [
+        Positioned(left: 8, top: 0, bottom: 0, width: 22, child: ExcludeSemantics(child: _Elevator(scroll: scroll))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(40, 0, 8, 0),
+          child: LayoutBuilder(builder: (context, c) {
+            final colW = (c.maxWidth - _gap) / 2;
+            return Column(children: [
+              for (var i = 0; i < buildings.length; i += 2)
+                Padding(
+                  padding: const EdgeInsets.only(top: _gap),
+                  child: IntrinsicHeight(
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      SizedBox(width: colW, child: _BuildingCard(b: buildings[i], ctl: ctl, artWidth: colW - 20)),
+                      const SizedBox(width: _gap),
+                      SizedBox(width: colW, child: i + 1 < buildings.length ? _BuildingCard(b: buildings[i + 1], ctl: ctl, artWidth: colW - 20) : null),
+                    ]),
+                  ),
+                ),
+            ]);
+          }),
+        ),
+      ]),
     );
   }
 }
 
+/// Szyb windy: lina i kabina. Pozycja kabiny = postęp przewijania ekranu (0 = góra, 1 = dół).
 class _Elevator extends StatelessWidget {
-  const _Elevator();
+  const _Elevator({required this.scroll});
+  final ScrollController scroll;
+
+  static const _cabin = 16.0;
+
   @override
-  Widget build(BuildContext context) => Container(
-        width: 22,
-        margin: const EdgeInsets.only(left: 8),
-        decoration: const BoxDecoration(color: Ls.bg, border: Border.symmetric(vertical: BorderSide(color: Ls.steel, width: 2))),
-        alignment: const Alignment(0, -0.2),
-        child: Container(width: 12, height: 16, decoration: BoxDecoration(color: Ls.copper, borderRadius: BorderRadius.circular(2))),
-      );
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Ls.bg, border: Border.symmetric(vertical: BorderSide(color: Ls.steel, width: 2))),
+      child: LayoutBuilder(builder: (context, c) {
+        return ListenableBuilder(
+          listenable: scroll,
+          builder: (context, _) {
+            var t = 0.0;
+            if (scroll.hasClients && scroll.position.hasContentDimensions && scroll.position.maxScrollExtent > 0) {
+              t = (scroll.position.pixels / scroll.position.maxScrollExtent).clamp(0.0, 1.0);
+            }
+            final top = 6 + t * (c.maxHeight - _cabin - 12);
+            return Stack(clipBehavior: Clip.hardEdge, children: [
+              Positioned(left: 8, top: 0, width: 2, height: top, child: const ColoredBox(color: Color(0x66E8E3D6))),
+              Positioned(
+                left: 3,
+                top: top,
+                width: 12,
+                height: _cabin,
+                child: DecoratedBox(decoration: BoxDecoration(color: Ls.copper, borderRadius: BorderRadius.circular(2))),
+              ),
+            ]);
+          },
+        );
+      }),
+    );
+  }
 }
 
-class _RoomCard extends StatelessWidget {
-  const _RoomCard({required this.b, required this.ctl});
+/// Jednakowa karta budynku: grafika u góry, pod nią nazwa, poziom i ulepszenie.
+class _BuildingCard extends StatelessWidget {
+  const _BuildingCard({required this.b, required this.ctl, required this.artWidth});
   final Map b;
   final _UpgradeCtl ctl;
+  final double artWidth;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      constraints: const BoxConstraints(minHeight: 128),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(color: Ls.card, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(14)),
-      child: Row(children: [
-        BuildingArt.fromApi(b['type'] as String, (b['level'] as num).toInt(), width: 132),
-        const SizedBox(width: 10),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      decoration: BoxDecoration(
+        color: Ls.card,
+        border: Border.all(color: ctl.upgrading(b) ? Ls.amber.withValues(alpha: 0.6) : Ls.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: BuildingArt.fromApi(b['type'] as String, (b['level'] as num).toInt(), width: artWidth)),
+        const SizedBox(height: 4),
         Expanded(child: _RoomInfo(b: b, ctl: ctl)),
       ]),
     );
@@ -312,11 +329,12 @@ class _RoomInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final next = b['next'] as Map?;
     final cost = (next?['cost'] as num?)?.toInt();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Text('${b['name']}', style: _display.copyWith(fontSize: 16)),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('${b['name']}', style: _display.copyWith(fontSize: 15)),
       const SizedBox(height: 2),
       Text('poz. ${b['level']} z ${b['maxLevel']}', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
       const SizedBox(height: 8),
+      const Spacer(),
       if (ctl.upgrading(b))
         _JobProgress(job: ctl.job!, totalSeconds: (next?['seconds'] as num?)?.toInt(), onDone: ctl.state.refresh)
       else if (next == null)

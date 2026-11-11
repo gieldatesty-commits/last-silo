@@ -54,6 +54,8 @@ Nazwa, gałąź, znacznik stanu (tekst + symbol), opis efektu (`effectText` z `s
 - Dotknięcie karty = jak dziś (szczegóły/ulepszenie); nic nowego w logice.
 - Dolna nawigacja zostaje `NavigationBar` z `shell.dart` (makieta ją tylko ilustruje).
 
+**Zmiana 2026-11-11 (decyzja Damiana):** zamiast przekroju z budynkami na powierzchni i pomieszczeniami pod ziemią wszystkie 7 budynków to jednakowe karty w siatce 2 kolumn (grafika u góry, nazwa, poziom, przycisk/postęp). Przekrój zostaje tłem: niebo z horyzontem, linia gruntu, podziemie. Kabina windy w szybie po lewej jedzie razem z przewijaniem (wskaźnik pozycji na ekranie).
+
 ## 4. Grafiki budynków
 - Siedem budynków x trzy warianty (`BuildingArt(type, level)`; wariant z progów: poz. 1–3 = 1, 4–7 = 2, 8+ = 3). Progi jako stała w `building_art.dart`, bo to prezentacja, a nie balans.
 - Implementacja: **`CustomPainter` z wektorów** (bez plików obrazów), jedna klasa `BuildingPainter` z `switch (type)` po `sealed`/enum i warstwami `tier >= 2`, `tier >= 3`. Współrzędne przepisz 1:1 z `Building.dc.html` (viewBox 160x120, skalowanie `canvas.scale`). To tanie w APK i skalowalne; alternatywa `flutter_svg` + 21 plików SVG jest dopuszczalna, jeśli painter okaże się zbyt żmudny.
