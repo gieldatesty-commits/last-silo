@@ -24,6 +24,14 @@ void main() {
     final q = parseSvgPath('M24 58 L24 40 L52 58 H128 V60Z').getBounds();
     expect(q, const Rect.fromLTRB(24, 40, 128, 60));
     expect(() => parseSvgPath('M0 0 Q1 1 2 2'), throwsFormatException);
+    // względne komendy i krzywe (ikony slotów w Warsztacie)
+    expect(parseSvgPath('M10 10 h5 v5 l-5 0 z').getBounds(), const Rect.fromLTRB(10, 10, 15, 15));
+    // środek krzywej Béziera (0,0)→(10,0) z punktami kontrolnymi na y=10 leży w (5, 7.5)
+    final m = parseSvgPath('M0 0c0 10 10 10 10 0').computeMetrics().first;
+    final mid = m.getTangentForOffset(m.length / 2)!.position;
+    expect(mid.dx, closeTo(5, 0.05));
+    expect(mid.dy, closeTo(7.5, 0.05));
+    expect(parseSvgPath('M4 15a8 8 0 0 1 16 0v2H4z').getBounds().right, closeTo(20, 0.01));
   });
 
   testWidgets('wszystkie 7 x 3 wariantów rysuje się bez błędu i jest wykluczonych z Semantics', (tester) async {

@@ -84,7 +84,7 @@ Path _shapePath(ArtShape s) {
   }
 }
 
-/// Parser podzbioru SVG path data używanego w makiecie: bezwzględne M, L, H, V, A, Z.
+/// Parser podzbioru SVG path data używanego w makietach: M, L, H, V, C, A, Z, bezwzględne i względne (małe litery).
 Path parseSvgPath(String d) {
   final path = Path();
   final tokens = RegExp(r'[A-Za-z]|-?\d*\.?\d+').allMatches(d).map((m) => m.group(0)!).toList();
@@ -96,30 +96,42 @@ Path parseSvgPath(String d) {
   while (i < tokens.length) {
     if (RegExp(r'^[A-Za-z]$').hasMatch(tokens[i])) {
       cmd = tokens[i++];
-      if (cmd == 'Z') {
+      if (cmd == 'Z' || cmd == 'z') {
         path.close();
         cur = start;
         continue;
       }
     }
-    switch (cmd) {
+    final rel = cmd == cmd.toLowerCase();
+    Offset pt() {
+      final p = Offset(n(), n());
+      return rel ? cur + p : p;
+    }
+
+    switch (cmd.toUpperCase()) {
       case 'M':
-        cur = Offset(n(), n());
+        cur = pt();
         start = cur;
         path.moveTo(cur.dx, cur.dy);
-        cmd = 'L'; // kolejne pary po M to linie
+        cmd = rel ? 'l' : 'L'; // kolejne pary po M to linie
       case 'L':
-        cur = Offset(n(), n());
+        cur = pt();
         path.lineTo(cur.dx, cur.dy);
       case 'H':
-        cur = Offset(n(), cur.dy);
+        final x = n();
+        cur = Offset(rel ? cur.dx + x : x, cur.dy);
         path.lineTo(cur.dx, cur.dy);
       case 'V':
-        cur = Offset(cur.dx, n());
+        final y = n();
+        cur = Offset(cur.dx, rel ? cur.dy + y : y);
         path.lineTo(cur.dx, cur.dy);
+      case 'C':
+        final c1 = pt(), c2 = pt(), end = pt();
+        path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, end.dx, end.dy);
+        cur = end;
       case 'A':
         final rx = n(), ry = n(), rot = n(), large = n() != 0, sweep = n() != 0;
-        cur = Offset(n(), n());
+        cur = pt();
         path.arcToPoint(cur, radius: Radius.elliptical(rx, ry), rotation: rot, largeArc: large, clockwise: sweep);
       default:
         throw FormatException('nieobsługiwana komenda SVG $cmd w "$d"');
