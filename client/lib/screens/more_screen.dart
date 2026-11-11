@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../strings.dart';
 import '../widgets.dart';
+import 'art_preview_screen.dart';
 import 'contracts_screen.dart';
 import 'market_screen.dart';
 import 'radio_screen.dart';
@@ -31,6 +33,8 @@ class MoreScreen extends StatelessWidget {
       (Icons.assignment_outlined, 'Zlecenia', 'Dzienna tablica zleceń NPC', () => ContractsScreen(state: state)),
       (Icons.event_outlined, 'Sezon', 'Postęp, tytuły, wyniki', () => SeasonScreen(state: state)),
       (Icons.terrain_outlined, 'Geologia', 'Czym obfituje Twoja okolica', () => _Geology(state: state)),
+      // tylko w buildzie debug: porównanie grafik z arkuszem makiety
+      if (kDebugMode) (Icons.grid_view, 'Grafiki budynków', 'Podgląd 7 x 3 (debug)', () => const ArtPreviewScreen()),
     ];
     return ListView(
       children: [
