@@ -1,6 +1,9 @@
 import { Kysely, PostgresDialect, type Generated } from 'kysely';
 import pg from 'pg';
 
+/** Stan subskrypcji po naszej stronie (mapowany z Google Play). Korzyści dają: active, grace, canceled_active. */
+export type SubscriptionState = 'active' | 'grace' | 'on_hold' | 'canceled_active' | 'expired' | 'revoked' | 'pending';
+
 // pg zwraca bigint/numeric jako string, double jako number
 export interface Database {
   users: { id: Generated<string>; guest_secret_hash: string; google_sub: string | null; created_at: Generated<Date> };
@@ -32,6 +35,22 @@ export interface Database {
   seasons: { id: number; started_at: Date; ends_at: Date; state: Generated<'active' | 'ended'>; closed_at: Date | null };
   season_results: { season_id: number; user_id: string; nickname: string; rank: number; players_total: number; power: number; level: number; loot: Generated<string>; title: string | null; start_bonus_ore: Generated<number> };
   wallets: { user_id: string; resource: string; balance: Generated<string> };
+  subscriptions: {
+    id: Generated<string>;
+    user_id: string;
+    provider: Generated<'google_play'>;
+    purchase_token: string;
+    product_id: string;
+    state: SubscriptionState;
+    started_at: Date;
+    expires_at: Date;
+    auto_renewing: Generated<boolean>;
+    linked_purchase_token: string | null;
+    acknowledged: Generated<boolean>;
+    last_synced_at: Date;
+    raw: Generated<unknown>;
+    created_at: Generated<Date>;
+  };
   ledger_entries: {
     id: Generated<string>;
     user_id: string;
