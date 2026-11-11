@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'api.dart';
 import 'app_state.dart';
@@ -6,7 +8,15 @@ import 'screens/onboarding.dart';
 import 'screens/shell.dart';
 import 'strings.dart';
 
-void main() => runApp(const LastSiloApp());
+void main() {
+  // licencje czcionek z paczki (SIL OFL 1.1) w ekranie licencji
+  LicenseRegistry.addLicense(() async* {
+    for (final (pkg, file) in [('Space Grotesk', 'OFL-SpaceGrotesk.txt'), ('Inter', 'OFL-Inter.txt')]) {
+      yield LicenseEntryWithLineBreaks([pkg], await rootBundle.loadString('assets/fonts/$file'));
+    }
+  });
+  runApp(const LastSiloApp());
+}
 
 class LastSiloApp extends StatefulWidget {
   const LastSiloApp({super.key});

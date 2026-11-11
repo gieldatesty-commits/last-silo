@@ -16,14 +16,16 @@ class LabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: ColoredBox(
-        color: Ls.bg,
-        child: Column(children: [
-          const TabBar(tabs: [Tab(text: 'Badania'), Tab(text: 'Kodeks')]),
-          Expanded(child: TabBarView(children: [_Research(state: state), _Codex(state: state)])),
-        ]),
+    return LsTheme(
+      child: DefaultTabController(
+        length: 2,
+        child: ColoredBox(
+          color: Ls.bg,
+          child: Column(children: [
+            const TabBar(tabs: [Tab(text: 'Badania'), Tab(text: 'Kodeks')]),
+            Expanded(child: TabBarView(children: [_Research(state: state), _Codex(state: state)])),
+          ]),
+        ),
       ),
     );
   }
@@ -414,7 +416,10 @@ class _Caption extends StatelessWidget {
   final List<LabNode> others;
   @override
   Widget build(BuildContext context) {
-    final r = captionRect(node.pos, [for (final o in others) if (o.id != node.id) o.pos]);
+    final r = captionRect(node.pos, [
+      for (final o in others)
+        if (o.id != node.id) o.pos
+    ]);
     return Positioned(
       left: r.left,
       top: r.top,
@@ -506,7 +511,9 @@ class _Panel extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text((branchNames[node.branch] ?? node.branch).toUpperCase(), style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: c))),
+              Expanded(
+                  child:
+                      Text((branchNames[node.branch] ?? node.branch).toUpperCase(), style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: c))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(

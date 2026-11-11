@@ -39,23 +39,23 @@ class SiloScreen extends StatelessWidget {
         ];
         final ctl = _UpgradeCtl(state: state, ore: ore, job: job);
 
-        return ColoredBox(
-          color: Ls.bg,
-          child: RefreshIndicator(
-            onRefresh: state.refresh,
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _Hud(wallet: wallet, caps: caps, rates: rates),
-                _PlayerStrip(player: player),
-                if (s['windedUntil'] != null)
-                  _Banner(icon: Icons.air, text: 'Wyczerpany, odpoczywasz jeszcze ', endsAt: parseTime(s['windedUntil']), onDone: state.refresh),
-                if (s['protectedUntil'] != null)
-                  _Banner(icon: Icons.shield_outlined, text: 'Ochrona przed najazdami: ', endsAt: parseTime(s['protectedUntil']), onDone: state.refresh),
-                _Surface(buildings: [for (final t in _surface) byType(t)], ctl: ctl),
-                const _Ground(),
-                _Underground(children: [for (final b in rooms) _RoomCard(b: b, ctl: ctl)]),
-              ],
+        return LsTheme(
+          child: ColoredBox(
+            color: Ls.bg,
+            child: RefreshIndicator(
+              onRefresh: state.refresh,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _Hud(wallet: wallet, caps: caps, rates: rates),
+                  _PlayerStrip(player: player),
+                  if (s['windedUntil'] != null) _Banner(icon: Icons.air, text: 'Wyczerpany, odpoczywasz jeszcze ', endsAt: parseTime(s['windedUntil']), onDone: state.refresh),
+                  if (s['protectedUntil'] != null) _Banner(icon: Icons.shield_outlined, text: 'Ochrona przed najazdami: ', endsAt: parseTime(s['protectedUntil']), onDone: state.refresh),
+                  _Surface(buildings: [for (final t in _surface) byType(t)], ctl: ctl),
+                  const _Ground(),
+                  _Underground(children: [for (final b in rooms) _RoomCard(b: b, ctl: ctl)]),
+                ],
+              ),
             ),
           ),
         );
@@ -195,21 +195,23 @@ class _SurfaceBuilding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = (b['level'] as num).toInt();
-    return SizedBox(width: width, child: Semantics(
-      button: true,
-      label: '${b['name']}, poziom $level z ${b['maxLevel']}${ctl.upgrading(b) ? ', ulepszanie w toku' : ''}',
-      excludeSemantics: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showDetails(context, b, ctl),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          BuildingArt.fromApi(b['type'] as String, level, width: width),
-          Text('${b['name']}', style: const TextStyle(fontSize: 12, color: Ls.text), textAlign: TextAlign.center),
-          Text(ctl.upgrading(b) ? 'ulepszanie…' : 'poz. $level', style: TextStyle(fontSize: 11, color: ctl.upgrading(b) ? Ls.amber : Ls.textMuted)),
-          const SizedBox(height: 4),
-        ]),
-      ),
-    ));
+    return SizedBox(
+        width: width,
+        child: Semantics(
+          button: true,
+          label: '${b['name']}, poziom $level z ${b['maxLevel']}${ctl.upgrading(b) ? ', ulepszanie w toku' : ''}',
+          excludeSemantics: true,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _showDetails(context, b, ctl),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              BuildingArt.fromApi(b['type'] as String, level, width: width),
+              Text('${b['name']}', style: const TextStyle(fontSize: 12, color: Ls.text), textAlign: TextAlign.center),
+              Text(ctl.upgrading(b) ? 'ulepszanie…' : 'poz. $level', style: TextStyle(fontSize: 11, color: ctl.upgrading(b) ? Ls.amber : Ls.textMuted)),
+              const SizedBox(height: 4),
+            ]),
+          ),
+        ));
   }
 }
 

@@ -28,3 +28,19 @@ abstract final class Ls {
   static const display = 'SpaceGrotesk';
   static const body = 'Inter';
 }
+
+/// Motyw ekranów warstwy wizualnej (Silos, Laboratorium): treść w Inter, także w przyciskach i zakładkach.
+/// Reszta aplikacji zostaje na obecnym Material 3 (ujednolicenie w osobnym kroku).
+class LsTheme extends StatelessWidget {
+  const LsTheme({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Theme(
+      data: t.copyWith(textTheme: t.textTheme.apply(fontFamily: Ls.body), primaryTextTheme: t.primaryTextTheme.apply(fontFamily: Ls.body)),
+      child: DefaultTextStyle.merge(style: const TextStyle(fontFamily: Ls.body), child: child),
+    );
+  }
+}

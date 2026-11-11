@@ -17,3 +17,15 @@ dev_dependencies:
     sdk: flutter
 flutter:
   uses-material-design: true
+  # licencje OFL czcionek (pokazywane w ekranie licencji, wymóg OFL)
+  assets:
+    - assets/fonts/OFL-SpaceGrotesk.txt
+    - assets/fonts/OFL-Inter.txt
+  # czcionki zmienne (oś wght) w paczce, bez pobierania w runtime (docs/warstwa-wizualna-v1.0.md §5)
+  fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Variable.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
