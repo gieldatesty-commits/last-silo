@@ -1,0 +1,1 @@
+{"listings":[],"trades":[{"id":"2","material":"siarka","qty":2,"unitPrice":45,"side":"sold","counterparty":"bot","gross":90,"fee":0,"at":"2026-11-11T16:08:07.922Z"},{"id":"1","material":"miedz","qty":4,"unitPrice":100,"side":"bought","counterparty":"gracz","gross":400,"fee":0,"at":"2026-11-11T16:08:06.836Z"}]}

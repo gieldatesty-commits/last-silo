@@ -91,3 +91,10 @@ Przeczytaj `CLAUDE.md` i `docs/warstwa-wizualna-v1.0.md` (skopiuj tam ten plik).
 - Stany węzłów muszą mieć sygnał inny niż kolor; uszanuj `disableAnimations`.
 - Po każdym kroku: `flutter analyze` i `flutter test`; krótki commit po polsku.
 - Na końcu podaj mi listę: co działa, co sprawdziłeś na emulatorze, czego nie dało się sprawdzić.
+
+## 8. Rozszerzenie (2026-11-11): Zjazdy, Warsztat i ekrany z „Więcej”
+- Zjazdy i Warsztat według makiet `Zjazdy.dc.html` i `Warsztat.dc.html` (zaakceptowane przez Damiana).
+- „Więcej” (decyzja: od razu kod, bez makiet): menu jako kafelki 2 kolumny z żywym szczegółem (poziom i wolne punkty, stan Radia, dzień sezonu, złoże); Postać, Radio (radar sygnałów: kierunek z sektora, odległość względem zasięgu, namierzone = pełny punkt, nieznane = pusty krąg), Najazdy (siła przeciwnika znakiem ▼ ≈ ▲ i słowem), Ranking, Rynek (4 zakładki), Zlecenia, Sezon, Geologia (miernik 3/2/1 + słowo).
+- Wspólne klocki w `client/lib/ui.dart` (`LsCard`, `LsChip`, `LsButton`, `LsHeader`, `LsMeter`, `LsStat`, `LsActionRow`); `SectionTitle`, `InfoBanner`, `EmptyNote`, `SubScreen` w nowym stylu, więc każdy podekran ma ciemny motyw.
+- Zasada układu: wysokości minimalne, nie stałe; wiersz „opis + przycisk” (`LsActionRow`) przy szerokości < 300 dp albo skali tekstu > 1,3 przenosi przycisk pod opis.
+- Testy: każdy ekran przy 411x860 i 320x640 ze skalą tekstu 1,5 (brak przepełnień i uciętych przycisków, przewinięcie do końca), akcje idą tymi samymi trasami API.

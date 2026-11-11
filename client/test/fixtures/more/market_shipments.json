@@ -1,0 +1,1 @@
+{"maxActive":6,"shipments":[{"id":"1","material":"miedz","qty":4,"deliveredQty":null,"state":"transit","insured":true,"distanceKm":18500,"shipFee":360,"departedAt":"2026-11-11T16:08:06.836Z","arrivesAt":"2026-11-12T22:58:06.836Z","etaMinutes":1630}]}
