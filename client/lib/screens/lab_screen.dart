@@ -531,9 +531,8 @@ class _Panel extends StatelessWidget {
               for (final (text, ok) in chips) _Chip(text: text, ok: ok),
             ]),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 46, minWidth: double.infinity),
               child: FilledButton(
                 key: const ValueKey('lab-action'),
                 onPressed: idle ? () => act(state, () => state.api.post('/research/${node.id}/start', idempotent: true), reload, ctx: context, okText: 'Badanie rozpoczęte') : null,
@@ -543,6 +542,7 @@ class _Panel extends StatelessWidget {
                   disabledBackgroundColor: Ls.chip,
                   disabledForegroundColor: Ls.textMuted,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 child: label,

@@ -320,9 +320,9 @@ class _RoomInfo extends StatelessWidget {
       else if (next == null)
         const Text('Maksymalny poziom', style: TextStyle(fontSize: 13, color: Ls.textMuted))
       else ...[
-        SizedBox(
-          height: 44,
-          width: double.infinity,
+        ConstrainedBox(
+          // minimalna, nie stała wysokość: przy dużej czcionce przycisk rośnie zamiast ucinać tekst
+          constraints: const BoxConstraints(minHeight: 44, minWidth: double.infinity),
           child: OutlinedButton(
             onPressed: ctl.canUpgrade(b) ? () => ctl.upgrade(b) : null,
             style: OutlinedButton.styleFrom(
@@ -330,8 +330,9 @@ class _RoomInfo extends StatelessWidget {
               backgroundColor: const Color(0xFF1A1410),
               side: BorderSide(color: ctl.canUpgrade(b) ? Ls.copper : Ls.border),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            child: Text('Ulepsz · ${fmtInt(cost!)} rudy', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            child: Text('Ulepsz · ${fmtInt(cost!)} rudy', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           ),
         ),
         const SizedBox(height: 4),
