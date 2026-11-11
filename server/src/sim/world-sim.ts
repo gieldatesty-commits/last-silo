@@ -498,6 +498,21 @@ for (const s of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
   console.log(`  ${s.padEnd(12)} poz. ${avg((p) => p.level).padStart(5)} | szyb L${avg((p) => p.silo.levels.szyb_glowny)} | ze zjazdów ${avg((p) => p.diveOre).padStart(8)} | z szybu ${avg((p) => p.prodOre).padStart(8)} | udział zjazdów ${(100 * d / (d + sh)).toFixed(0)}%`);
 }
 
+// Subskrypcja „Wygoda” (docs/subskrypcja-v1.0.md §6.1): przy 0 < --sub < 1 porównujemy w tym samym świecie
+// (te same pule i rynek), osobno dla każdego stylu, bo subskrybenci losują się nierówno między styl.
+if (SUB > 0 && SUB < 1) {
+  console.log(`\nSubskrypcja (--sub=${SUB}): dochód (zjazdy + szyb) subskrybenta vs bez, ten sam styl:`);
+  const isSub = (p: P) => p.slots === cfg.dives.queue_slots.subscriber;
+  for (const s of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
+    const inc = (g: P[]) => g.reduce((a, p) => a + p.diveOre + p.prodOre, 0) / Math.max(1, g.length);
+    const share = (g: P[]) => { const d = g.reduce((a, p) => a + p.diveOre, 0), sh = g.reduce((a, p) => a + p.prodOre, 0); return (100 * d) / Math.max(1, d + sh); };
+    const subs = players.filter((p) => p.style === s && isSub(p)), free = players.filter((p) => p.style === s && !isSub(p));
+    if (!subs.length || !free.length) continue;
+    const adv = (100 * (inc(subs) - inc(free))) / Math.max(1, inc(free));
+    console.log(`  ${s.padEnd(12)} sub ${String(subs.length).padStart(3)} os. ${Math.round(inc(subs)).toString().padStart(8)} (zjazdy ${share(subs).toFixed(0)}%) | bez ${String(free.length).padStart(3)} os. ${Math.round(inc(free)).toString().padStart(8)} (zjazdy ${share(free).toFixed(0)}%) | przewaga ${adv >= 0 ? '+' : ''}${adv.toFixed(1)}%`);
+  }
+}
+
 const avgAll = (f: (p: P) => number) => players.reduce((a, p) => a + f(p), 0) / players.length;
 const sp = (k: keyof P['spent']) => avgAll((p) => p.spent[k]);
 const income = avgAll((p) => p.diveOre + p.prodOre);
