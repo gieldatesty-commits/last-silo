@@ -270,6 +270,23 @@ describe('cykl życia (RTDN i subscription-sync)', () => {
     expect((await dive('dive-0003')).json().error).toBe('queue_full');
   });
 
+  it('slot subskrypcji tylko dla krótkich tras: trzeci długi zjazd = short_route_only, krótki przechodzi', async () => {
+    const a = await subscribed();
+    await db.updateTable('players').set({ level: 5 }).where('user_id', '=', a.id).execute();
+    const max = config.dives.queue_slots.subscriber_extra_max_seconds;
+    const long = config.dives.routes.find((r) => r.seconds > max && r.min_level <= 5)!;
+    const short = config.dives.routes.find((r) => r.seconds <= max)!;
+    const dive = (key: string, routeId: string) => app.inject({ method: 'POST', url: '/dives', headers: { ...a.h, 'idempotency-key': key }, payload: { routeId } });
+    expect((await dive('long-0001', long.id)).statusCode).toBe(201);
+    expect((await dive('long-0002', long.id)).statusCode).toBe(201);
+    const r = await dive('long-0003', long.id);
+    expect(r.statusCode).toBe(409);
+    expect(r.json().error).toBe('short_route_only');
+    expect((await dive('short-0001', short.id)).statusCode).toBe(201);
+    expect((await dive('short-0002', short.id)).json().error).toBe('queue_full');
+    expect((await app.inject({ url: '/silo', headers: a.h })).json().queueExtraMaxSeconds).toBe(max);
+  });
+
   it('subscription-sync: odnowienie bez RTDN i ponowne potwierdzenie, gdy acknowledge zawiódł', async () => {
     const a = await newPlayer();
     fake.set('tok', { productId: PRODUCT, expiryTime: at(1), obfuscatedAccountId: a.obf });
@@ -337,5 +354,18 @@ describe('parseSubscriptionV2 (kształt odpowiedzi purchases.subscriptionsv2.get
     expect(p).toMatchObject({ productId: 'wygoda', state: 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', autoRenewing: true, linkedPurchaseToken: 'stary', acknowledged: true, obfuscatedAccountId: 'abc', testPurchase: true });
     expect(p.expiryTime.toISOString()).toBe('2026-05-01T10:00:00.000Z');
     expect(() => parseSubscriptionV2({ subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE' })).toThrow();
+  });
+});
+
+describe('queueCheck (reguła kolejki zjazdów)', () => {
+  it('bez subskrypcji: limit free niezależnie od długości', async () => {
+    const { queueCheck } = await import('../src/game/dive.js');
+    const q = { free: 2, subscriber: 3, subscriber_extra_max_seconds: 1800 };
+    expect(queueCheck(q, false, [], 3600)).toBe('ok');
+    expect(queueCheck(q, false, [180, 3600], 180)).toBe('queue_full');
+    expect(queueCheck(q, true, [3600, 3600], 3600)).toBe('short_route_only');
+    expect(queueCheck(q, true, [3600, 3600], 1800)).toBe('ok');
+    expect(queueCheck(q, true, [180, 3600], 3600)).toBe('ok'); // krótki już zajmuje „dodatkowe” miejsce
+    expect(queueCheck(q, true, [180, 180, 180], 180)).toBe('queue_full');
   });
 });

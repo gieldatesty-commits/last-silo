@@ -4,7 +4,7 @@ import { BUILDING_TYPES, type BuildingType, type GameConfig } from '../config.js
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
 import { initialLevels, maxLevelOf, oreCap, orePerHour, protectedShare, steamCap, steamRegen, upgradeCost, upgradeSeconds, type Levels } from '../game/formulas.js';
 import { rng } from '../game/rng.js';
-import { addXp, diveChance, regenPool, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
+import { addXp, diveChance, queueCheck, regenPool, resolveDive, routeRewards, steamCost, xpToNext, type Route, type Stats } from '../game/dive.js';
 import { describeProfile, geologyProfile } from '../game/geology.js';
 import { placeSilo, rollLocalDeposit, type LatLon } from '../game/world.js';
 import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
@@ -286,6 +286,8 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
     }),
     queue: diveRows.map((d) => ({ id: String(d.id), routeId: d.route_id, startsAt: d.started_at, endsAt: d.ends_at, running: d.started_at <= st.state.at })),
     queueSlots: queueSlots(cfg, p.subscription_until, st.state.at),
+    // sloty ponad queue_slots.free (subskrypcja) przyjmują tylko trasy do tylu sekund
+    queueExtraMaxSeconds: cfg.dives.queue_slots.subscriber_extra_max_seconds,
     radio: { level: lv.radiostacja, receiver: lv.radiostacja >= cfg.radio.levels.receiver, transmitter: lv.radiostacja >= cfg.radio.levels.transmitter, on: p.radio_on },
     protectedUntil: p.protected_until && p.protected_until > st.state.at ? p.protected_until : null,
     windedUntil: siloRow.winded_until && siloRow.winded_until > st.state.at ? siloRow.winded_until : null,
@@ -352,8 +354,11 @@ export async function startDiveTx(trx: Trx, ctx: Ctx, userId: string, routeId: s
   const st = await settle(trx, cfg, userId, now);
   const p = await trx.selectFrom('players').selectAll().where('user_id', '=', userId).executeTakeFirstOrThrow();
   if (p.level < route.min_level) throw new GameError(409, 'level_too_low');
-  const pending = await trx.selectFrom('dives').select(['ends_at']).where('user_id', '=', userId).where('state', '=', 'active').orderBy('ends_at').execute();
-  if (pending.length >= queueSlots(cfg, p.subscription_until, now)) throw new GameError(409, 'queue_full');
+  const pending = await trx.selectFrom('dives').select(['ends_at', 'route_id']).where('user_id', '=', userId).where('state', '=', 'active').orderBy('ends_at').execute();
+  const subscriber = !!p.subscription_until && p.subscription_until > now;
+  const secondsOf = (id: string) => cfg.dives.routes.find((r) => r.id === id)?.seconds ?? Number.MAX_SAFE_INTEGER;
+  const q = queueCheck(cfg.dives.queue_slots, subscriber, pending.map((d) => secondsOf(d.route_id)), route.seconds);
+  if (q !== 'ok') throw new GameError(409, q);
   const silo = await trx.selectFrom('silos').select(['steam', 'winded_until']).where('user_id', '=', userId).executeTakeFirstOrThrow();
   if (silo.winded_until && silo.winded_until > now) throw new GameError(409, 'winded');
   const arch = cfg.archetypes.find((a) => a.id === p.archetype)!;

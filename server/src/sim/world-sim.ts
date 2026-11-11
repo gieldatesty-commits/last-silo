@@ -13,7 +13,7 @@ import { dayIndex, genOffers } from '../game/contracts.js';
 const takenOffers = new Set<string>();
 import { ambushChance, shipFeePerUnit, shipKm, shipMinutes, survivingQty } from '../game/caravan.js';
 import { distanceKm as distKm } from '../game/world.js';
-import { addXp, diveChance, poolTotal, regenPool, resolveDive, steamCost, type Stats } from '../game/dive.js';
+import { addXp, diveChance, poolTotal, queueCheck, regenPool, resolveDive, steamCost, type Stats } from '../game/dive.js';
 import { rng } from '../game/rng.js';
 import { computeEffects, researchSeconds } from '../game/research.js';
 import { placeSilo } from '../game/world.js';
@@ -257,9 +257,16 @@ function act(p: P, nowMs: number) {
   const maxSec = p.style === 'hardcore' ? 1800 : p.style === 'regularny' ? 4 * 3600 : 8 * 3600;
   if (p.trader && p.tradeStart < 0 && p.level >= cfg.market.min_level && p.silo.levels.radiostacja >= cfg.market.radio) p.tradeStart = nowMs;
   while (p.queue.length < p.slots && nowMs >= p.windedUntil && p.tradeStart < 0) {
-    const opts = cfg.dives.routes.filter((x) => x.min_level <= p.level && x.seconds <= maxSec && diveChance(p.stats, x.difficulty, bonusOf(p)) >= 0.3);
+    const all = cfg.dives.routes.filter((x) => x.min_level <= p.level && x.seconds <= maxSec && diveChance(p.stats, x.difficulty, bonusOf(p)) >= 0.3);
+    // slot subskrypcji przyjmuje tylko krótkie trasy: wtedy gracz wybiera najlepszą z krótkich
+    const sub = p.slots > cfg.dives.queue_slots.free;
+    const queued = p.queue.map((q) => cfg.dives.routes.find((r) => r.id === q.routeId)!.seconds);
+    const fits = (x: { seconds: number }) => queueCheck(cfg.dives.queue_slots, sub, queued, x.seconds) === 'ok';
+    const opts = all.filter(fits);
+    if (all.length && !opts.length) break;
     // hardcore: najwyższa dostępna trasa krótka; reszta: najdłuższa trasa mieszcząca się w ich rytmie (rzadziej wchodzą do gry)
     const route = !opts.length ? cfg.dives.routes[0]! : p.style === 'hardcore' ? opts[opts.length - 1]! : [...opts].sort((a, b) => b.seconds - a.seconds || b.min_level - a.min_level)[0]!;
+    if (!fits(route)) break;
     const cost = steamCost(route, p.arch.dive_steam_multiplier * fxOf(p).diveSteam);
     if (route.min_level > p.level || p.silo.steam < cost) break;
     p.silo = { ...p.silo, steam: p.silo.steam - cost };

@@ -108,3 +108,23 @@ export function regenPool(c: GameConfig, zone: string, remaining: number, total:
   if (rate <= 0 || dtMs <= 0) return remaining;
   return Math.min(total, remaining + total * rate * (dtMs / 86_400_000));
 }
+
+/**
+ * Czy zjazd zmieści się w kolejce. Subskrypcja „Wygoda” daje dodatkowe sloty (`queue_slots.subscriber`),
+ * ale w kolejce może być najwyżej `queue_slots.free` zjazdów dłuższych niż `subscriber_extra_max_seconds`:
+ * dodatkowy slot służy tylko krótkim trasom (docs/subskrypcja-v1.0.md §10.3, wariant 3).
+ * `queuedSeconds` to czasy zjazdów już w kolejce (trwający + oczekujące).
+ */
+export function queueCheck(
+  slots: { free: number; subscriber: number; subscriber_extra_max_seconds: number },
+  subscriber: boolean,
+  queuedSeconds: readonly number[],
+  routeSeconds: number,
+): 'ok' | 'queue_full' | 'short_route_only' {
+  const total = queuedSeconds.length + 1;
+  if (total > (subscriber ? slots.subscriber : slots.free)) return 'queue_full';
+  if (total <= slots.free) return 'ok';
+  const isLong = (s: number) => s > slots.subscriber_extra_max_seconds;
+  const long = queuedSeconds.filter(isLong).length + (isLong(routeSeconds) ? 1 : 0);
+  return long > slots.free ? 'short_route_only' : 'ok';
+}

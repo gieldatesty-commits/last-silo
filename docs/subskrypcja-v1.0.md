@@ -11,7 +11,7 @@ Cel: dochód z gry bez sprzedawania siły. Zasady z `CLAUDE.md`: ekonomia zamkni
 ## 1. Co daje subskrypcja (tylko wygoda)
 | Korzyść | Stan | Uwaga |
 |---|---|---|
-| +1 slot kolejki zjazdów (2 → 3) | **już jest** w configu i kodzie | wpływa na dochód, patrz kryterium §6 |
+| +1 slot kolejki zjazdów (2 → 3), **tylko dla tras ≤ 30 min** | config 1.5.0 (`dives.queue_slots.subscriber_extra_max_seconds: 1800`) | wariant 3 z §10.3, wynik w §10.4 |
 | +1 slot kolejki budowy | propozycja | dziś `upgrades.queue_slots`; sprawdzić symulacją |
 | Panel statystyk: wykresy dochodu, historia zjazdów, bilans rynku | propozycja | tylko odczyt danych z dziennika |
 | Odznaka przy nicku w rankingu | propozycja | kosmetyka, zero wpływu |
@@ -116,3 +116,30 @@ To jest realny scenariusz (część graczy płaci). Regularni grają w odstępac
 3. **Trzeci slot tylko na krótkie trasy** (np. ≤ 15 min) albo z czasem odnowienia. Zostaje wygoda dla aktywnych, ale ograniczona; wymaga kodu i symulacji z celem ≤ 10% dla regularnych.
 
 Polecam 1, bo jest zgodna z zasadą „wygoda, nie siła” i nie wymaga strojenia.
+
+### 10.4 Decyzja: wariant 3, trzeci slot tylko na krótkie trasy (2026-11-11, config 1.5.0)
+Reguła (`queueCheck` w `src/game/dive.ts`, wspólna dla serwera i symulatora): subskrybent ma 3 miejsca w kolejce, ale najwyżej `queue_slots.free` (2) z nich mogą zajmować trasy dłuższe niż `subscriber_extra_max_seconds`. Trzeci długi zjazd dostaje `409 short_route_only`. Gracze bez subskrypcji: bez zmian (wyniki `--sub=0` identyczne jak w 1.4.1). `/silo` zwraca `queueExtraMaxSeconds`.
+
+Strojenie limitu, `--sub=0.5`, przewaga subskrybenta w tym samym stylu (hardcore / regularny / okazjonalny), ziarna 1–5, 50 graczy:
+| limit | zakres przewag | uwagi |
+|---|---|---|
+| brak (1.4.1) | +2–4% / **+16–19%** / +3–10% | regularni ponad kryterium |
+| 180 s (tylko Płytki) | **+9–13%** / +0–4% / −4–+6% | hardcore traci trasy jądra, ale w trzecim slocie korzysta z mniej wyeksploatowanej puli górnej |
+| 900 s | **+11–13%** / +2–6% / +1–5% | jw. |
+| 1200 s | +3–5% / +2–5% / −5–+7% | w normie |
+| **1800 s (wybrane)** | +3–5% / +2–6% / −2–+5% | w normie, wygodniejsze |
+
+Kontrola na 200 graczach (ziarna 1–3): 1800 s → +3,3–4,6% / +2,6–4,1% / +0,5–3,0%; 1200 s → +5,8–6,4% / +1,7–3,2% / +0,5–1,8%. Wybrane 1800 s: mniejsza przewaga hardcore i więcej wygody (Płytki, Średni, Szczeliny, Sztolnia mieszczą się w limicie).
+
+Świat przy configu 1.5.0 (180 dni, 50 graczy):
+| ziarno | dochód sub=0 | sub=0,5 | sub=1 | udział zjazdów h/r/o (sub=1) | ruda w magazynie (sub=1) | przewaga h/r/o (sub=0,5) |
+|---|---|---|---|---|---|---|
+| 1 | 314 427 | 317 470 | 318 441 | 70/72/50% | 28 652 | +3,4 / +3,9 / −1,1% |
+| 2 | 314 732 | 318 094 | 319 185 | 70/72/50% | 29 541 | +3,4 / +6,4 / +3,4% |
+| 3 | 315 555 | 317 851 | 319 921 | 70/72/50% | 28 668 | +2,6 / +1,7 / +4,7% |
+| 4 | 314 491 | 316 595 | 319 114 | 70/72/49% | 30 297 | +5,3 / +4,9 / −1,6% |
+| 5 | 315 057 | 317 010 | 318 965 | 70/72/50% | 29 291 | +3,3 / +5,9 / −1,3% |
+
+**Kryterium §6.1 spełnione**: przewaga ≤ 6,4% we wszystkich stylach i ziarnach, zjazdy nadal główne źródło dochodu, ruda nie zalega (ok. 30 tys. na gracza). Szum przy grupach 5–15 graczy to ok. ±3 p.p.
+
+Do zrobienia w kliencie (nieruszany): komunikat PL dla `short_route_only` w `strings.dart` i blokada przycisku „Zjedź” dla długich tras, gdy wolny jest już tylko slot subskrypcji (pole `queueExtraMaxSeconds`).

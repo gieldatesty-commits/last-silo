@@ -28,7 +28,8 @@ export const GameConfigSchema = z
     }),
     progression: z.object({ xp_base: pos, xp_exp: pos, max_level: z.number().int().min(2), points_per_level: z.number().int().min(0) }),
     dives: z.object({
-      queue_slots: z.object({ free: z.number().int().min(1), subscriber: z.number().int().min(1) }),
+      // subscriber_extra_max_seconds: sloty ponad `free` przyjmują tylko trasy nie dłuższe niż ta wartość (wygoda, nie dochód)
+      queue_slots: z.object({ free: z.number().int().min(1), subscriber: z.number().int().min(1), subscriber_extra_max_seconds: z.number().int().min(0) }),
       fail_reward_fraction: z.number().min(0).max(1),
       winded_seconds: z.number().min(0),
       pool_floor_fraction: z.number().min(0.01).max(0.5),

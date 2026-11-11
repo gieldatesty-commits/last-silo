@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.4.1"
+version: "1.5.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -42,7 +42,8 @@ progression:
 # efektywność: krótka trasa (min_route_minutes) = 1 + short_bonus, najdłuższa (reference_minutes) = 1.0, pomiędzy log-liniowo.
 # Dzięki temu suma krótkich zjazdów jest ok. 20% bardziej opłacalna niż jeden długi na ten sam czas, ale długie są wygodniejsze.
 dives:
-  queue_slots: { free: 2, subscriber: 3 }   # liczba zjazdów w kolejce (trwający + oczekujące)
+  # liczba zjazdów w kolejce (trwający + oczekujące); slot subskrypcji tylko dla tras <= subscriber_extra_max_seconds
+  queue_slots: { free: 2, subscriber: 3, subscriber_extra_max_seconds: 1800 }
   fail_reward_fraction: 0.3   # porażka daje 30% XP i nagrody
   winded_seconds: 300         # "zadyszka" po porażce blokuje DODAWANIE nowych zjazdów do kolejki
   pool_floor_fraction: 0.10   # poniżej 10% puli nagroda = 10% (ślady), bez dalszego ubywania puli
