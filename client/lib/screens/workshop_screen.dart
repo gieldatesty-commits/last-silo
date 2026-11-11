@@ -5,6 +5,7 @@ import '../format.dart';
 import '../palette.dart';
 import '../slot_icon.dart';
 import '../strings.dart';
+import '../ui.dart';
 import '../widgets.dart';
 
 /// Warsztat jako „stół warsztatowy” (makieta Warsztat.dc.html): założone sloty, karta wybranego przedmiotu,
@@ -382,18 +383,18 @@ class _RecipeRow extends StatelessWidget {
     final locked = r['locked'] == true;
     final wallet = (state.silo?['wallet'] as Map?) ?? const {};
     bool have(String res, num need) => need <= 0 || asNum(wallet[res]) >= need;
-    final chips = <(String, bool)>[
+    final chips = <(String?, String, bool)>[
       if (locked) ...[
-        if (r['needsTech'] != null) ('Wymaga badania', false),
-        ('Warsztat poz. ${r['workshop']}', true),
-        if (r['radio'] != null) ('Radiostacja poz. ${r['radio']}', true),
+        if (r['needsTech'] != null) (null, 'Wymaga badania', false),
+        (null, 'Warsztat poz. ${r['workshop']}', true),
+        if (r['radio'] != null) (null, 'Radiostacja poz. ${r['radio']}', true),
       ] else ...[
-        if (asNum(r['ore']) > 0) ('${fmtInt(asNum(r['ore']))} rudy', have('ore', asNum(r['ore']))),
-        if (asNum(r['tokens']) > 0) ('${fmtInt(asNum(r['tokens']))} żet.', have('tokens', asNum(r['tokens']))),
-        for (final e in ((r['materials'] as Map?) ?? const {}).entries) ('${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
+        if (asNum(r['ore']) > 0) ('ore', '${fmtInt(asNum(r['ore']))} rudy', have('ore', asNum(r['ore']))),
+        if (asNum(r['tokens']) > 0) ('tokens', '${fmtInt(asNum(r['tokens']))} żet.', have('tokens', asNum(r['tokens']))),
+        for (final e in ((r['materials'] as Map?) ?? const {}).entries) (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
       ],
     ];
-    final affordable = chips.every((c) => c.$2);
+    final affordable = chips.every((c) => c.$3);
     final canCraft = !locked && affordable && !state.busy;
     final label = locked ? 'Zablokowane' : (affordable ? 'Wytwórz' : 'Brak');
     return Opacity(
@@ -410,12 +411,7 @@ class _RecipeRow extends StatelessWidget {
             Text('+${r['bonus']} · ${r['durability']} wytrz. · ${slotNames[r['slot']] ?? r['slot']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
             const SizedBox(height: 4),
             Wrap(spacing: 4, runSpacing: 4, children: [
-              for (final (t, ok) in chips)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(color: ok ? Ls.chip : null, borderRadius: BorderRadius.circular(9), border: ok ? null : Border.all(color: Ls.warn)),
-                  child: Text(t, style: TextStyle(fontSize: 11, color: ok ? const Color(0xFFC9D0DC) : Ls.warnText)),
-                ),
+              for (final (res, t, ok) in chips) LsResChip(res, t, ok: ok),
             ]),
           ]);
           final button = canCraft

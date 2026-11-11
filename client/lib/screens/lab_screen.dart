@@ -7,6 +7,7 @@ import '../format.dart';
 import '../lab_layout.dart';
 import '../palette.dart';
 import '../strings.dart';
+import '../ui.dart';
 import '../widgets.dart';
 
 /// Laboratorium: konstelacja badań (docs/warstwa-wizualna-v1.0.md §2) i Kodeks Rdzeniowców.
@@ -477,14 +478,14 @@ class _Panel extends StatelessWidget {
     };
 
     bool have(String res, num need) => need <= 0 || asNum(wallet[res]) >= need;
-    final chips = <(String, bool)>[
-      if (asNum(tech['ore']) > 0) ('${fmtInt(asNum(tech['ore']))} rudy', have('ore', asNum(tech['ore']))),
-      if (asNum(tech['tokens']) > 0) ('${fmtInt(asNum(tech['tokens']))} żet.', have('tokens', asNum(tech['tokens']))),
-      if (asNum(tech['samples']) > 0) ('${fmtInt(asNum(tech['samples']))} prób.', have('samples', asNum(tech['samples']))),
-      for (final e in ((tech['materials'] as Map?) ?? const {}).entries) ('${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
-      (fmtDuration(asNum(tech['seconds']).toInt()), true),
-      (node.labRequired > labLevel ? 'Wymaga Lab ${node.labRequired}' : 'Lab ${node.labRequired}', node.labRequired <= labLevel),
-      if (radioReq != null) ((radioLevel ?? 0) < radioReq ? 'Wymaga Radio $radioReq' : 'Radio $radioReq', (radioLevel ?? 0) >= radioReq),
+    final chips = <(String?, String, bool)>[
+      if (asNum(tech['ore']) > 0) ('ore', '${fmtInt(asNum(tech['ore']))} rudy', have('ore', asNum(tech['ore']))),
+      if (asNum(tech['tokens']) > 0) ('tokens', '${fmtInt(asNum(tech['tokens']))} żet.', have('tokens', asNum(tech['tokens']))),
+      if (asNum(tech['samples']) > 0) ('samples', '${fmtInt(asNum(tech['samples']))} prób.', have('samples', asNum(tech['samples']))),
+      for (final e in ((tech['materials'] as Map?) ?? const {}).entries) (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
+      (null, fmtDuration(asNum(tech['seconds']).toInt()), true),
+      (null, node.labRequired > labLevel ? 'Wymaga Lab ${node.labRequired}' : 'Lab ${node.labRequired}', node.labRequired <= labLevel),
+      if (radioReq != null) (null, (radioLevel ?? 0) < radioReq ? 'Wymaga Radio $radioReq' : 'Radio $radioReq', (radioLevel ?? 0) >= radioReq),
     ];
     final reqs = [for (final id in node.requires) (byId[id]?.name ?? id, byId[id]?.state == TechState.done)];
 
@@ -535,7 +536,7 @@ class _Panel extends StatelessWidget {
             const SizedBox(height: 10),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final (name, ok) in reqs) _Chip(text: '${ok ? '✓' : '○'} $name', ok: ok),
-              for (final (text, ok) in chips) _Chip(text: text, ok: ok),
+              for (final (res, text, ok) in chips) LsResChip(res, text, ok: ok),
             ]),
             const SizedBox(height: 12),
             ConstrainedBox(

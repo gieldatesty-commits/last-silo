@@ -13,6 +13,11 @@ abstract final class Ls {
   static const violet = Color(0xFFB79CFF);
   static const text = Color(0xFFE8E3D6);
 
+  // siarka (ikona surowca): żółć spoza głównej palety, tylko dla tego materiału
+  static const sulfur = Color(0xFFE6CF5C);
+  static const sulfurDark = Color(0xFFB59A2E);
+  static const sulfurLight = Color(0xFFF4E58F);
+
   // pochodne z makiet (panele, obramowania, tekst drugorzędny)
   static const panel = Color(0xFF0F131C);
   static const card = Color(0xFF10141D);

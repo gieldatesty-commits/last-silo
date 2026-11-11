@@ -5,6 +5,7 @@ import '../app_state.dart';
 import '../format.dart';
 import '../palette.dart';
 import '../strings.dart';
+import '../ui.dart';
 
 /// Zjazdy jako „szyb zjazdowy” (makieta Zjazdy.dc.html): kolejka z kabinami w drodze, trasy według głębokości
 /// przy skali stref i ostatnie wyniki. Logika bez zmian: trasy, kolejka i historia z AppState, start przez `state.startDive`.
@@ -299,12 +300,12 @@ class _RouteRow extends StatelessWidget {
     final cost = (r['steam'] as num).toInt();
     final chance = (r['chancePct'] as num).toInt();
     final enough = steam >= cost;
-    final chips = <String>[
-      '${_range(r['ore']) ?? '0'} rudy',
-      '${r['xp']} XP',
-      if (_range(r['tokens']) case final t?) '$t żet.',
-      if (_range(r['samples']) case final p?) 'próbki $p',
-      if (richnessNames[r['zoneRichness']] case final rich?) rich,
+    final chips = <(String?, String)>[
+      ('ore', '${_range(r['ore']) ?? '0'} rudy'),
+      (null, '${r['xp']} XP'),
+      if (_range(r['tokens']) case final t?) ('tokens', '$t żet.'),
+      if (_range(r['samples']) case final p?) ('samples', 'próbki $p'),
+      if (richnessNames[r['zoneRichness']] case final rich?) (null, rich),
     ];
     final enabled = !locked && enough && !blocked && !state.busy;
     final label = locked ? 'Zablokowane · od poziomu ${r['minLevel']}' : (enough ? 'Zjedź · $cost pary' : 'Brak pary ($cost)');
@@ -335,12 +336,7 @@ class _RouteRow extends StatelessWidget {
               ]),
               const SizedBox(height: 7),
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final t in chips)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Ls.chip, borderRadius: BorderRadius.circular(10)),
-                    child: Text(t, style: const TextStyle(fontSize: 11, color: Color(0xFFC9D0DC))),
-                  ),
+                for (final (res, t) in chips) LsResChip(res, t),
               ]),
               const SizedBox(height: 8),
               ConstrainedBox(

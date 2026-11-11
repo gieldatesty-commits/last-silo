@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'palette.dart';
+import 'resource_art.dart';
 
 /// Wspólne klocki warstwy wizualnej (ekrany z „Więcej”): karta, chip, przyciski, nagłówek, pasek.
 /// Wysokości są minimalne, nie stałe: przy dużej czcionce elementy rosną zamiast ucinać tekst.
@@ -162,4 +163,21 @@ class LsActionRow extends StatelessWidget {
         if (!stacked) return head;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [head, const SizedBox(height: 8), action]);
       });
+}
+
+/// Chip z ikoną surowca: ikona + tekst (nazwa zostaje w tekście). `ok: false` = brak (obramowanie, ciepły tekst).
+class LsResChip extends StatelessWidget {
+  const LsResChip(this.resource, this.text, {super.key, this.ok = true});
+  final String? resource;
+  final String text;
+  final bool ok;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: EdgeInsets.fromLTRB(resource == null ? 8 : 5, 3, 8, 3),
+        decoration: BoxDecoration(color: ok ? Ls.chip : null, borderRadius: BorderRadius.circular(10), border: ok ? null : Border.all(color: Ls.warn)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (resource != null) ...[ResourceIcon(resource!, size: 16), const SizedBox(width: 4)],
+          Flexible(child: Text(text, style: TextStyle(fontSize: 12, color: ok ? const Color(0xFFC9D0DC) : Ls.warnText))),
+        ]),
+      );
 }

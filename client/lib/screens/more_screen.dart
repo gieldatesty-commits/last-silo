@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../palette.dart';
+import '../resource_art.dart';
 import '../strings.dart';
 import '../ui.dart';
 import '../widgets.dart';
@@ -176,7 +177,11 @@ class _Geology extends StatelessWidget {
                 child: Row(children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${m['name']}', style: lsDisplay.copyWith(fontSize: 17)),
+                      Row(children: [
+                        ResourceIcon('${m['id']}', size: 28),
+                        const SizedBox(width: 8),
+                        Flexible(child: Text('${m['name']}', style: lsDisplay.copyWith(fontSize: 17))),
+                      ]),
                       const SizedBox(height: 4),
                       Text(_hint[m['local']] ?? '', style: lsMuted),
                       const SizedBox(height: 6),

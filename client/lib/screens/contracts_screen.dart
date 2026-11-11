@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../palette.dart';
+import '../resource_art.dart';
 import '../strings.dart';
 import '../ui.dart';
 import '../widgets.dart';
@@ -67,7 +68,11 @@ class _OfferCard extends StatelessWidget {
             Text('kierunek ${o['sector']}', style: lsMuted),
           ]),
           const SizedBox(height: 6),
-          Text('Dostarcz $qty × ${resName(mat)}', style: lsBody),
+          Row(children: [
+            ResourceIcon(mat, size: 20),
+            const SizedBox(width: 6),
+            Flexible(child: Text('Dostarcz $qty × ${resName(mat)}', style: lsBody)),
+          ]),
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
             LsChip('w magazynie: ${fmtInt(have)}', ok: enough || status != 'open'),

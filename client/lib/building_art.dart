@@ -65,11 +65,12 @@ final Map<BuildingKind, List<List<_Prepared>>> _cache = {};
 List<List<_Prepared>> _prepared(BuildingKind kind) => _cache.putIfAbsent(
       kind,
       () => [
-        for (final layer in _art[kind]!) [for (final s in layer) _Prepared(s, _shapePath(s))],
+        for (final layer in _art[kind]!) [for (final s in layer) _Prepared(s, artShapePath(s))],
       ],
     );
 
-Path _shapePath(ArtShape s) {
+/// Ścieżka kształtu w jego układzie (viewBox makiety). Używana też przez resource_art.dart.
+Path artShapePath(ArtShape s) {
   final v = s.v;
   switch (s.kind) {
     case ArtKind.rect:

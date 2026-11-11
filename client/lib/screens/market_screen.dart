@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../palette.dart';
+import '../resource_art.dart';
 import '../strings.dart';
 import '../ui.dart';
 import '../widgets.dart';
@@ -89,7 +90,11 @@ class _ListingsState extends State<_Listings> {
               for (final m in mats)
                 LsCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${m['name']}', style: lsDisplay.copyWith(fontSize: 15)),
+                    Row(children: [
+                      ResourceIcon('${m['id']}', size: 24),
+                      const SizedBox(width: 8),
+                      Flexible(child: Text('${m['name']}', style: lsDisplay.copyWith(fontSize: 15))),
+                    ]),
                     const SizedBox(height: 8),
                     Wrap(spacing: 18, runSpacing: 8, children: [
                       _Price('HANDLARZ', '${m['npcPrice']}'),
@@ -154,7 +159,11 @@ class _ListingCard extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${resName(l['material'] as String)} × $qty', style: lsDisplay.copyWith(fontSize: 16)),
+              Row(children: [
+                ResourceIcon(l['material'] as String, size: 22),
+                const SizedBox(width: 6),
+                Flexible(child: Text('${resName(l['material'] as String)} × $qty', style: lsDisplay.copyWith(fontSize: 16))),
+              ]),
               Text('${mine ? 'Twoja oferta' : 'Sprzedaje ${l['seller']}'} · wygasa za $left', style: lsMuted),
             ]),
           ),
@@ -362,7 +371,11 @@ class _Npc extends StatelessWidget {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     // Wrap: przy dużej czcionce chip schodzi pod nazwę zamiast wystawać poza kartę
                     Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6, children: [
-                      Text(m['name'] as String, style: lsDisplay.copyWith(fontSize: 16)),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        ResourceIcon('${m['id']}', size: 26),
+                        const SizedBox(width: 8),
+                        Flexible(child: Text(m['name'] as String, style: lsDisplay.copyWith(fontSize: 16))),
+                      ]),
                       for (final g in geo.where((g) => g['id'] == m['id'])) LsChip('w okolicy: ${localNames[g['local']] ?? g['local']}'),
                     ]),
                     const SizedBox(height: 10),

@@ -5,6 +5,7 @@ import '../app_state.dart';
 import '../building_art.dart';
 import '../format.dart';
 import '../palette.dart';
+import '../resource_art.dart';
 import '../strings.dart';
 
 /// Silos (docs/warstwa-wizualna-v1.0.md §3, zmienione 2026-11-11): wszystkie budynki jako jednakowe karty w siatce
@@ -96,21 +97,25 @@ class _Hud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = <(String, String, String?)>[
-      ('RUDA', '${fmtInt(wallet['ore'] as num)} / ${fmtInt(caps['ore'] as num)}', '+${rates['orePerHour']}/h'),
-      ('PARA', '${fmtInt(wallet['steam'] as num)} / ${fmtInt(caps['steam'] as num)}', '+${rates['steamPerMin']}/min'),
-      ('ŻETONY', fmtInt(wallet['tokens'] as num), null),
-      ('PRÓBKI', fmtInt(wallet['samples'] as num), null),
+    final items = <(String, String, String, String?)>[
+      ('ore', 'RUDA', '${fmtInt(wallet['ore'] as num)} / ${fmtInt(caps['ore'] as num)}', '+${rates['orePerHour']}/h'),
+      ('steam', 'PARA', '${fmtInt(wallet['steam'] as num)} / ${fmtInt(caps['steam'] as num)}', '+${rates['steamPerMin']}/min'),
+      ('tokens', 'ŻETONY', fmtInt(wallet['tokens'] as num), null),
+      ('samples', 'PRÓBKI', fmtInt(wallet['samples'] as num), null),
       for (final m in materialIds)
-        if (wallet[m] != null && (wallet[m] as num) > 0) (resName(m).toUpperCase(), fmtInt(wallet[m] as num), null),
+        if (wallet[m] != null && (wallet[m] as num) > 0) (m, resName(m).toUpperCase(), fmtInt(wallet[m] as num), null),
     ];
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: const BoxDecoration(color: Ls.panel, border: Border(bottom: BorderSide(color: Ls.border))),
       child: Wrap(spacing: 18, runSpacing: 8, children: [
-        for (final (label, value, sub) in items)
+        for (final (res, label, value, sub) in items)
           Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 1.2, color: Ls.textFaint)),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              ResourceIcon(res, size: 14),
+              const SizedBox(width: 4),
+              Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 1.2, color: Ls.textFaint)),
+            ]),
             Text(value, style: _display.copyWith(fontSize: 15, fontFeatures: const [FontFeature.tabularFigures()])),
             if (sub != null) Text(sub, style: const TextStyle(fontSize: 10, color: Ls.textFaint)),
           ]),
