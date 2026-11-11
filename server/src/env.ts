@@ -15,6 +15,11 @@ const EnvSchema = z.object({
   RTDN_SERVICE_ACCOUNT_EMAIL: z.string().min(1).optional(),
   /** klucz HMAC do zaciemnionego identyfikatora konta (obfuscatedAccountId); zmiana unieważnia powiązania zakupów */
   BILLING_ACCOUNT_KEY: z.string().min(16).optional(),
+  // Google Sign-In (docs/konto-google-v1.0.md). Bez GOOGLE_WEB_CLIENT_ID logowanie Google jest wyłączone.
+  /** identyfikator klienta OAuth typu Web (ten sam co serverClientId w aplikacji) */
+  GOOGLE_WEB_CLIENT_ID: z.string().min(1).optional(),
+  /** 1 = token ID bez nonce jest odrzucany (§3.3) */
+  GOOGLE_REQUIRE_NONCE: z.enum(['0', '1']).default('0'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

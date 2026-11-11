@@ -6,7 +6,10 @@ export type SubscriptionState = 'active' | 'grace' | 'on_hold' | 'canceled_activ
 
 // pg zwraca bigint/numeric jako string, double jako number
 export interface Database {
-  users: { id: Generated<string>; guest_secret_hash: string; google_sub: string | null; created_at: Generated<Date> };
+  /** guest_secret_hash: tylko zgodność wstecz (migracja 015); sekrety urządzeń są w user_devices */
+  users: { id: Generated<string>; guest_secret_hash: string; google_sub: string | null; google_linked_at: Date | null; created_at: Generated<Date> };
+  user_devices: { id: Generated<string>; user_id: string; secret_hash: string; created_at: Generated<Date>; last_seen_at: Generated<Date> };
+  auth_nonces: { nonce: string; created_at: Date };
   players: {
     user_id: string;
     nickname: string | null;
@@ -29,11 +32,11 @@ export interface Database {
     carry_bonus_ore: Generated<number>;
   };
   market_listings: { id: Generated<string>; seller_id: string; material: string; qty: number; qty_initial: number; unit_price: number; state: Generated<'active' | 'sold' | 'cancelled' | 'expired'>; created_at: Generated<Date>; expires_at: Date };
-  market_trades: { id: Generated<string>; listing_id: string | null; buyer_id: string | null; seller_id: string; material: string; qty: number; unit_price: number; gross: string | number; fee: Generated<string | number>; created_at: Generated<Date> };
+  market_trades: { id: Generated<string>; listing_id: string | null; buyer_id: string | null; bot_trade: Generated<boolean>; seller_id: string; material: string; qty: number; unit_price: number; gross: string | number; fee: Generated<string | number>; created_at: Generated<Date> };
   shipments: { id: Generated<string>; buyer_id: string; seller_id: string | null; trade_id: string | null; material: string; qty: number; delivered_qty: number | null; km: number; ship_fee: string | number; insurance_fee: string | number; insured: boolean; seed: number; ambush_chance: number; state: Generated<'transit' | 'delivered' | 'ambushed'>; departed_at: Date; arrives_at: Date };
   contracts: { id: Generated<string>; user_id: string; day: number; slot: number; material: string; qty: number; km: number; sector: string; unit_reward: number; insured: boolean; insurance_fee: string | number; seed: number; ambush_chance: number; state: Generated<'transit' | 'delivered' | 'ambushed'>; delivered_qty: number | null; reward: string | number | null; accepted_at: Date; arrives_at: Date };
   seasons: { id: number; started_at: Date; ends_at: Date; state: Generated<'active' | 'ended'>; closed_at: Date | null };
-  season_results: { season_id: number; user_id: string; nickname: string; rank: number; players_total: number; power: number; level: number; loot: Generated<string>; title: string | null; start_bonus_ore: Generated<number> };
+  season_results: { season_id: number; user_id: string | null; nickname: string; rank: number; players_total: number; power: number; level: number; loot: Generated<string>; title: string | null; start_bonus_ore: Generated<number> };
   wallets: { user_id: string; resource: string; balance: Generated<string> };
   subscriptions: {
     id: Generated<string>;

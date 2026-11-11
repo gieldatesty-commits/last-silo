@@ -30,6 +30,9 @@ services:
       RTDN_AUDIENCE: ${RTDN_AUDIENCE:-}
       RTDN_SERVICE_ACCOUNT_EMAIL: ${RTDN_SERVICE_ACCOUNT_EMAIL:-}
       BILLING_ACCOUNT_KEY: ${BILLING_ACCOUNT_KEY:-}
+      # logowanie Google (opcjonalne)
+      GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:-}
+      GOOGLE_REQUIRE_NONCE: ${GOOGLE_REQUIRE_NONCE:-0}
 
   caddy:
     image: caddy:2

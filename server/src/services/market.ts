@@ -65,7 +65,7 @@ export async function marketOverview(ctx: Ctx, userId: string) {
     const stats = await trx
       .selectFrom('market_trades')
       .select(['material', sql<string>`sum(gross)`.as('gross'), sql<string>`sum(qty)`.as('qty')])
-      .where('buyer_id', 'is not', null)
+      .where('bot_trade', '=', false)
       .where('created_at', '>', since)
       .groupBy('material')
       .execute();
@@ -80,7 +80,7 @@ export async function marketOverview(ctx: Ctx, userId: string) {
     const botSold = await trx
       .selectFrom('market_trades')
       .select(['material', sql<string>`sum(qty)`.as('qty')])
-      .where('buyer_id', 'is', null)
+      .where('bot_trade', '=', true)
       .where('seller_id', '=', userId)
       .where('created_at', '>', new Date(now.getTime() - DAY))
       .groupBy('material')
@@ -166,7 +166,7 @@ export async function myMarket(ctx: Ctx, userId: string) {
         qty: t.qty,
         unitPrice: t.unit_price,
         side: t.seller_id === userId ? ('sold' as const) : ('bought' as const),
-        counterparty: t.buyer_id === null ? 'bot' : 'gracz',
+        counterparty: t.bot_trade ? 'bot' : 'gracz',
         gross: Number(t.gross),
         fee: t.seller_id === userId ? Number(t.fee) : 0,
         at: t.created_at,
@@ -292,14 +292,14 @@ export async function sellToBotTx(trx: Trx, ctx: Ctx, userId: string, material: 
   const sold = await trx
     .selectFrom('market_trades')
     .select(sql<string>`coalesce(sum(qty), 0)`.as('qty'))
-    .where('buyer_id', 'is', null)
+    .where('bot_trade', '=', true)
     .where('seller_id', '=', userId)
     .where('created_at', '>', new Date(now.getTime() - DAY))
     .executeTakeFirstOrThrow();
   if (Number(sold.qty) + qty > cfg.market.bot_daily_qty) throw new GameError(409, 'bot_daily_limit');
   const price = botBid(cfg, material)!;
   const gross = price * qty;
-  const trade = await trx.insertInto('market_trades').values({ listing_id: null, buyer_id: null, seller_id: userId, material, qty, unit_price: price, gross, fee: 0, created_at: now }).returning('id').executeTakeFirstOrThrow();
+  const trade = await trx.insertInto('market_trades').values({ listing_id: null, buyer_id: null, bot_trade: true, seller_id: userId, material, qty, unit_price: price, gross, fee: 0, created_at: now }).returning('id').executeTakeFirstOrThrow();
   await ledger(trx, ctx, userId, [
     { resource: material, delta: -qty, reason: 'market_sale', ref: `bot:${trade.id}:mat` },
     { resource: 'ore', delta: gross, reason: 'market_sale', ref: `bot:${trade.id}` },

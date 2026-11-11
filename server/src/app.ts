@@ -1,6 +1,5 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { Transaction } from 'kysely';
 import type { Database, Db } from './db.js';
@@ -19,6 +18,7 @@ import { currentSeason, seasonResults, seasonTick, seasonView } from './services
 import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
 import { BillingUnavailable } from './billing.js';
 import { subscriptionView, syncToken, verifySubscriptionTx, type Billing } from './services/subscription.js';
+import { accountView, createGuest, deleteAccount, deviceLogin, googleLogin, issueNonce, linkGoogleTx, type GoogleAuth } from './services/account.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -36,6 +36,29 @@ export interface AppDeps {
   seed?: () => number;
   /** Google Play Billing; brak = płatności wyłączone (verify/rtdn zwracają 503 billing_disabled) */
   billing?: Billing | null;
+  /** Google Sign-In; brak = trasy Google zwracają 503 google_disabled */
+  google?: GoogleAuth | null;
+  /** limit prób logowania/powiązania Google na minutę (na IP albo konto) */
+  authRateLimitPerMinute?: number;
+}
+
+const GoogleBody = z.object({ idToken: z.string().min(20).max(8192) });
+
+/** Prosty limit w pamięci procesu (jeden VPS): najwyżej `perMinute` zdarzeń na klucz w oknie 60 s. */
+function rateLimiter(perMinute: number, now: () => Date) {
+  const hits = new Map<string, number[]>();
+  return (key: string): boolean => {
+    const t = now().getTime();
+    const recent = (hits.get(key) ?? []).filter((x) => x > t - 60_000 && x <= t);
+    if (recent.length >= perMinute) {
+      hits.set(key, recent);
+      return false;
+    }
+    recent.push(t);
+    hits.set(key, recent);
+    if (hits.size > 10_000) for (const [k, v] of hits) if (!v.some((x) => x > t - 60_000)) hits.delete(k);
+    return true;
+  };
 }
 
 /** Koperta Pub/Sub push z RTDN (docs: developer.android.com/google/play/billing/rtdn-reference). */
@@ -49,7 +72,6 @@ const DeveloperNotification = z.object({
 /** SUBSCRIPTION_REVOKED */
 const RTDN_REVOKED = 12;
 
-const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 const GuestBody = z
   .object({ userId: z.uuid(), guestSecret: z.string().min(16) })
@@ -87,7 +109,7 @@ export function buildApp(deps: AppDeps) {
   let seasonCache: { endsAt: number; active: boolean; checkedAt: number } | null = null;
   app.addHook('onRequest', async (req, reply) => {
     // płatności działają także w przerwie między sezonami (subskrypcja przeżywa reset, Google wysyła RTDN o każdej porze)
-    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.url.startsWith('/auth') || req.url.startsWith('/subscription') || req.url.startsWith('/billing')) return;
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.url.startsWith('/auth') || req.url.startsWith('/subscription') || req.url.startsWith('/billing') || req.url.startsWith('/account')) return;
     const nowMs = ctx.now().getTime();
     if (!seasonCache || !seasonCache.active || nowMs >= seasonCache.endsAt || nowMs - seasonCache.checkedAt > 30_000 || nowMs < seasonCache.checkedAt) {
       await seasonTick(ctx);
@@ -114,20 +136,44 @@ export function buildApp(deps: AppDeps) {
     const { userId, guestSecret } = parsed.data;
 
     if (userId && guestSecret) {
-      const row = await db.selectFrom('users').select(['id', 'guest_secret_hash']).where('id', '=', userId).executeTakeFirst();
-      const ok = row && timingSafeEqual(Buffer.from(row.guest_secret_hash), Buffer.from(sha256(guestSecret)));
-      if (!ok) return reply.code(401).send({ error: 'invalid_credentials' });
+      if (!(await deviceLogin(ctx, userId, guestSecret))) return reply.code(401).send({ error: 'invalid_credentials' });
       return { userId, token: app.jwt.sign({ sub: userId }) };
     }
+    const g = await createGuest(ctx);
+    return reply.code(201).send({ userId: g.userId, guestSecret: g.secret, token: app.jwt.sign({ sub: g.userId }) });
+  });
 
-    const secret = randomBytes(32).toString('hex');
-    const id = await db.transaction().execute(async (trx) => {
-      const u = await trx.insertInto('users').values({ guest_secret_hash: sha256(secret), google_sub: null }).returning('id').executeTakeFirstOrThrow();
-      await trx.insertInto('players').values({ user_id: u.id, nickname: null, archetype: null, sila: null, technika: null, percepcja: null, wytrwalosc: null, silo_lat: null, silo_lon: null, config_version: null }).execute();
-      await trx.insertInto('events_log').values({ user_id: u.id, name: 'account_created', props: JSON.stringify({ method: 'guest' }) }).execute();
-      return u.id;
-    });
-    return reply.code(201).send({ userId: id, guestSecret: secret, token: app.jwt.sign({ sub: id }) });
+  // Konto Google (docs/konto-google-v1.0.md). Bez GOOGLE_WEB_CLIENT_ID: 503 google_disabled, gra jako gość działa dalej.
+  const google = deps.google ?? null;
+  const limiter = rateLimiter(deps.authRateLimitPerMinute ?? 10, ctx.now);
+  app.get('/auth/google/nonce', async (req, reply) => {
+    if (!google) return reply.code(503).send({ error: 'google_disabled' });
+    if (!limiter(`nonce:${req.ip}`)) return reply.code(429).send({ error: 'too_many_requests' });
+    return { nonce: await issueNonce(ctx) };
+  });
+  app.post('/auth/google', async (req, reply) => {
+    if (!google) return reply.code(503).send({ error: 'google_disabled' });
+    if (!limiter(`google:${req.ip}`)) return reply.code(429).send({ error: 'too_many_requests' });
+    const { idToken } = GoogleBody.parse(req.body);
+    const r = await googleLogin(ctx, google, idToken);
+    // deviceSecret to nowy sekret gościa dla tego urządzenia: dalej loguje się przez /auth/guest
+    return { userId: r.userId, guestSecret: r.deviceSecret, token: app.jwt.sign({ sub: r.userId }) };
+  });
+  app.get('/account', { onRequest: auth }, async (req) => accountView(ctx, req.user.sub));
+  app.post('/account/google/link', { onRequest: auth }, async (req, reply) => {
+    if (!google) return reply.code(503).send({ error: 'google_disabled' });
+    if (!limiter(`link:${req.user.sub}`)) return reply.code(429).send({ error: 'too_many_requests' });
+    const { idToken } = GoogleBody.parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 200, body: await linkGoogleTx(trx, ctx, google, userId, idToken) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+  // Usunięcie konta (wymóg Google Play). Nie anuluje subskrypcji w Play: klient ostrzega przed potwierdzeniem.
+  app.delete('/account', { onRequest: auth }, async (req) => {
+    z.object({ confirm: z.literal('USUN') }).parse(req.body ?? {});
+    return deleteAccount(ctx, req.user.sub);
   });
 
   app.get('/me', { onRequest: auth }, async (req, reply) => {

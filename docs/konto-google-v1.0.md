@@ -103,3 +103,19 @@ Test ręczny: logowanie na emulatorze z kontem Google, reinstalacja, przywrócen
 
 ## 9. Poza zakresem v1
 Odłączanie Google, logowanie e-mailem, scalanie kont, czyszczenie porzuconych gości, logowanie przez WWW.
+
+## 10. Stan wdrożenia serwera (2026-11-11)
+Zrobione (krok 2 z §8): migracja `015_google_account.sql`, `src/google-id.ts` (`GoogleIdVerifier`, `GoogleOAuthIdVerifier`, atrapa `FakeGoogleIdVerifier`), `src/services/account.ts`, trasy `GET /auth/google/nonce`, `POST /auth/google`, `GET /account`, `POST /account/google/link`, `DELETE /account`, testy `test/account.test.ts` (16, w tym migracja konta sprzed 015). Klient i Google Cloud: nie ruszane.
+
+Decyzje z §2.5 (2026-11-11): (1) historia rynku: kolumna `market_trades.bot_trade`, transakcje usuniętego kupującego zostają „gracz” i nie liczą się do limitu skupu botów; (2) ranking sezonów: wiersz zostaje, `nickname` = „Usunięty gracz”, `user_id` = NULL (klucz główny `season_results` zmieniony na `(season_id, rank)`); (3) `ledger_archive` czyszczone przy usuwaniu konta.
+
+§3.3 (nonce): serwer obsługuje oba tryby. Domyślnie token bez nonce jest przyjmowany, a token z nonce musi mieć nasz świeży i nieużyty nonce. `GOOGLE_REQUIRE_NONCE=1` wymusza nonce, gdy klient będzie go wysyłał.
+
+Odpowiedź `POST /auth/google`: `{userId, guestSecret, token}`. Pole `guestSecret` to sekret nowego urządzenia; klient zapisuje go jak przy `/auth/guest` i dalej loguje się bez Google.
+
+Zmienne środowiskowe: `GOOGLE_WEB_CLIENT_ID` (bez niej trasy Google zwracają `503 google_disabled`), `GOOGLE_REQUIRE_NONCE` (`0`/`1`). Limit prób: 10 na minutę na IP (`/auth/google`, nonce) albo na konto (powiązanie), w pamięci procesu.
+
+Znane ograniczenia (świadomie poza v1):
+- Usunięcie **sprzedawcy** kasuje jego transakcje (`market_trades.seller_id` ma `ON DELETE CASCADE`), więc kupujący traci ten wpis z „Ostatnich transakcji”. Kupione towary i karawany zostają (`shipments.seller_id` → NULL).
+- Najazdy z udziałem usuniętego gracza znikają z historii drugiej strony (kaskada `raids`).
+- Strona WWW do usuwania konta, ekran Konto w kliencie i konfiguracja Google Cloud: kroki 3–5 z §8.
