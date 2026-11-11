@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'palette.dart';
+import 'ui.dart';
 import 'api.dart';
 import 'app_state.dart';
 import 'format.dart';
@@ -106,8 +108,8 @@ class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key});
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 4),
-        child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+        padding: const EdgeInsets.only(top: 18, bottom: 8),
+        child: Semantics(header: true, child: Text(text.toUpperCase(), style: lsLabel)),
       );
 }
 
@@ -119,8 +121,8 @@ class InfoBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [Icon(icon), const SizedBox(width: 12), Expanded(child: child)]),
+        decoration: BoxDecoration(color: Ls.chip, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [Icon(icon, color: Ls.amber), const SizedBox(width: 12), Expanded(child: DefaultTextStyle.merge(style: const TextStyle(color: Ls.text), child: child))]),
       );
 }
 
@@ -128,9 +130,11 @@ class EmptyNote extends StatelessWidget {
   final String text;
   const EmptyNote(this.text, {super.key});
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor)),
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(border: Border.all(color: const Color(0xFF2B3546)), borderRadius: BorderRadius.circular(12)),
+        child: Text(text, style: const TextStyle(fontSize: 13, color: Ls.textMuted)),
       );
 }
 
@@ -247,11 +251,23 @@ Future<bool> confirm(BuildContext context, String title, String body, {String ok
   return r ?? false;
 }
 
-/// Ekran-kontener dla podekranów otwieranych z menu „Więcej”.
+/// Ekran-kontener dla podekranów otwieranych z menu „Więcej”: ciemny motyw warstwy wizualnej.
 class SubScreen extends StatelessWidget {
   final String title;
   final Widget body;
   const SubScreen({super.key, required this.title, required this.body});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(title)), body: SafeArea(child: body));
+  Widget build(BuildContext context) => LsTheme(
+        child: Scaffold(
+          backgroundColor: Ls.bg,
+          appBar: AppBar(
+            title: Text(title, style: lsDisplay.copyWith(fontSize: 20)),
+            backgroundColor: Ls.bg,
+            foregroundColor: Ls.text,
+            surfaceTintColor: Colors.transparent,
+            bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider(height: 1, color: Ls.border)),
+          ),
+          body: SafeArea(child: body),
+        ),
+      );
 }
