@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WYGENEROWANE: python tool/gen_app_icon.py <Building.dc.html>. Nie edytuj ręcznie. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="196" android:viewportHeight="196">
+    <group android:translateX="18.0" android:translateY="42.0">
+        <path android:pathData="M54.0,106.0 a26.0,5.0 0 1,0 52.0,0 a26.0,5.0 0 1,0 -52.0,0 Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M56.0,100.0 h48.0 v8.0 h-48.0 Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M52 104 L74 24 L86 24 L108 104 L100 104 L82 34 L78 34 L60 104Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M62 84 L98 84 M67 64 L93 64 M72 44 L88 44" android:strokeColor="#FFFFFFFF" android:strokeWidth="3" />
+        <path android:pathData="M68.0,24.0 a12.0,12.0 0 1,0 24.0,0 a12.0,12.0 0 1,0 -24.0,0 Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M77.0,24.0 a3.0,3.0 0 1,0 6.0,0 a3.0,3.0 0 1,0 -6.0,0 Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M80 36 L80 98" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.5" />
+        <path android:pathData="M74 98 L86 98 L84 106 L76 106Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M70 14 L90 14 L80 4Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M66.0,24.0 a14.0,14.0 0 1,0 28.0,0 a14.0,14.0 0 1,0 -28.0,0 Z" android:strokeColor="#FFFFFFFF" android:strokeWidth="2" />
+    </group>
+</vector>

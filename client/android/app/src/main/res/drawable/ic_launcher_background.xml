@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WYGENEROWANE: python tool/gen_app_icon.py. Tło ikony: ciemne z bursztynową poświatą za kołem szybu. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="196" android:viewportHeight="196">
+    <path android:pathData="M0,0 h196 v196 h-196 Z" android:fillColor="#10141D" />
+    <path android:pathData="M46.0,92.0 a52,52 0 1,0 104,0 a52,52 0 1,0 -104,0 Z" android:fillColor="#F0B45A" android:fillAlpha="0.10" />
+    <path android:pathData="M68.0,68.0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0 Z" android:fillColor="#F0B45A" android:fillAlpha="0.14" />
+    <path android:pathData="M0,160.72 h196 v35.28 h-196 Z" android:fillColor="#0A0C12" />
+</vector>
