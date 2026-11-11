@@ -36,7 +36,17 @@ class Api {
       // uszkodzony magazyn: zaczynamy od nowego konta
     }
     final body = (userId != null && secret != null) ? {'userId': userId, 'guestSecret': secret} : <String, dynamic>{};
-    final res = await _raw('POST', '/auth/guest', body: body, auth: false);
+    dynamic res;
+    try {
+      res = await _raw('POST', '/auth/guest', body: body, auth: false);
+    } on ApiException catch (e) {
+      // Serwer nie zna zapisanego gościa (np. wyczyszczona baza). Konta gościa nie da się odzyskać,
+      // więc zakładamy nowe zamiast blokować aplikację na ekranie błędu.
+      if (e.code != 'invalid_credentials' || body.isEmpty) rethrow;
+      await _store.delete(key: 'userId');
+      await _store.delete(key: 'guestSecret');
+      res = await _raw('POST', '/auth/guest', body: <String, dynamic>{}, auth: false);
+    }
     final data = res as Map<String, dynamic>;
     _token = data['token'] as String;
     if (data['guestSecret'] != null) {

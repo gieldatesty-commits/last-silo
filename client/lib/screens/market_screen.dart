@@ -321,7 +321,7 @@ class _Npc extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(m['name'] as String, style: Theme.of(context).textTheme.titleSmall),
-                      Text(geo.where((g) => g['id'] == m['id']).map((g) => 'W okolicy: ${g['local']}').join()),
+                      Text(geo.where((g) => g['id'] == m['id']).map((g) => 'W okolicy: ${localNames[g['local']] ?? g['local']}').join()),
                       const SizedBox(height: 8),
                       Wrap(spacing: 8, children: [
                         FilledButton.tonal(

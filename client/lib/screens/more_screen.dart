@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
+import '../strings.dart';
 import '../widgets.dart';
 import 'contracts_screen.dart';
 import 'market_screen.dart';
@@ -61,7 +62,7 @@ class _Geology extends StatelessWidget {
           children: [
             const Text('Materiały występują w złożach nierówno. To, czego brakuje w Twojej okolicy, kupisz na Rynku albo u Handlarza.'),
             const SizedBox(height: 8),
-            for (final m in mats) Card(child: ListTile(title: Text(m['name'] as String), subtitle: Text('${m['local']}'))),
+            for (final m in mats) Card(child: ListTile(title: Text(m['name'] as String), subtitle: Text(localNames[m['local']] ?? '${m['local']}'))),
             Text('Materiały odblokowuje Radiostacja poz. ${d['exchangeRadio']}.', style: Theme.of(context).textTheme.bodySmall),
           ],
         );

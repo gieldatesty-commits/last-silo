@@ -6,7 +6,7 @@ const resourceNames = {
   'tokens': 'Żetony',
   'samples': 'Próbki',
   'miedz': 'Miedź',
-  'krysztal': 'Kryształ',
+  'krysztal': 'Kryształy',
   'siarka': 'Siarka',
 };
 
@@ -17,7 +17,11 @@ const archetypeInfo = {
   'alchemik': ('Alchemik', 'Specjalista od próbek i badań.'),
 };
 
-const zoneNames = {'gorne': 'Górne', 'glebokie': 'Głębokie', 'rdzen': 'Rdzeń'};
+/// Klucze jak `dives.zones` w config/game.yaml (strefa `jadro` to w configu „Strefa rdzenia”).
+const zoneNames = {'gorne': 'Górne', 'glebokie': 'Głębokie', 'jadro': 'Rdzeń'};
+
+/// Występowanie materiału w regionie silosu (`/geology` → `local`).
+const localNames = {'obfity': 'obfity', 'sredni': 'średni', 'slady': 'ślady'};
 
 const richnessNames = {
   'bogate': 'bogate złoże',

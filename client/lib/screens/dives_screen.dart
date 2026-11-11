@@ -82,9 +82,11 @@ class _RouteCard extends StatelessWidget {
     final cost = (r['steam'] as num).toInt();
     final ore = (r['ore'] as List).cast<num>();
     final enough = steam >= cost;
+    // tokens i samples to przedziały [min, max]; pokazujemy, jeśli trasa w ogóle może je dać
+    num maxOf(Object? v) => v is List && v.length > 1 ? v[1] as num : 0;
     final extras = <String>[
-      if ((r['tokens'] as num) > 0) 'żetony',
-      if ((r['samples'] as num) > 0) 'próbki',
+      if (maxOf(r['tokens']) > 0) 'żetony',
+      if (maxOf(r['samples']) > 0) 'próbki',
     ];
     return Card(
       child: Padding(
