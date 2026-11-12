@@ -489,13 +489,18 @@ class _Panel extends StatelessWidget {
     ];
     final reqs = [for (final id in node.requires) (byId[id]?.name ?? id, byId[id]?.state == TechState.done)];
 
-    final idle = st == TechState.available && !anyActive && !state.busy;
+    // zasoby (chipy z surowcem) osobno od wymagań budynków (chipy bez surowca: czas, Lab, Radio)
+    final enoughRes = chips.every((c) => c.$1 == null || c.$3);
+    final buildingsOk = chips.every((c) => c.$1 != null || c.$3);
+    final idle = st == TechState.available && !anyActive && !state.busy && enoughRes && buildingsOk;
     final Widget label = switch (st) {
       TechState.done => const Text('Ukończone'),
       TechState.active when activeEndsAt != null => _ClockCountdown(endsAt: activeEndsAt!, onDone: reload, builder: (l) => Text('W toku, jeszcze $l')),
       TechState.active => const Text('W toku'),
       TechState.locked => const Text('Najpierw spełnij wymagania'),
       TechState.available when anyActive => const Text('Laboratorium zajęte'),
+      TechState.available when !buildingsOk => const Text('Najpierw spełnij wymagania'),
+      TechState.available when !enoughRes => const Text('Brak zasobów'),
       TechState.available => const Text('Rozpocznij badanie'),
     };
 

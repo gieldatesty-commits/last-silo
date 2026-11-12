@@ -47,9 +47,11 @@ Map<String, dynamic> research({bool withActive = true}) {
   return r;
 }
 
-Future<FakeApi> pumpLab(WidgetTester tester, {bool withActive = true, bool disableAnimations = false, Size size = const Size(411, 860), double textScale = 1}) async {
+Future<FakeApi> pumpLab(WidgetTester tester, {bool withActive = true, bool disableAnimations = false, Size size = const Size(411, 860), double textScale = 1, bool emptyWallet = false}) async {
   final api = FakeApi(research(withActive: withActive));
-  final state = AppState(api)..silo = fixture('silo');
+  final silo = fixture('silo');
+  if (emptyWallet) silo['wallet'] = <String, dynamic>{};
+  final state = AppState(api)..silo = silo;
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
   await tester.pumpWidget(MaterialApp(
@@ -114,6 +116,16 @@ void main() {
     expect(api.posts, ['/research/hydraulika_1/start']);
     handle.dispose();
     await tester.pump(const Duration(seconds: 5)); // zamknij snackbar
+  });
+
+  testWidgets('brak zasobów przy wolnym Lab: „Brak zasobów”, przycisk wyłączony', (tester) async {
+    final handle = tester.ensureSemantics();
+    final api = await pumpLab(tester, withActive: false, emptyWallet: true);
+    await selectNode(tester, 'Hydraulika I');
+    expect(buttonText(tester), 'Brak zasobów');
+    expect(tester.widget<FilledButton>(find.byKey(const ValueKey('lab-action'))).onPressed, isNull);
+    expect(api.posts, isEmpty);
+    handle.dispose();
   });
 
   testWidgets('puls aktywnego węzła: animuje, a przy disableAnimations stoi', (tester) async {
