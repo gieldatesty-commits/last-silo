@@ -237,6 +237,87 @@ describe('najazdy', () => {
     expect(await auditLedger(db)).toEqual([]);
   });
 
+  // przedmiot wprost w bazie (jakość podana), założony w zestawie `lo`
+  const giveItem = async (userId: string, recipeId: string, lo: 1 | 2, quality = 1) => {
+    const rc = config.items.recipes.find((r) => r.id === recipeId)!;
+    const id = (await pool.query('INSERT INTO items (user_id, recipe_id, slot, quality, durability, max_durability) VALUES ($1, $2, $3, $4, $5, $5) RETURNING id::text', [userId, rc.id, rc.slot, quality, rc.durability])).rows[0].id as string;
+    await pool.query('INSERT INTO loadouts (user_id, loadout, slot, item_id) VALUES ($1, $2, $3, $4)', [userId, lo, rc.slot, id]);
+    return { id, rc };
+  };
+  const statsOf = async (a: { id: string }, d: { id: string }) => {
+    const pa = (await pool.query('SELECT sila, percepcja FROM players WHERE user_id=$1', [a.id])).rows[0];
+    const pd = (await pool.query('SELECT wytrwalosc FROM players WHERE user_id=$1', [d.id])).rows[0];
+    return { A: attackPower({ sila: pa.sila, percepcja: pa.percepcja, wytrwalosc: 0 }), D: defensePower(config, { sila: 0, percepcja: 0, wytrwalosc: pd.wytrwalosc }, 1) };
+  };
+  const lastRaid = async () => (await pool.query('SELECT attack_power, attacker_loadout, state, result FROM raids ORDER BY id DESC LIMIT 1')).rows[0];
+  const dur = async (id: string) => (await pool.query('SELECT durability FROM items WHERE id = $1', [id])).rows[0].durability as number;
+
+  it('broń w aktywnym zestawie podnosi szansę; zrzut z chwili wysłania', async () => {
+    const { a, d } = await pair();
+    const lom = await giveItem(a.id, 'lom_bojowy', 2);
+    await pool.query('UPDATE players SET active_loadout = 2 WHERE user_id = $1', [a.id]);
+    const { A, D } = await statsOf(a, d);
+    expect((await post(a.h, '/raids', key(), { targetId: d.id })).statusCode).toBe(201);
+    expect(await lastRaid()).toMatchObject({ attack_power: A + lom.rc.attack, attacker_loadout: 2 });
+    await post(a.h, '/loadouts/1/activate', key());
+    tick(150);
+    await silo(d.h);
+    const r = await lastRaid();
+    expect(r.state).toBe('resolved');
+    expect(r.result.chancePct).toBe(Math.round(raidWinChance(A + lom.rc.attack, D) * 100));
+    expect(r.result.chancePct).not.toBe(Math.round(raidWinChance(A, D) * 100));
+  });
+
+  it('obrona z aktywnego zestawu obrońcy; przełączenie po dotarciu, przed rozliczeniem, nie zmienia wyniku', async () => {
+    const { a, d } = await pair();
+    const nap = await giveItem(d.id, 'napiersnik', 2, 3);
+    await pool.query('UPDATE players SET active_loadout = 2 WHERE user_id = $1', [d.id]);
+    const { A, D } = await statsOf(a, d);
+    await post(a.h, '/raids', key(), { targetId: d.id });
+    tick(150); // dotarł, nikt jeszcze nie rozliczył
+    expect((await lastRaid()).state).toBe('active');
+    expect((await post(d.h, '/loadouts/1/activate', key())).statusCode).toBe(200);
+    const r = await lastRaid();
+    expect(r.state).toBe('resolved');
+    expect(r.result.chancePct).toBe(Math.round(raidWinChance(A, D + nap.rc.defense * 3) * 100));
+    expect(r.result.chancePct).not.toBe(Math.round(raidWinChance(A, D) * 100));
+  });
+
+  it('najazd zużywa przedmioty: atakujący zestaw z wysłania, obrońca aktywny', async () => {
+    const { a, d } = await pair();
+    const lom = await giveItem(a.id, 'lom_bojowy', 2);
+    const kil = await giveItem(a.id, 'kilof', 1);
+    const nap = await giveItem(d.id, 'napiersnik', 1);
+    await pool.query('UPDATE players SET active_loadout = 2 WHERE user_id = $1', [a.id]);
+    await post(a.h, '/raids', key(), { targetId: d.id });
+    await post(a.h, '/loadouts/1/activate', key());
+    tick(150);
+    await silo(d.h);
+    expect(await dur(lom.id)).toBe(lom.rc.durability - 1);
+    expect(await dur(kil.id)).toBe(kil.rc.durability);
+    expect(await dur(nap.id)).toBe(nap.rc.durability - 1);
+  });
+
+  it('liga uwzględnia profil aktywnego zestawu', async () => {
+    const { a, d } = await pair();
+    expect((await get(a.h, '/raids/targets'))[0].canRaid).toBe(true);
+    await giveItem(d.id, 'plyta_wartownika', 2, 30); // obrona 90: moc ligowa daleko poza ±40%
+    expect((await get(a.h, '/raids/targets'))[0].canRaid).toBe(true); // w zestawie 2, a aktywny 1
+    await pool.query('UPDATE players SET active_loadout = 2 WHERE user_id = $1', [d.id]);
+    expect((await get(a.h, '/raids/targets'))[0].blockedBy).toBe('out_of_league');
+  });
+
+  it('najazd sprzed migracji (attack_power NULL) liczy atak ze statystyk', async () => {
+    const { a, d } = await pair();
+    await giveItem(a.id, 'lom_bojowy', 1);
+    const { A, D } = await statsOf(a, d);
+    await post(a.h, '/raids', key(), { targetId: d.id });
+    await pool.query('UPDATE raids SET attack_power = NULL, attacker_loadout = NULL');
+    tick(150);
+    await silo(d.h);
+    expect((await lastRaid()).result.chancePct).toBe(Math.round(raidWinChance(A, D) * 100));
+  });
+
   it('limit łupu i ochrona Magazynu', async () => {
     const { a, d } = await pair();
     await grant(d.id, 1_000_000);

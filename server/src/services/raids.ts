@@ -7,6 +7,8 @@ import { addXp } from '../game/dive.js';
 import { rng } from '../game/rng.js';
 import { attackPower, audible, defensePower, distanceKm, inLeague, isBroadcasting, hasReceiver, playerPower, raidWinChance, travelMinutes, distanceBand, bearingSector } from '../game/radio.js';
 import { GameError, settle, settleCore, type Ctx, type Trx } from './silo.js';
+import { activeLoadout, loadoutProfile, wearLoadout, type LoadoutNo } from './gear.js';
+import type { Profile } from '../game/upgrade.js';
 
 type Levels = ReturnType<typeof initialLevels>;
 const DAY = 86_400_000;
@@ -53,8 +55,10 @@ async function resolveRaid(trx: Trx, cfg: GameConfig, raidId: string): Promise<v
   const att = (await playerRow(trx, raid.attacker_id))!;
   const def = (await playerRow(trx, raid.defender_id))!;
   const defLv = await levelsOf(trx, raid.defender_id);
-  const A = attackPower(statsOf(att));
-  const D = defensePower(cfg, statsOf(def), defLv.wartownia);
+  // atak: zrzut z chwili wysłania (najazdy sprzed migracji 016: same statystyki); obrona: aktywny zestaw obrońcy teraz
+  const A = raid.attack_power ?? attackPower(statsOf(att));
+  const defLoadout = await activeLoadout(trx, raid.defender_id);
+  const D = defensePower(cfg, statsOf(def), defLv.wartownia) + (await loadoutProfile(trx, cfg, raid.defender_id, defLoadout)).defense;
   const chance = raidWinChance(A, D);
   const win = rng(Number(raid.seed))() < chance;
 
@@ -98,6 +102,9 @@ async function resolveRaid(trx: Trx, cfg: GameConfig, raidId: string): Promise<v
     await trx.updateTable('players').set({ level: defXp.level, xp: String(defXp.xpInLevel), free_points: def.free_points + defXp.points }).where('user_id', '=', raid.defender_id).execute();
   }
 
+  await wearLoadout(trx, raid.attacker_id, (raid.attacker_loadout === 2 ? 2 : 1) as LoadoutNo);
+  await wearLoadout(trx, raid.defender_id, defLoadout);
+
   const result = { win, chancePct: Math.round(chance * 100), ore, tokens };
   await trx.updateTable('raids').set({ state: 'resolved', result: JSON.stringify(result) }).where('id', '=', raid.id).execute();
   await trx.insertInto('notifications').values({ user_id: raid.attacker_id, type: 'raid_done', payload: JSON.stringify({ raidId: String(raid.id), defender: def.nickname, ...result }), sent_at: null, read_at: null }).execute();
@@ -111,6 +118,9 @@ interface Candidate {
   level: number;
   km: number;
   power: number;
+  /** profil aktywnego zestawu (do mocy ligowej i ataku przy wysłaniu) */
+  profile: Profile;
+  loadout: LoadoutNo;
   radioLevel: number;
   broadcasting: boolean;
   protectedUntil: Date | null;
@@ -123,11 +133,16 @@ async function candidateOf(trx: Trx | Ctx['db'], cfg: GameConfig, userId: string
   if (!p || !p.archetype || p.silo_lat === null || p.silo_lon === null) return null;
   const lv = initialLevels() as Record<string, number>;
   for (const b of await trx.selectFrom('buildings').select(['type', 'level']).where('user_id', '=', userId).execute()) lv[b.type] = b.level;
+  const loadout = await activeLoadout(trx, userId);
+  const profile = await loadoutProfile(trx, cfg, userId, loadout);
   return {
     id: userId,
     nickname: p.nickname ?? '',
     level: p.level,
-    power: playerPower({ sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! }, lv),
+    // moc ligowa uwzględnia siłę bojową aktywnego zestawu (docs/ekwipunek-v1.0.md §2)
+    power: playerPower({ sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! }, lv) + profile.attack + profile.defense,
+    profile,
+    loadout,
     radioLevel: lv.radiostacja!,
     broadcasting: isBroadcasting(cfg, lv.radiostacja!, p.radio_on),
     protectedUntil: p.protected_until,
@@ -182,7 +197,7 @@ export async function startRaidTx(trx: Trx, ctx: Ctx, userId: string, targetId: 
   const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
   const raid = await trx
     .insertInto('raids')
-    .values({ attacker_id: userId, defender_id: targetId, started_at: now, ends_at: endsAt, seed, steam_cost: cost, result: null })
+    .values({ attacker_id: userId, defender_id: targetId, started_at: now, ends_at: endsAt, seed, steam_cost: cost, result: null, attack_power: attackPower(statsOf((await playerRow(trx, userId))!)) + me.profile.attack, attacker_loadout: me.loadout })
     .returning('id')
     .executeTakeFirstOrThrow();
   // atakujący traci ochronę (nie można napadać spod parasola)
