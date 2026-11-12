@@ -125,7 +125,7 @@ items:
     bonus_per_tier: 0.10     # +10% bonusu przedmiotu za tier
     repair_per_tier: 0.15    # +15% kosztu naprawy za tier
     # tiery 6–10 (docs/ekwipunek-v1.0.md §4.2): Warsztat na maksimum, ruda = koszt(5) × growth_high^(t−5), badania od progów
-    growth_high: 1.35
+    growth_high: 1.1
     high_tiers: [{ from: 6, tech: kuznia_glebi }, { from: 8, tech: kuznia_rdzenia }]
   # Rzadkość przy wytwarzaniu (§4.1), losowana z ziarna przedmiotu (druga liczba po jakości); kolejność = progi
   rarity:
@@ -172,7 +172,7 @@ research:
     - { id: precyzja,          name: Precyzyjna obróbka,    branch: inzynieria, lab: 3, ore: 1000, tokens: 6,  seconds: 5400,  requires: [metalurgia], effect: { quality: 0.04 } }
     - { id: balistyka,         name: Balistyka,             branch: inzynieria, lab: 5, ore: 3000, tokens: 25, seconds: 14400, radio: 5, materials: { siarka: 15 }, requires: [metalurgia], unlocks: [karabin_pneumatyczny, plyta_wartownika] }
     - { id: kuznia_glebi,      name: Kuźnia Głębi,          branch: inzynieria, lab: 8,  ore: 9000,  tokens: 60,  seconds: 43200, radio: 5, materials: { miedz: 40, krysztal: 30, siarka: 30 }, requires: [precyzja, balistyka] }
-    - { id: kuznia_rdzenia,    name: Kuźnia Rdzenia,        branch: inzynieria, lab: 10, ore: 20000, tokens: 120, samples: 20, seconds: 86400, radio: 5, materials: { miedz: 80, krysztal: 60, siarka: 60 }, requires: [kuznia_glebi, wiertla_rdzeniowe] }
+    - { id: kuznia_rdzenia,    name: Kuźnia Rdzenia,        branch: inzynieria, lab: 10, ore: 8000, tokens: 80, samples: 0, seconds: 86400, radio: 5, materials: { miedz: 80, krysztal: 60, siarka: 60 }, requires: [kuznia_glebi] }
     # --- gałąź Rdzeniowców: próbki rdzeniowe pochodzą ze zjazdów w głębokich strefach ---
     - { id: obserwacja_rdzeniowcow, name: Obserwacja Rdzeniowców, branch: rdzeniowcy, lab: 3, ore: 700,  tokens: 4,  samples: 3,  seconds: 5400,  requires: [sejsmika] }
     - { id: rezonans_skal,      name: Rezonans skał,          branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, samples: 4,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }

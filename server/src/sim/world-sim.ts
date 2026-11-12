@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js';
 import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
-import { addProfiles, itemBonus, itemProfile, tierRepairMult, upgradeTierCost, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
+import { addProfiles, itemProfile, rollRarity, tierRepairMult, upgradeTierCost, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
 import { dayIndex, genOffers } from '../game/contracts.js';
 const takenOffers = new Set<string>();
 import { ambushChance, shipFeePerUnit, shipKm, shipMinutes, survivingQty } from '../game/caravan.js';
@@ -36,7 +36,8 @@ const NORAIDS = arg('noraids', 0) === 1; // wyłącza najazdy (punkt odniesienia
 type Style = 'hardcore' | 'regularny' | 'okazjonalny';
 const ONLINE_P: Record<Style, number> = { hardcore: 0.5, regularny: 0.06, okazjonalny: 0.011 }; // na 10-min tick w godz. 8–23
 
-type Gear = { recipe: string; quality: number; dur: number; max: number; tier: number };
+/** rm = mnożnik rzadkości, rar = id rzadkości (losowane z ziarna przy wytwarzaniu, jak w serwerze) */
+type Gear = { recipe: string; quality: number; dur: number; max: number; tier: number; rm: number; rar: string };
 
 interface P {
   style: Style;
@@ -80,6 +81,8 @@ interface P {
   marketBuyOre: number; marketNet: number; botOre: number; botDay: number; botQty: number;
   radio5At: number;
   firstTier2At: number;
+  /** dzień pierwszego przedmiotu na najwyższym tierze */
+  firstTier10At: number;
   raid: { attempts: number; wins: number; looted: number; lost: number; against: number; lootedTokens: number };
 }
 
@@ -95,7 +98,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
     samples: 0, gear: new Map(), gear2: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
-    lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, marketBuyOre: 0, marketNet: 0, botOre: 0, botDay: -1, botQty: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
+    lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, marketBuyOre: 0, marketNet: 0, botOre: 0, botDay: -1, botQty: 0, radio5At: -1, firstTier2At: -1, firstTier10At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
 
@@ -159,12 +162,22 @@ const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: p
 let seedCounter = 1000;
 
 /** Profil zestawu (niezepsute przedmioty). */
-const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier)) : sum), ZERO_PROFILE);
+const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier, g.rm)) : sum), ZERO_PROFILE);
 /** Obrona silosu: zestaw aktywny (I) w pełni + część zestawu II. */
 const siloDef = (q: P) => setProfile(q.gear).defense + cfg.items.loadouts.passive_defense_share * setProfile(q.gear2).defense;
 /** Zestaw, którym gracz atakuje (bojowy, jeśli go ma). */
 const attackSet = (p: P) => (p.gear2.size ? p.gear2 : p.gear);
-const gearBonus = (p: P) => [...p.gear.values()].reduce((sum, g) => (g.dur > 0 ? sum + itemBonus(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier) : sum), 0);
+const gearBonus = (p: P) => setProfile(p.gear).dive;
+let craftSeed = 90_000;
+const crafted: Record<string, number> = {};
+/** Rzadkość nowego przedmiotu: druga liczba strumienia ziarna (pierwsza = jakość; sim używa średniej jakości). */
+const rollGear = () => {
+  const r = rng(craftSeed++);
+  r();
+  const rar = rollRarity(cfg, r());
+  crafted[rar.id] = (crafted[rar.id] ?? 0) + 1;
+  return { rm: rar.mult, rar: rar.id };
+};
 const fxOf = (p: P) => computeEffects(cfg, p.done);
 const bonusOf = (p: P) => gearBonus(p) + fxOf(p).divePower;
 const qualityMid = (wl: number, extra: number) => {
@@ -426,7 +439,7 @@ function spendGear(p: P, nowMs: number) {
       takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
       pay('craft', best.ore); p.tokens -= best.tokens;
       const q = qualityMid(wl, fx.quality);
-      p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability, tier: 0 });
+      p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability, tier: 0, ...rollGear() });
     }
   }
   // zestaw bojowy (II): najsilniejsza w boju receptura na slot; okazjonalni go nie budują
@@ -442,7 +455,7 @@ function spendGear(p: P, nowMs: number) {
       if (best) {
         takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
         pay('craft', best.ore); p.tokens -= best.tokens;
-        p.gear2.set(slot, { recipe: best.id, quality: qualityMid(wl, fx.quality), dur: best.durability, max: best.durability, tier: 0 });
+        p.gear2.set(slot, { recipe: best.id, quality: qualityMid(wl, fx.quality), dur: best.durability, max: best.durability, tier: 0, ...rollGear() });
       }
     }
   }
@@ -452,9 +465,10 @@ function spendGear(p: P, nowMs: number) {
     const rc = cfg.items.recipes.find((r) => r.id === g.recipe)!;
     const uc = upgradeTierCost(cfg, rc, g.tier + 1);
     const pl = matPlan(uc.radio, uc.materials);
-    if (wl >= uc.workshop && pl !== null && ore() >= (uc.ore + pl.exch) * 3 && p.tokens >= uc.tokens) {
+    if (wl >= uc.workshop && (!uc.tech || p.done.has(uc.tech)) && pl !== null && ore() >= (uc.ore + pl.exch) * 3 && p.tokens >= uc.tokens) {
       takeMats(uc.materials, pl.exch);
       pay('upgrade', uc.ore); p.tokens -= uc.tokens; g.tier++;
+      if (g.tier >= cfg.items.upgrade.max_tier && p.firstTier10At < 0) p.firstTier10At = nowMs;
     }
   }
   // zaopatrzenie: bot z zapasem rudy kupuje braki z najtańszej oferty (z przewozem), jeśli taniej niż u NPC
@@ -562,6 +576,19 @@ console.log(`  dochód łączny ${Math.round(income)} | zostaje w magazynie ${Ma
 console.log(`\nZjazdy: śr. ${avgAll((p) => p.dives).toFixed(0)} na gracza | sukcesy ${(100 * avgAll((p) => p.wins) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}% | śr. szansa ${(100 * avgAll((p) => p.chanceSum) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}%`);
 console.log(`Badania: śr. ${avgAll((p) => p.done.size).toFixed(1)} z ${cfg.research.techs.length} | próbki w zapasie ${avgAll((p) => p.samples).toFixed(1)} | wpisy kodeksu ${avgAll((p) => cfg.codex.filter((c) => p.done.has(c.tech)).length).toFixed(1)} z ${cfg.codex.length}`);
 console.log(`Sprzęt: śr. założonych ${avgAll((p) => p.gear.size).toFixed(1)} z ${cfg.items.slots.length} | śr. bonus ${avgAll(gearBonus).toFixed(2)} (+badania ${avgAll((p) => fxOf(p).divePower).toFixed(2)})`);
+{
+  const tot = Object.values(crafted).reduce((a, b) => a + b, 0) || 1;
+  console.log(`Rzadkość wytworzonych (${tot}): ${cfg.items.rarity.map((r) => `${r.id} ${(((crafted[r.id] ?? 0) / tot) * 100).toFixed(1)}%`).join(' | ')}`);
+  for (const st of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
+    const days = players.filter((p) => p.style === st && p.firstTier10At >= 0).map((p) => (p.firstTier10At - t0) / 86_400_000).sort((a, b) => a - b);
+    const n = players.filter((p) => p.style === st).length;
+    console.log(`Tier ${cfg.items.upgrade.max_tier} ${st}: ${days.length}/${n} graczy | pierwszy w dniu ${days.length ? days[0]!.toFixed(0) : '-'} | mediana ${days.length ? days[Math.floor(days.length / 2)]!.toFixed(0) : '-'}`);
+    const g = players.filter((p) => p.style === st);
+    const top = g.map((p) => Math.max(0, ...[...p.gear.values()].map((x) => x.tier)));
+    const kg = (id: string) => g.filter((p) => p.done.has(id)).length;
+    console.log(`  najwyższy tier śr. ${(top.reduce((a, b) => a + b, 0) / Math.max(1, g.length)).toFixed(1)}, maks. ${Math.max(0, ...top)} | Warsztat 10: ${g.filter((p) => p.silo.levels.warsztat >= 10).length} | Lab 8/10: ${g.filter((p) => p.silo.levels.laboratorium >= 8).length}/${g.filter((p) => p.silo.levels.laboratorium >= 10).length} | Kuźnia Głębi ${kg('kuznia_glebi')}, Rdzenia ${kg('kuznia_rdzenia')} | Wiertła rdzeniowe ${kg('wiertla_rdzeniowe')} | badań śr. ${(g.reduce((a, p) => a + p.done.size, 0) / Math.max(1, g.length)).toFixed(1)}/${cfg.research.techs.length} | próbki śr. ${(g.reduce((a, p) => a + p.samples, 0) / Math.max(1, g.length)).toFixed(0)} | ruda śr. ${(g.reduce((a, p) => a + p.silo.oreReal, 0) / Math.max(1, g.length)).toFixed(0)}`);
+  }
+}
 for (const st of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
   const g = players.filter((p) => p.style === st);
   const avg = (f: (p: P) => number) => g.reduce((a, p) => a + f(p), 0) / Math.max(1, g.length);

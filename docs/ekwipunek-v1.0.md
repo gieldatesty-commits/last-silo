@@ -91,9 +91,10 @@ Config: `items.rarity: [{id, name, chance, mult, sockets}]` (suma szans = 1, spr
 
 ### 4.2 Tiery 6–10
 - Tiery 1–5 bez zmian (Warsztat `workshop_base + t`, Radio 5, wzrost ×1,7).
-- Tiery 6–10: Warsztat 10, badanie `kuznia_glebi` (Lab 8) dla 6–7 i `kuznia_rdzenia` (Lab 10, wymaga `kuznia_glebi`) dla 8–10. Koszt rudy od tieru 6: `koszt(5) × growth_high^(t−5)`, startowo `growth_high: 1,35` (tier 10 Wiertła rdzeniowego ≈ 100 tys. rudy zamiast ≈ 320 tys. przy ×1,7). Żetony i materiały jak dziś (× numer tieru).
+- Tiery 6–10: Warsztat 10, badanie `kuznia_glebi` (Lab 8, wymaga Precyzji i Balistyki) dla 6–7 i `kuznia_rdzenia` (Lab 10, wymaga `kuznia_glebi`) dla 8–10. Koszt rudy od tieru 6: `koszt(5) × growth_high^(t−5)`, po symulacji **`growth_high: 1,1`** (start 1,35 dawał zero tierów 10 w sezonie, §10.2; tier 10 Wiertła rdzeniowego ≈ 36 tys. rudy). Żetony i materiały jak dziś (× numer tieru).
 - Bez szansy porażki. Bonus +10% za tier, naprawa +15% za tier, jak dziś.
 - Config: `items.upgrade.max_tier: 10`, `growth_high`, `high_tiers: [{from: 6, tech: kuznia_glebi}, {from: 8, tech: kuznia_rdzenia}]`. Kod błędu: `tech_required`.
+- Badania (config 1.7.0): Kuźnia Głębi — Lab 8, 9000 rudy, 60 żet., 12 h, miedź 40, kryształ 30, siarka 30; Kuźnia Rdzenia — Lab 10, 8000 rudy, 80 żet., 24 h, miedź 80, kryształ 60, siarka 60 (po symulacji: bez próbek i bez wymogu Wierteł rdzeniowych, §10.2).
 - Cel symulacji: gracz hardcore ma pierwszy przedmiot na tierze 10 w 5. miesiącu sezonu, nie wcześniej.
 
 ## 5. Runy
@@ -206,3 +207,14 @@ Damian wybrał obronę z obu zestawów. Sam udział (0,5 / 0,75 / 1,0) obniżał
 | 3 | 10,8% → 9,8% | 0,59 → 0,81 | 68/71% | 24,3 tys. | 10,2% |
 
 Kryteria §8: 1, 2, 3 spełnione (5 bez zmian w kodzie). Średni atak zestawu bojowego 4,1 (hardcore) / 3,3 (regularni), obrona silosu 4,8 / 2,7: sprzęt waży w obie strony. Najazdów jest ok. 50% więcej niż w 1.5.0, ale łup na najazd mniejszy; mediana utraconego dochodu rośnie z ok. 7,5% do 10%. Okazjonalni nie budują zestawu bojowego i bronią się samymi statystykami; do obserwacji w becie.
+
+### 10.2 Etap 2: rzadkość i tiery 6–10 (config 1.7.0)
+Pierwsza propozycja (`growth_high` 1,35; Kuźnia Rdzenia 20 000 rudy, 120 żet., 20 próbek, wymaga Wierteł rdzeniowych) dała **zero tierów 10** w 180 dniach: hardcore w symulacji nie zbierają próbek (krótkie trasy), więc nie badają gałęzi Rdzeniowców, a tier 8+ był za drogi przy zapasie rudy bota (3× koszt). Próby: Kuźnia Rdzenia 8000–20 000 rudy bez próbek; `growth_high` 1,0 / 1,1 / 1,2 / 1,35. Wybrane: **Kuźnia Rdzenia 8000 rudy, 80 żet., bez próbek, wymaga tylko Kuźni Głębi; `growth_high` 1,1**.
+
+| Ziarno | Pierwszy tier 10 (hardcore) | Hardcore z tierem 10 (mediana dnia) | Łupy w dochodzie (1.6.1 → 1.7.0) | Ruda w magazynie | Wzmocnienia w dochodzie | Udział zjazdów (hardcore / regularni) |
+|---|---|---|---|---|---|---|
+| 1 | dzień 147 | 10/15 (176) | 13,5% → 10,8% | 17,2 tys. | 19% | 62/70% |
+| 2 | dzień 155 | 5/15 (160) | 12,0% → 10,3% | 16,6 tys. | 19% | 62/69% |
+| 3 | dzień 157 | 7/15 (166) | 12,9% → 10,9% | 17,5 tys. | 19% | 61/69% |
+
+Rzadkość wytworzonych: 68,8% / 23,5% / 7,1% / 0,6% (zgodnie z configiem). Regularni i okazjonalni nie dochodzą do tieru 10 (najwyżej 5 / 3). Kryteria §8 spełnione: pierwszy tier 10 w 5. miesiącu, zjazdy głównym źródłem, ruda nie zalega (spada z ok. 24 tys. do 17 tys., wzmocnienia są ujściem), łupy niższe niż w 1.6.1. Szyb u hardcore produkuje więcej (magazyn rzadziej pełny, bo ruda idzie na wzmocnienia).

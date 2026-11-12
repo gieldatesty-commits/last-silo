@@ -157,8 +157,9 @@ describe('ekwipunek: rzadkość i tiery 6–10', () => {
     expect(t6).toMatchObject({ workshop: 10, tech: 'kuznia_glebi' });
     expect(upgradeTierCost(c, w, 7).tech).toBe('kuznia_glebi');
     expect(upgradeTierCost(c, w, 8).tech).toBe('kuznia_rdzenia');
-    expect(t6.ore).toBe(Math.ceil(t5.ore * 1.35));
-    expect(t10.ore).toBe(Math.ceil(t5.ore * 1.35 ** 5));
+    const gh = c.items.upgrade.growth_high;
+    expect(t6.ore).toBe(Math.ceil(t5.ore * gh));
+    expect(t10.ore).toBe(Math.ceil(t5.ore * gh ** 5));
     expect(t10.tokens).toBe(c.items.upgrade.tokens_per_tier * 10);
     expect(c.items.upgrade.max_tier).toBe(10);
   });
@@ -173,6 +174,6 @@ describe('ekwipunek: rzadkość i tiery 6–10', () => {
     const kg = c.research.techs.find((t) => t.id === 'kuznia_glebi')!;
     const kr = c.research.techs.find((t) => t.id === 'kuznia_rdzenia')!;
     expect(kg).toMatchObject({ lab: 8, requires: ['precyzja', 'balistyka'] });
-    expect(kr).toMatchObject({ lab: 10, requires: ['kuznia_glebi', 'wiertla_rdzeniowe'] });
+    expect(kr).toMatchObject({ lab: 10, requires: ['kuznia_glebi'] });
   });
 });
