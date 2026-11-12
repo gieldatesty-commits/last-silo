@@ -18,14 +18,17 @@ export interface Effects {
   /** mnożnik próbek ze zjazdów */
   samples: number;
   unlocked: Set<string>;
+  /** ukończone badania (wymogi tierów 6–10) */
+  done: Set<string>;
 }
 
 export function computeEffects(cfg: GameConfig, done: Iterable<string>): Effects {
-  const e: Effects = { divePower: 0, diveOre: 1, diveSteam: 1, quality: 0, repair: 1, upgradeCost: 1, winded: 1, samples: 1, unlocked: new Set() };
+  const e: Effects = { divePower: 0, diveOre: 1, diveSteam: 1, quality: 0, repair: 1, upgradeCost: 1, winded: 1, samples: 1, unlocked: new Set(), done: new Set() };
   let ore = 0, steam = 0, repair = 0, upg = 0, wd = 0, sm = 0;
   for (const id of done) {
     const t = cfg.research.techs.find((x) => x.id === id);
     if (!t) continue;
+    e.done.add(id);
     e.divePower += t.effect.dive_power ?? 0;
     e.quality += t.effect.quality ?? 0;
     ore += t.effect.dive_ore_pct ?? 0;

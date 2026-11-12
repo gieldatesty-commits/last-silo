@@ -61,9 +61,17 @@ describe('poziomy budynków', () => {
     expect(maxLevelOf(config, 'magazyn')).toBe(8);
     for (const b of ['warsztat', 'wartownia', 'laboratorium', 'radiostacja']) expect(maxLevelOf(config, b)).toBe(10);
   });
-  it('najwyższy tier wzmocnienia pasuje do maksymalnego Warsztatu', () => {
+  it('każdy tier jest osiągalny: Warsztat do maksimum, a tiery ponad zakres Warsztatu wymagają badania z drzewa', () => {
     const u = config.items.upgrade;
-    expect(u.workshop_base + u.max_tier).toBeLessThanOrEqual(maxLevelOf(config, 'warsztat'));
+    const max = maxLevelOf(config, 'warsztat');
+    for (let t = 1; t <= u.max_tier; t++) {
+      const cost = upgradeTierCost(config, kilof, t);
+      expect(cost.workshop).toBeLessThanOrEqual(max);
+      if (u.workshop_base + t > max) {
+        expect(cost.tech, `tier ${t}`).not.toBeNull();
+        expect(config.research.techs.some((x) => x.id === cost.tech)).toBe(true);
+      }
+    }
   });
 });
 

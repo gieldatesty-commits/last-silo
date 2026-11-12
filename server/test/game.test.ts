@@ -5,7 +5,7 @@ import { orePerHour, oreCap, steamCap, upgradeCost, upgradeSeconds, initialLevel
 import { advance, produce, type SiloState } from '../src/game/silo.js';
 import { distanceKm, placeSilo, rollLocalDeposit } from '../src/game/world.js';
 import { rng } from '../src/game/rng.js';
-import { addProfiles, itemBonus, itemProfile, ZERO_PROFILE } from '../src/game/upgrade.js';
+import { addProfiles, itemBonus, itemProfile, rarityOf, rollRarity, upgradeTierCost, ZERO_PROFILE } from '../src/game/upgrade.js';
 
 const c = parseGameConfig(readFileSync('../config/game.yaml', 'utf8'));
 const t0 = new Date('2026-01-01T00:00:00Z');
@@ -124,10 +124,55 @@ describe('ekwipunek: profil przedmiotu', () => {
     expect(addProfiles(ZERO_PROFILE, { dive: 1, attack: 2, defense: 3 })).toEqual({ dive: 1, attack: 2, defense: 3 });
   });
   it('config 1.6.x: 7 receptur bojowych, balistyka odblokowuje karabin i płytę', () => {
-    expect(c.version).toBe('1.6.1');
+    expect(c.version).toBe('1.7.0');
     const ids = ['lom_bojowy', 'nitownica', 'karabin_pneumatyczny', 'napiersnik', 'plyta_wartownika', 'noktowizor', 'celownik'];
     for (const id of ids) expect(c.items.recipes.some((r) => r.id === id)).toBe(true);
     const bal = c.research.techs.find((t) => t.id === 'balistyka')!;
     expect(bal.unlocks).toEqual(['karabin_pneumatyczny', 'plyta_wartownika']);
+  });
+});
+
+describe('ekwipunek: rzadkość i tiery 6–10', () => {
+  it('rzadkość: progi szans z configu, suma 1, nieznana = zwykły', () => {
+    expect(c.items.rarity.map((r) => r.id)).toEqual(['zwykly', 'solidny', 'mistrzowski', 'unikatowy']);
+    expect(rollRarity(c, 0).id).toBe('zwykly');
+    expect(rollRarity(c, 0.6999).id).toBe('zwykly');
+    expect(rollRarity(c, 0.7).id).toBe('solidny');
+    expect(rollRarity(c, 0.92).id).toBe('mistrzowski');
+    expect(rollRarity(c, 0.995).id).toBe('unikatowy');
+    expect(rarityOf(c, null)).toMatchObject({ id: 'zwykly', mult: 1, sockets: 0 });
+    expect(rarityOf(c, 'nieznana')).toMatchObject({ id: 'zwykly' });
+    expect(rarityOf(c, 'unikatowy')).toMatchObject({ mult: 1.3, sockets: 3 });
+  });
+  it('profil z rzadkością: × mult', () => {
+    const kilof = c.items.recipes.find((r) => r.id === 'kilof')!;
+    expect(itemProfile(c, kilof, 1, 0, 1.3).dive).toBeCloseTo(0.78, 6);
+    expect(itemProfile(c, kilof, 1, 0).dive).toBe(0.6);
+  });
+  it('koszt tierów 6–10: Warsztat 10, growth_high, badania', () => {
+    const w = c.items.recipes.find((r) => r.id === 'wiertlo_rdzeniowe')!;
+    const t5 = upgradeTierCost(c, w, 5), t6 = upgradeTierCost(c, w, 6), t10 = upgradeTierCost(c, w, 10);
+    expect(upgradeTierCost(c, w, 1)).toMatchObject({ workshop: 6, tech: null });
+    expect(t5).toMatchObject({ workshop: 10, tech: null });
+    expect(t6).toMatchObject({ workshop: 10, tech: 'kuznia_glebi' });
+    expect(upgradeTierCost(c, w, 7).tech).toBe('kuznia_glebi');
+    expect(upgradeTierCost(c, w, 8).tech).toBe('kuznia_rdzenia');
+    expect(t6.ore).toBe(Math.ceil(t5.ore * 1.35));
+    expect(t10.ore).toBe(Math.ceil(t5.ore * 1.35 ** 5));
+    expect(t10.tokens).toBe(c.items.upgrade.tokens_per_tier * 10);
+    expect(c.items.upgrade.max_tier).toBe(10);
+  });
+  it('ten sam seed: jakość to nadal pierwsza liczba strumienia, rzadkość druga', () => {
+    const r = rng(12345);
+    const q = r();
+    const u = r();
+    expect(q).toBe(rng(12345)());
+    expect(['zwykly', 'solidny', 'mistrzowski', 'unikatowy']).toContain(rollRarity(c, u).id);
+  });
+  it('Kuźnie w drzewie badań', () => {
+    const kg = c.research.techs.find((t) => t.id === 'kuznia_glebi')!;
+    const kr = c.research.techs.find((t) => t.id === 'kuznia_rdzenia')!;
+    expect(kg).toMatchObject({ lab: 8, requires: ['precyzja', 'balistyka'] });
+    expect(kr).toMatchObject({ lab: 10, requires: ['kuznia_glebi', 'wiertla_rdzeniowe'] });
   });
 });

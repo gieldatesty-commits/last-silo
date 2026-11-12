@@ -76,7 +76,15 @@ export const GameConfigSchema = z
         materials_per_tier: z.record(z.string(), z.number().int().min(0)),
         bonus_per_tier: z.number().min(0).max(1),   // +X% bonusu przedmiotu za tier
         repair_per_tier: z.number().min(0).max(2),  // +X% kosztu naprawy za tier
+        // tiery powyżej 5 (docs/ekwipunek-v1.0.md §4.2): ruda = koszt(5) × growth_high^(t−5), od `from` wymagane badanie `tech`
+        growth_high: pos.default(1),
+        high_tiers: z.array(z.object({ from: z.number().int().min(2), tech: z.string() })).default([]),
       }),
+      // rzadkość przy wytwarzaniu (§4.1): kolejność = progi losowania; suma szans = 1
+      rarity: z
+        .array(z.object({ id: z.string(), name: z.string(), chance: z.number().min(0).max(1), mult: pos, sockets: z.number().int().min(0).max(6) }))
+        .min(1)
+        .refine((rs) => Math.abs(rs.reduce((a, r) => a + r.chance, 0) - 1) < 1e-9, { message: 'items.rarity: suma szans musi wynosić 1' }),
       recipes: z.array(
         z.object({
           id: z.string(),

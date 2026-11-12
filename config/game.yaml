@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.6.1"
+version: "1.7.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -115,7 +115,7 @@ items:
   loadouts: { passive_defense_share: 0.75 }
   # Wzmacnianie: stały cel dla rudy i materiałów w późnej grze. Tier t wymaga Warsztatu (workshop_base + t) i Radiostacji `radio`.
   upgrade:
-    max_tier: 5
+    max_tier: 10
     workshop_base: 5
     radio: 5
     ore_fraction: 0.6        # koszt rudy tieru 1 = ruda receptury × 0,6; każdy kolejny tier × growth
@@ -124,6 +124,15 @@ items:
     materials_per_tier: { miedz: 6, krysztal: 5, siarka: 4 }   # × numer tieru
     bonus_per_tier: 0.10     # +10% bonusu przedmiotu za tier
     repair_per_tier: 0.15    # +15% kosztu naprawy za tier
+    # tiery 6–10 (docs/ekwipunek-v1.0.md §4.2): Warsztat na maksimum, ruda = koszt(5) × growth_high^(t−5), badania od progów
+    growth_high: 1.35
+    high_tiers: [{ from: 6, tech: kuznia_glebi }, { from: 8, tech: kuznia_rdzenia }]
+  # Rzadkość przy wytwarzaniu (§4.1), losowana z ziarna przedmiotu (druga liczba po jakości); kolejność = progi
+  rarity:
+    - { id: zwykly,      name: Zwykły,      chance: 0.70, mult: 1.00, sockets: 0 }
+    - { id: solidny,     name: Solidny,     chance: 0.22, mult: 1.08, sockets: 1 }
+    - { id: mistrzowski, name: Mistrzowski, chance: 0.07, mult: 1.18, sockets: 2 }
+    - { id: unikatowy,   name: Unikatowy,   chance: 0.01, mult: 1.30, sockets: 3 }
   recipes:   # tech: receptura odblokowana badaniem w Laboratorium
     - { id: kilof,               name: Kilof,                slot: narzedzie, workshop: 1, ore: 150,  tokens: 0,  bonus: 0.6, durability: 20 }
     - { id: mlot_pneumatyczny,   name: Młot pneumatyczny,    slot: narzedzie, workshop: 3, ore: 600,  tokens: 4,  bonus: 1.0, durability: 25 }
@@ -162,6 +171,8 @@ research:
     - { id: metalurgia,        name: Metalurgia,            branch: inzynieria, lab: 2, ore: 500,  tokens: 3,  seconds: 1800,  effect: { repair_pct: -10 }, unlocks: [helm_wzmocniony] }
     - { id: precyzja,          name: Precyzyjna obróbka,    branch: inzynieria, lab: 3, ore: 1000, tokens: 6,  seconds: 5400,  requires: [metalurgia], effect: { quality: 0.04 } }
     - { id: balistyka,         name: Balistyka,             branch: inzynieria, lab: 5, ore: 3000, tokens: 25, seconds: 14400, radio: 5, materials: { siarka: 15 }, requires: [metalurgia], unlocks: [karabin_pneumatyczny, plyta_wartownika] }
+    - { id: kuznia_glebi,      name: Kuźnia Głębi,          branch: inzynieria, lab: 8,  ore: 9000,  tokens: 60,  seconds: 43200, radio: 5, materials: { miedz: 40, krysztal: 30, siarka: 30 }, requires: [precyzja, balistyka] }
+    - { id: kuznia_rdzenia,    name: Kuźnia Rdzenia,        branch: inzynieria, lab: 10, ore: 20000, tokens: 120, samples: 20, seconds: 86400, radio: 5, materials: { miedz: 80, krysztal: 60, siarka: 60 }, requires: [kuznia_glebi, wiertla_rdzeniowe] }
     # --- gałąź Rdzeniowców: próbki rdzeniowe pochodzą ze zjazdów w głębokich strefach ---
     - { id: obserwacja_rdzeniowcow, name: Obserwacja Rdzeniowców, branch: rdzeniowcy, lab: 3, ore: 700,  tokens: 4,  samples: 3,  seconds: 5400,  requires: [sejsmika] }
     - { id: rezonans_skal,      name: Rezonans skał,          branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, samples: 4,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }
