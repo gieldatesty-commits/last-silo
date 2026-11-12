@@ -4,7 +4,7 @@ import { buildApp } from '../src/app.js';
 import { parseGameConfig } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
-import { applyLedger, walletBalance } from '../src/ledger.js';
+import { applyLedger, walletBalance, auditLedger } from '../src/ledger.js';
 import { regenPool } from '../src/game/dive.js';
 import { maxLevelOf } from '../src/game/formulas.js';
 import { itemBonus, tierRepairMult, upgradeTierCost } from '../src/game/upgrade.js';
@@ -37,6 +37,7 @@ async function newPlayer() {
   return { id: reg.userId as string, h };
 }
 const post = (h: Record<string, string>, path: string, key: string, payload: object = {}) => app.inject({ method: 'POST', url: path, headers: { ...h, 'idempotency-key': key }, payload });
+const doneTech = (id: string, tech: string) => pool.query("INSERT INTO research (user_id, tech_id, state, ends_at) VALUES ($1, $2, 'done', now())", [id, tech]);
 const grant = (id: string, res: Record<string, number>, tag: string) =>
   db.transaction().execute((trx) => applyLedger(trx, id, Object.entries(res).map(([resource, delta]) => ({ resource, delta, reason: 'admin_adjust' as const, ref: `${tag}-${resource}` })), 'test'));
 const setLevel = (id: string, type: string, level: number) => pool.query('UPDATE buildings SET level = $3 WHERE user_id = $1 AND type = $2', [id, type, level]);
@@ -130,11 +131,46 @@ describe('wzmacnianie przedmiotów', () => {
     expect(poor.statusCode).toBe(402);
 
     await grant(id, { ore: 5_000_000, tokens: 5000, miedz: 5000, krysztal: 5000, siarka: 5000 }, 'g3');
+    await doneTech(id, 'kuznia_glebi');
+    await doneTech(id, 'kuznia_rdzenia');
     for (let t = 1; t <= config.items.upgrade.max_tier; t++) {
       const ok = await post(h, `/items/${crafted.id}/upgrade`, `upg-bbbb01${t}`);
       expect(ok.statusCode).toBe(200);
     }
     const over = await post(h, `/items/${crafted.id}/upgrade`, 'upg-bbbb0999');
     expect(over.json().error).toBe('max_tier');
+  });
+
+  it('tier 5 → 6 bez Kuźni Głębi: 409 tech_required, dziennik bez zmian; z Kuźnią 6–7, 8 wymaga Kuźni Rdzenia', async () => {
+    const { id, h } = await newPlayer();
+    await grant(id, { ore: 5_000_000, tokens: 5000, miedz: 5000, krysztal: 5000, siarka: 5000 }, 'g4');
+    const crafted = (await post(h, '/items/craft', 'craft-cccc3333', { recipeId: 'kilof' })).json();
+    await setLevel(id, 'warsztat', 10);
+    await setLevel(id, 'radiostacja', 5);
+    await pool.query('UPDATE items SET tier = 5 WHERE id = $1', [crafted.id]);
+    const inv = (await app.inject({ url: '/items', headers: h })).json().items[0];
+    expect(inv.nextUpgrade).toMatchObject({ tech: 'kuznia_glebi', techName: 'Kuźnia Głębi', workshop: 10 });
+    const ore0 = await db.transaction().execute((trx) => walletBalance(trx, id, 'ore'));
+    const blocked = await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc0006');
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().error).toBe('tech_required');
+    expect(await db.transaction().execute((trx) => walletBalance(trx, id, 'ore'))).toBe(ore0);
+    expect(await auditLedger(db)).toEqual([]);
+
+    await doneTech(id, 'kuznia_glebi');
+    expect((await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc1006')).json().tier).toBe(6);
+    expect((await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc1007')).json().tier).toBe(7);
+    const at8 = await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc1008');
+    expect(at8.json().error).toBe('tech_required');
+  });
+
+  it('tier 10: nextUpgrade null, kolejne 409 max_tier', async () => {
+    const { id, h } = await newPlayer();
+    const crafted = (await post(h, '/items/craft', 'craft-dddd4444', { recipeId: 'kilof' })).json();
+    await pool.query('UPDATE items SET tier = 10 WHERE id = $1', [crafted.id]);
+    const inv = (await app.inject({ url: '/items', headers: h })).json().items[0];
+    expect(inv).toMatchObject({ tier: 10, maxTier: 10, nextUpgrade: null });
+    expect((await post(h, `/items/${crafted.id}/upgrade`, 'upg-dddd0011')).json().error).toBe('max_tier');
+    expect(id).toBeTruthy();
   });
 });

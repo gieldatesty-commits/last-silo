@@ -30,6 +30,9 @@ async function workshopLevel(trx: Trx, userId: string): Promise<number> {
   return b?.level ?? 1;
 }
 
+/** Koszt wzmocnienia z nazwą wymaganego badania (do opisu w kliencie). */
+const withTechName = (cfg: GameConfig, c: ReturnType<typeof upgradeTierCost>) => ({ ...c, techName: c.tech ? (cfg.research.techs.find((t) => t.id === c.tech)?.name ?? c.tech) : null });
+
 /** Zestawy, w których jest przedmiot, i aktywny zestaw gracza (do pól `inLoadouts` i `equipped`). */
 type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]> };
 
@@ -57,7 +60,7 @@ const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership,
     rarity: { id: rar.id, name: rar.name, sockets: rar.sockets },
     tier: it.tier,
     maxTier: cfg.items.upgrade.max_tier,
-    nextUpgrade: it.tier >= cfg.items.upgrade.max_tier ? null : upgradeTierCost(cfg, rc, it.tier + 1),
+    nextUpgrade: it.tier >= cfg.items.upgrade.max_tier ? null : withTechName(cfg, upgradeTierCost(cfg, rc, it.tier + 1)),
     durability: it.durability,
     maxDurability: it.max_durability,
     broken: it.durability <= 0,
@@ -202,6 +205,7 @@ export async function upgradeTx(trx: Trx, ctx: Ctx, userId: string, id: string) 
   const cost = upgradeTierCost(cfg, rc, it.tier + 1);
   if ((await workshopLevel(trx, userId)) < cost.workshop) throw new GameError(409, 'workshop_too_low');
   if ((await radioLevel(trx, userId)) < cost.radio) throw new GameError(409, 'radio_too_low');
+  if (cost.tech && !(await loadEffects(trx, cfg, userId)).done.has(cost.tech)) throw new GameError(409, 'tech_required');
   try {
     await applyLedger(
       trx,
