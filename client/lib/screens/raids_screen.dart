@@ -66,13 +66,14 @@ class _LoadoutPanel extends StatelessWidget {
     final stats = m(items['loadoutStats']);
     final mine = m(stats['$active']);
     final theirs = m(stats['$other']);
+    final silo = m(items['siloDefense']);
     return LsCard(
       border: Ls.warn.withValues(alpha: 0.4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Aktywny: zestaw ${loadoutName(active)}', style: lsDisplay.copyWith(fontSize: 16)),
         const SizedBox(height: 6),
-        Text('atak sprzętu +${mine['attack'] ?? 0} · obrona sprzętu +${mine['defense'] ?? 0}', style: lsBody),
-        Text('z zestawem ${loadoutName(other)}: +${theirs['attack'] ?? 0} ataku', style: lsMuted),
+        Text('atak sprzętu +${mine['attack'] ?? 0} · obrona silosu +${silo['$active'] ?? mine['defense'] ?? 0}', style: lsBody),
+        Text('z zestawem ${loadoutName(other)}: atak +${theirs['attack'] ?? 0}, obrona silosu +${silo['$other'] ?? theirs['defense'] ?? 0}', style: lsMuted),
         const SizedBox(height: 6),
         const Text('Atakujesz zestawem z chwili wysłania. Obrona silosu liczy też część pancerza z drugiego zestawu.', style: TextStyle(fontSize: 11, height: 1.4, color: Ls.textMuted)),
         const SizedBox(height: 8),

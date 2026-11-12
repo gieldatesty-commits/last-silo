@@ -317,7 +317,7 @@ class _SlotTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
             child: Column(children: [
-              SlotIcon(slot, color: it == null ? Ls.locked : Ls.copper),
+              SlotIcon(it == null ? slot : iconSlotOf(it), color: it == null ? Ls.locked : Ls.copper),
               const SizedBox(height: 4),
               Text(name.toUpperCase(), style: const TextStyle(fontSize: 9, letterSpacing: 0.6, color: Ls.textFaint), textAlign: TextAlign.center),
               const SizedBox(height: 2),
@@ -500,7 +500,7 @@ class _InventoryRow extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 child: Row(children: [
-                  SlotIcon(it['slot'] as String, color: Ls.copper),
+                  SlotIcon(iconSlotOf(it), color: Ls.copper),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -592,7 +592,7 @@ class _RecipeRow extends StatelessWidget {
                   ),
                   child: Text(label),
                 );
-          final icon = SlotIcon(r['slot'] as String, color: locked ? Ls.locked : Ls.copper, size: 26);
+          final icon = SlotIcon(iconSlotOf(r), color: locked ? Ls.locked : Ls.copper, size: 26);
           if (stacked) {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [icon, const SizedBox(width: 10), Expanded(child: info)]),

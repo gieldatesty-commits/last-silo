@@ -10,6 +10,7 @@ import 'package:lastsilo/lab_layout.dart';
 import 'package:lastsilo/screens/dives_screen.dart';
 import 'package:lastsilo/screens/raids_screen.dart';
 import 'package:lastsilo/screens/workshop_screen.dart';
+import 'package:lastsilo/slot_icon.dart';
 import 'package:lastsilo/strings.dart';
 
 /// Zestawy ekwipunku (docs/ekwipunek-v1.0.md §7). Fikstury z prawdziwego API (serwer deweloperski, config 1.6.0):
@@ -68,7 +69,8 @@ void expectNoClippedText(WidgetTester tester) {
   }
 }
 
-String idOf(FakeApi api, String recipeId) => ((api.items['items'] as List).firstWhere((i) => i['recipeId'] == recipeId) as Map)['id'] as String;
+Map itemOf(FakeApi api, String recipeId) => (api.items['items'] as List).firstWhere((i) => i['recipeId'] == recipeId) as Map;
+String idOf(FakeApi api, String recipeId) => itemOf(api, recipeId)['id'] as String;
 
 void main() {
   group('Warsztat: zestawy', () {
@@ -99,7 +101,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.bySemanticsLabel(RegExp(r'^Narzędzie: Łom bojowy')));
       await tester.pump();
-      expect(find.text('Atak +0.58'), findsOneWidget);
+      expect(find.text('Atak +${itemOf(api, 'lom_bojowy')['attack']}'), findsOneWidget);
       expect(find.text('✓ w zestawie II'), findsOneWidget);
       await tester.tap(find.text('Zdejmij z II'));
       await tester.pump();
@@ -130,6 +132,8 @@ void main() {
       expect(find.text('Kilof'), findsNothing);
       await tester.scrollUntilVisible(find.text('Napierśnik').last, 300, scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('obrona +1.2 · 25 wytrz.'), findsOneWidget);
+      // broń ma własną ikonę (nie kilof ze slotu narzędzia)
+      expect(find.byWidgetPredicate((w) => w is SlotIcon && w.slot == 'bron'), findsWidgets);
     });
 
     for (final scale in [1.0, 1.5]) {
@@ -166,8 +170,11 @@ void main() {
       await pump(tester, RaidsScreen(state: appState(api)));
       await tester.pump();
       expect(find.text('Aktywny: zestaw I'), findsOneWidget);
-      expect(find.textContaining('atak sprzętu +0'), findsOneWidget);
-      expect(find.textContaining('z zestawem II: +0.58'), findsOneWidget);
+      final st = api.items['loadoutStats'] as Map;
+      final sd = api.items['siloDefense'] as Map;
+      expect(find.textContaining('atak sprzętu +${(st['1'] as Map)['attack']}'), findsOneWidget);
+      expect(find.textContaining('obrona silosu +${sd['1']}'), findsOneWidget); // z częścią pancerza z zestawu II
+      expect(find.textContaining('z zestawem II: atak +${(st['2'] as Map)['attack']}, obrona silosu +${sd['2']}'), findsOneWidget);
       await tester.tap(find.text('Przełącz na zestaw II'));
       await tester.pump();
       expect(api.posts.single.$1, '/loadouts/2/activate');
@@ -178,5 +185,6 @@ void main() {
     expect(techPos.containsKey('balistyka'), isTrue);
     expect(errorText('already_active'), 'Ten zestaw jest już aktywny.');
     expect(errorText('invalid_loadout'), 'Nie ma takiego zestawu.');
+    expect(errorText('not_equipped'), 'Tego przedmiotu nie ma w tym zestawie.');
   });
 }

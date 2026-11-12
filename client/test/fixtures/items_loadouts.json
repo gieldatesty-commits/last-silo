@@ -1,12 +1,12 @@
 {
   "items": [
     {
-      "id": "1",
+      "id": "7",
       "recipeId": "kilof",
       "name": "Kilof",
       "slot": "narzedzie",
-      "quality": 0.99,
-      "bonus": 0.6,
+      "quality": 1.13,
+      "bonus": 0.68,
       "attack": 0,
       "defense": 0,
       "tier": 0,
@@ -32,13 +32,13 @@
       "repairCost": 0
     },
     {
-      "id": "2",
+      "id": "8",
       "recipeId": "lom_bojowy",
       "name": "Łom bojowy",
       "slot": "narzedzie",
-      "quality": 0.97,
+      "quality": 1.09,
       "bonus": 0,
-      "attack": 0.58,
+      "attack": 0.65,
       "defense": 0,
       "tier": 0,
       "maxTier": 5,
@@ -63,14 +63,14 @@
       "repairCost": 0
     },
     {
-      "id": "3",
+      "id": "9",
       "recipeId": "napiersnik",
       "name": "Napierśnik",
       "slot": "ochrona",
-      "quality": 0.92,
+      "quality": 1.09,
       "bonus": 0,
       "attack": 0,
-      "defense": 1.1,
+      "defense": 1.31,
       "tier": 0,
       "maxTier": 5,
       "nextUpgrade": {
@@ -94,12 +94,12 @@
       "repairCost": 0
     },
     {
-      "id": "4",
+      "id": "10",
       "recipeId": "detektor_zylowy",
       "name": "Detektor żył",
       "slot": "sprzet",
-      "quality": 1.13,
-      "bonus": 0.79,
+      "quality": 1.11,
+      "bonus": 0.78,
       "attack": 0,
       "defense": 0,
       "tier": 0,
@@ -129,29 +129,33 @@
   "activeLoadout": 1,
   "loadouts": {
     "1": {
-      "narzedzie": "1",
+      "narzedzie": "7",
       "ochrona": null,
       "lampa": null,
-      "sprzet": "4"
+      "sprzet": "10"
     },
     "2": {
-      "narzedzie": "2",
-      "ochrona": "3",
+      "narzedzie": "8",
+      "ochrona": "9",
       "lampa": null,
-      "sprzet": "4"
+      "sprzet": "10"
     }
   },
   "loadoutStats": {
     "1": {
-      "dive": 1.39,
+      "dive": 1.45,
       "attack": 0,
       "defense": 0
     },
     "2": {
-      "dive": 0.79,
-      "attack": 0.58,
-      "defense": 1.1
+      "dive": 0.78,
+      "attack": 0.65,
+      "defense": 1.31
     }
+  },
+  "siloDefense": {
+    "1": 0.98,
+    "2": 1.31
   },
   "inventoryMax": 24,
   "workshopLevel": 4,

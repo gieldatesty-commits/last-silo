@@ -93,6 +93,7 @@ const _errors = {
   'already_accepted': 'Już przyjęte.',
   'already_active': 'Ten zestaw jest już aktywny.',
   'invalid_loadout': 'Nie ma takiego zestawu.',
+  'not_equipped': 'Tego przedmiotu nie ma w tym zestawie.',
 };
 
 String errorText(String code) {
