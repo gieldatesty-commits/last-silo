@@ -222,6 +222,7 @@ describe('Zestawy', () => {
     await post(h, '/loadouts/2/activate', 'zestaw-sn-a1');
     const d = (await post(h, '/dives', 'zestaw-sn-d1', { routeId: 'plytki' })).json();
     expect(d.loadout).toBe(2);
+    expect((await app.inject({ url: '/silo', headers: h })).json().queue[0].loadout).toBe(2);
     await post(h, '/loadouts/1/activate', 'zestaw-sn-a2');
     tick(plytkiS + 1);
     await app.inject({ url: '/items', headers: h });

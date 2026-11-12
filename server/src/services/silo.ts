@@ -287,7 +287,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
         next: level >= maxLevelOf(cfg, b.id) ? null : { level: next, cost: upgradeCost(cfg, b.id, next, arch.upgrade_cost_multiplier * fx.upgradeCost), seconds: upgradeSeconds(cfg, next) },
       };
     }),
-    queue: diveRows.map((d) => ({ id: String(d.id), routeId: d.route_id, startsAt: d.started_at, endsAt: d.ends_at, running: d.started_at <= st.state.at })),
+    queue: diveRows.map((d) => ({ id: String(d.id), routeId: d.route_id, startsAt: d.started_at, endsAt: d.ends_at, running: d.started_at <= st.state.at, loadout: d.loadout })),
     queueSlots: queueSlots(cfg, p.subscription_until, st.state.at),
     // sloty ponad queue_slots.free (subskrypcja) przyjmują tylko trasy do tylu sekund
     queueExtraMaxSeconds: cfg.dives.queue_slots.subscriber_extra_max_seconds,
