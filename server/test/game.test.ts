@@ -5,6 +5,7 @@ import { orePerHour, oreCap, steamCap, upgradeCost, upgradeSeconds, initialLevel
 import { advance, produce, type SiloState } from '../src/game/silo.js';
 import { distanceKm, placeSilo, rollLocalDeposit } from '../src/game/world.js';
 import { rng } from '../src/game/rng.js';
+import { addProfiles, itemBonus, itemProfile, ZERO_PROFILE } from '../src/game/upgrade.js';
 
 const c = parseGameConfig(readFileSync('../config/game.yaml', 'utf8'));
 const t0 = new Date('2026-01-01T00:00:00Z');
@@ -106,5 +107,27 @@ describe('świat', () => {
   });
   it('haversine: półkole = pi*R', () => {
     expect(distanceKm({ lat: 0, lon: 0 }, { lat: 0, lon: 180 }, 1000)).toBeCloseTo(Math.PI * 1000, 3);
+  });
+});
+
+describe('ekwipunek: profil przedmiotu', () => {
+  it('profil przedmiotu: zjazd/atak/obrona × jakość × tier', () => {
+    const lom = c.items.recipes.find((r) => r.id === 'lom_bojowy')!;
+    expect(itemProfile(c, lom, 1, 0)).toEqual({ dive: 0, attack: 1.0, defense: 0 });
+    const p = itemProfile(c, lom, 0.9, 2); // 1,0 × 0,9 × 1,2
+    expect(p.attack).toBeCloseTo(1.08, 6);
+    const kilof = c.items.recipes.find((r) => r.id === 'kilof')!;
+    expect(itemProfile(c, kilof, 1, 0)).toEqual({ dive: 0.6, attack: 0, defense: 0 });
+    expect(itemBonus(c, kilof, 1, 0)).toBe(0.6);
+    const pancerny = c.items.recipes.find((r) => r.id === 'kombinezon_pancerny')!;
+    expect(itemProfile(c, pancerny, 1, 0).defense).toBe(0.8);
+    expect(addProfiles(ZERO_PROFILE, { dive: 1, attack: 2, defense: 3 })).toEqual({ dive: 1, attack: 2, defense: 3 });
+  });
+  it('config 1.6.0: 7 receptur bojowych, balistyka odblokowuje karabin i płytę', () => {
+    expect(c.version).toBe('1.6.0');
+    const ids = ['lom_bojowy', 'nitownica', 'karabin_pneumatyczny', 'napiersnik', 'plyta_wartownika', 'noktowizor', 'celownik'];
+    for (const id of ids) expect(c.items.recipes.some((r) => r.id === id)).toBe(true);
+    const bal = c.research.techs.find((t) => t.id === 'balistyka')!;
+    expect(bal.unlocks).toEqual(['karabin_pneumatyczny', 'plyta_wartownika']);
   });
 });

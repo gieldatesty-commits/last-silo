@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.5.0"
+version: "1.6.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -129,13 +129,21 @@ items:
     - { id: wiertlo_rdzeniowe,   name: Wiertło rdzeniowe,    slot: narzedzie, workshop: 6, ore: 4500, tokens: 40, bonus: 2.6, durability: 40, radio: 5, materials: { miedz: 40, krysztal: 25 }, tech: wiertla_rdzeniowe }
     - { id: kask_gornika,        name: Kask górnika,         slot: ochrona,   workshop: 2, ore: 300,  tokens: 2,  bonus: 0.6, durability: 25 }
     - { id: helm_wzmocniony,     name: Hełm wzmocniony,      slot: ochrona,   workshop: 3, ore: 700,  tokens: 5,  bonus: 1.0, durability: 30, tech: metalurgia }
-    - { id: kombinezon_pancerny, name: Kombinezon pancerny,  slot: ochrona,   workshop: 5, ore: 2000, tokens: 18, bonus: 1.5, durability: 35, radio: 5, materials: { miedz: 20, siarka: 8 } }
+    - { id: kombinezon_pancerny, name: Kombinezon pancerny,  slot: ochrona,   workshop: 5, ore: 2000, tokens: 18, bonus: 1.5, defense: 0.8, durability: 35, radio: 5, materials: { miedz: 20, siarka: 8 } }
     - { id: kombinezon_izolowany, name: Kombinezon izolowany, slot: ochrona,  workshop: 7, ore: 5500, tokens: 50, bonus: 2.4, durability: 45, radio: 5, materials: { siarka: 35, krysztal: 20 }, tech: izolacja_rdzenia }
     - { id: lampa_karbidowa,     name: Lampa karbidowa,      slot: lampa,     workshop: 1, ore: 200,  tokens: 0,  bonus: 0.5, durability: 20 }
     - { id: lampa_wibracyjna,    name: Lampa wibracyjna,     slot: lampa,     workshop: 3, ore: 800,  tokens: 8,  bonus: 1.2, durability: 30 }
     - { id: lampa_rezonansowa,   name: Lampa rezonansowa,    slot: lampa,     workshop: 6, ore: 3800, tokens: 35, bonus: 2.0, durability: 40, radio: 5, materials: { krysztal: 25, siarka: 10 }, tech: rezonans_skal }
     - { id: detektor_zylowy,     name: Detektor żył,         slot: sprzet,    workshop: 2, ore: 450,  tokens: 3,  bonus: 0.7, durability: 25 }
     - { id: skaner_sejsmiczny,   name: Skaner sejsmiczny,    slot: sprzet,    workshop: 5, ore: 2600, tokens: 22, bonus: 1.6, durability: 35, radio: 5, materials: { miedz: 18, krysztal: 15 }, tech: sejsmika }
+    # Sprzęt bojowy (docs/ekwipunek-v1.0.md §2): dzieli sloty z narzędziami zjazdowymi; bonus = moc zjazdu, attack/defense = najazdy
+    - { id: lom_bojowy,           name: Łom bojowy,           slot: narzedzie, workshop: 2, ore: 350,  tokens: 2,  bonus: 0, attack: 1.0, durability: 20 }
+    - { id: nitownica,            name: Nitownica,            slot: narzedzie, workshop: 4, ore: 1500, tokens: 12, bonus: 0, attack: 2.0, durability: 30, radio: 5, materials: { miedz: 12 } }
+    - { id: karabin_pneumatyczny, name: Karabin pneumatyczny, slot: narzedzie, workshop: 6, ore: 4200, tokens: 38, bonus: 0, attack: 3.2, durability: 40, radio: 5, materials: { siarka: 30, miedz: 15 }, tech: balistyka }
+    - { id: napiersnik,           name: Napierśnik,           slot: ochrona,   workshop: 3, ore: 650,  tokens: 4,  bonus: 0, defense: 1.2, durability: 25 }
+    - { id: plyta_wartownika,     name: Płyta Wartownika,     slot: ochrona,   workshop: 6, ore: 4500, tokens: 40, bonus: 0, defense: 3.0, durability: 45, radio: 5, materials: { krysztal: 30 }, tech: balistyka }
+    - { id: noktowizor,           name: Noktowizor,           slot: lampa,     workshop: 4, ore: 1600, tokens: 14, bonus: 0, attack: 0.8, defense: 0.6, durability: 30, radio: 5, materials: { krysztal: 12 } }
+    - { id: celownik,             name: Celownik,             slot: sprzet,    workshop: 5, ore: 2400, tokens: 20, bonus: 0, attack: 1.4, durability: 35, radio: 5, materials: { krysztal: 10, siarka: 8 } }
 
 # Dział nauki (Laboratorium): jedno badanie naraz; czas skraca się o 5% za każdy poziom Laboratorium (max −50%)
 research:
@@ -151,6 +159,7 @@ research:
     - { id: ekonomika_prac_2,  name: Organizacja robót II,  branch: inzynieria, lab: 5, ore: 2500, tokens: 15, seconds: 10800, radio: 5, materials: { miedz: 15, siarka: 8 }, requires: [ekonomika_prac_1], effect: { upgrade_cost_pct: -5 } }
     - { id: metalurgia,        name: Metalurgia,            branch: inzynieria, lab: 2, ore: 500,  tokens: 3,  seconds: 1800,  effect: { repair_pct: -10 }, unlocks: [helm_wzmocniony] }
     - { id: precyzja,          name: Precyzyjna obróbka,    branch: inzynieria, lab: 3, ore: 1000, tokens: 6,  seconds: 5400,  requires: [metalurgia], effect: { quality: 0.04 } }
+    - { id: balistyka,         name: Balistyka,             branch: inzynieria, lab: 5, ore: 3000, tokens: 25, seconds: 14400, radio: 5, materials: { siarka: 15 }, requires: [metalurgia], unlocks: [karabin_pneumatyczny, plyta_wartownika] }
     # --- gałąź Rdzeniowców: próbki rdzeniowe pochodzą ze zjazdów w głębokich strefach ---
     - { id: obserwacja_rdzeniowcow, name: Obserwacja Rdzeniowców, branch: rdzeniowcy, lab: 3, ore: 700,  tokens: 4,  samples: 3,  seconds: 5400,  requires: [sejsmika] }
     - { id: rezonans_skal,      name: Rezonans skał,          branch: rdzeniowcy, lab: 4, ore: 1800, tokens: 14, samples: 4,  seconds: 9000,  requires: [obserwacja_rdzeniowcow], effect: { dive_power: 0.3 }, unlocks: [lampa_rezonansowa] }

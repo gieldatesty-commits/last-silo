@@ -83,7 +83,9 @@ export const GameConfigSchema = z
           workshop: z.number().int().min(1),
           ore: z.number().int().min(0),
           tokens: z.number().int().min(0),
-          bonus: pos,
+          bonus: z.number().min(0),                  // moc zjazdu
+          attack: z.number().min(0).default(0),      // atak w najazdach
+          defense: z.number().min(0).default(0),     // obrona silosu
           durability: z.number().int().min(1),
           tech: z.string().optional(),
           radio: z.number().int().min(1).optional(),
