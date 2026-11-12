@@ -99,6 +99,8 @@ export interface Database {
     max_durability: number;
     tier: Generated<number>;
     created_at: Generated<Date>;
+    rarity: Generated<string>;
+    seed: string | number | null;
   };
   research: { user_id: string; tech_id: string; state: 'active' | 'done'; ends_at: Date };
   contacts: { user_id: string; target_id: string; created_at: Generated<Date> };

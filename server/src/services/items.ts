@@ -6,7 +6,7 @@ import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
 import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
 import { randomInt } from 'node:crypto';
-import { itemProfile, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
 
 type Trx = Transaction<Database>;
 
@@ -42,7 +42,8 @@ async function membership(db: Trx | Ctx['db'], userId: string): Promise<Membersh
 
 const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership, repairMult = 1) => {
   const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id)!;
-  const prof = itemProfile(cfg, rc, it.quality, it.tier);
+  const rar = rarityOf(cfg, it.rarity);
+  const prof = itemProfile(cfg, rc, it.quality, it.tier, rar.mult);
   const inLoadouts = m.of.get(String(it.id)) ?? [];
   return {
     id: String(it.id),
@@ -53,6 +54,7 @@ const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership,
     bonus: Math.round(prof.dive * 100) / 100,
     attack: Math.round(prof.attack * 100) / 100,
     defense: Math.round(prof.defense * 100) / 100,
+    rarity: { id: rar.id, name: rar.name, sockets: rar.sockets },
     tier: it.tier,
     maxTier: cfg.items.upgrade.max_tier,
     nextUpgrade: it.tier >= cfg.items.upgrade.max_tier ? null : upgradeTierCost(cfg, rc, it.tier + 1),
@@ -108,10 +110,13 @@ export async function craftTx(trx: Trx, ctx: Ctx, userId: string, recipeId: stri
   if (Number(count.n) >= cfg.items.inventory_max) throw new GameError(409, 'inventory_full');
   const seed = ctx.seed ? ctx.seed() : randomInt(1, 2 ** 31);
   const { min, max } = qualityRange(cfg, wl, fx.quality);
-  const quality = min + (max - min) * rng(seed)();
+  // jeden strumień z ziarna: 1. liczba = jakość (jak przed etapem 2), 2. = rzadkość (docs/ekwipunek-v1.0.md §4.1)
+  const r = rng(seed);
+  const quality = min + (max - min) * r();
+  const rarity = rollRarity(cfg, r());
   const it = await trx
     .insertInto('items')
-    .values({ user_id: userId, recipe_id: rc.id, slot: rc.slot, quality, durability: rc.durability, max_durability: rc.durability })
+    .values({ user_id: userId, recipe_id: rc.id, slot: rc.slot, quality, durability: rc.durability, max_durability: rc.durability, rarity: rarity.id, seed })
     .returningAll()
     .executeTakeFirstOrThrow();
   try {
@@ -129,7 +134,7 @@ export async function craftTx(trx: Trx, ctx: Ctx, userId: string, recipeId: stri
     if (e instanceof InsufficientFunds) throw new GameError(402, `insufficient_${e.resource}`);
     throw e;
   }
-  await trx.insertInto('events_log').values({ user_id: userId, name: 'item_crafted', props: JSON.stringify({ recipeId: rc.id, quality }) }).execute();
+  await trx.insertInto('events_log').values({ user_id: userId, name: 'item_crafted', props: JSON.stringify({ recipeId: rc.id, quality, rarity: rarity.id }) }).execute();
   return view(cfg, it as never, await membership(trx, userId));
 }
 

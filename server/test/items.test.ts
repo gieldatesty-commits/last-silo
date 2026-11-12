@@ -6,6 +6,8 @@ import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { applyLedger, auditLedger } from '../src/ledger.js';
 import { diveChance, resolveDive } from '../src/game/dive.js';
+import { rng } from '../src/game/rng.js';
+import { rollRarity } from '../src/game/upgrade.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
 const { db, pool } = createDb(url);
@@ -303,5 +305,44 @@ describe('Zestawy', () => {
     await pool.query('UPDATE items SET durability = 0 WHERE id = $1', [k.id]);
     const r = (await app.inject({ url: '/items', headers: h })).json();
     expect(r.loadoutStats['1']).toEqual({ dive: 0, attack: 0, defense: 0 });
+  });
+});
+
+describe('Rzadkość', () => {
+  it('wytworzenie: rzadkość z drugiej liczby strumienia ziarna, jakość z pierwszej, ziarno zapisane', async () => {
+    const { id, h } = await newPlayer();
+    await grant(id, 500);
+    const qr = (await app.inject({ url: '/items', headers: h })).json().quality;
+    for (const s of [1, 7, 4242]) {
+      nextSeed = s;
+      const it = (await post(h, '/items/craft', `rar-craft-${s}`, { recipeId: 'kilof' })).json();
+      const r = rng(s);
+      expect(it.quality).toBeCloseTo(qr.min + (qr.max - qr.min) * r(), 1);
+      expect(it.rarity.id).toBe(rollRarity(config, r()).id);
+      expect(it.rarity).toMatchObject({ name: expect.any(String), sockets: expect.any(Number) });
+      expect(Number((await pool.query('SELECT seed FROM items WHERE id = $1', [it.id])).rows[0].seed)).toBe(s);
+    }
+  });
+
+  it('rzadkość mnoży profil przedmiotu i zestawu (zjazd)', async () => {
+    const { h } = await newPlayer();
+    const k = (await post(h, '/items/craft', 'rar-prof-c1', { recipeId: 'kilof' })).json();
+    await post(h, `/items/${k.id}/equip`, 'rar-prof-e1');
+    await pool.query("UPDATE items SET rarity = 'zwykly' WHERE id = $1", [k.id]);
+    const base = (await app.inject({ url: '/items', headers: h })).json();
+    await pool.query("UPDATE items SET rarity = 'unikatowy' WHERE id = $1", [k.id]);
+    const up = (await app.inject({ url: '/items', headers: h })).json();
+    const b0 = base.items[0].bonus, b1 = up.items[0].bonus;
+    expect(b1).toBeCloseTo(b0 * 1.3, 1);
+    expect(up.loadoutStats['1'].dive).toBeCloseTo(base.loadoutStats['1'].dive * 1.3, 1);
+    expect(up.items[0].rarity).toMatchObject({ id: 'unikatowy', sockets: 3 });
+  });
+
+  it('przedmiot sprzed migracji (rarity domyślne, seed NULL): mnożnik 1, 0 gniazd', async () => {
+    const { id, h } = await newPlayer();
+    await pool.query("INSERT INTO items (user_id, recipe_id, slot, quality, durability, max_durability) VALUES ($1, 'kilof', 'narzedzie', 1, 20, 20)", [id]);
+    const it = (await app.inject({ url: '/items', headers: h })).json().items[0];
+    expect(it.rarity).toMatchObject({ id: 'zwykly', sockets: 0 });
+    expect(it.bonus).toBe(kilof.bonus);
   });
 });
