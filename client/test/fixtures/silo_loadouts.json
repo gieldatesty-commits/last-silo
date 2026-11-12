@@ -1,6 +1,6 @@
 {
   "player": {
-    "nickname": "Zestawowy1520",
+    "nickname": "Zestawowy3836",
     "archetype": "gornik",
     "level": 1,
     "xp": 0,
@@ -15,8 +15,8 @@
     "activeLoadout": 1
   },
   "silo": {
-    "lat": -79.86589280883919,
-    "lon": 115.53175960667431,
+    "lat": -25.080871599919018,
+    "lon": 82.16161815449595,
     "depth": 0,
     "deposit": "bogate"
   },
@@ -129,6 +129,6 @@
   "protectedUntil": null,
   "windedUntil": null,
   "job": null,
-  "serverTime": "2026-11-12T17:59:41.904Z",
-  "configVersion": "1.6.0"
+  "serverTime": "2026-11-12T18:54:24.057Z",
+  "configVersion": "1.7.0"
 }

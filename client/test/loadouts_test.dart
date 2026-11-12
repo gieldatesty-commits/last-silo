@@ -108,6 +108,8 @@ void main() {
       expect(api.posts.last.$1, '/items/${idOf(api, 'lom_bojowy')}/unequip');
       expect(api.posts.last.$2, {'loadout': 2});
       await tester.pump(const Duration(seconds: 5));
+      await tester.ensureVisible(find.text('Załóż też w I'));
+      await tester.pump();
       await tester.tap(find.text('Załóż też w I'));
       await tester.pump();
       expect(api.posts.last.$1, '/items/${idOf(api, 'lom_bojowy')}/equip');

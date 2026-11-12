@@ -94,6 +94,7 @@ const _errors = {
   'already_active': 'Ten zestaw jest już aktywny.',
   'invalid_loadout': 'Nie ma takiego zestawu.',
   'not_equipped': 'Tego przedmiotu nie ma w tym zestawie.',
+  'tech_required': 'Najpierw ukończ wymagane badanie.',
 };
 
 String errorText(String code) {
@@ -101,6 +102,12 @@ String errorText(String code) {
   if (code.startsWith('insufficient_')) return 'Za mało zasobu: ${resName(code.substring(13))}.';
   return 'Coś poszło nie tak ($code).';
 }
+
+/// Znaki rzadkości (klucze jak `rarity.id` z API): rzadkość widać znakiem i nazwą, nie tylko kolorem.
+const rarityMarks = {'zwykly': '●', 'solidny': '◆', 'mistrzowski': '★', 'unikatowy': '✦'};
+
+/// Rzadkość przedmiotu z API (`{id, name}`) jako „◆ Solidny”; brak pola (stare API) = pusty tekst.
+String rarityText(Object? r) => r is Map ? '${rarityMarks[r['id']] ?? '●'} ${r['name'] ?? r['id']}' : '';
 
 /// Numer zestawu ekwipunku (1, 2) jako cyfra rzymska, tak jak w grze: „Zestaw I”, „Zestaw II”.
 String loadoutName(Object? n) => n == 2 ? 'II' : 'I';

@@ -384,7 +384,15 @@ class _ItemCard extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: 6),
-        Text('${it['name']}', style: _display.copyWith(fontSize: 19)),
+        Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text('${it['name']}', style: _display.copyWith(fontSize: 19)),
+          if (it['rarity'] is Map)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(border: Border.all(color: Ls.copper.withValues(alpha: 0.6)), borderRadius: BorderRadius.circular(9)),
+              child: Text(rarityText(it['rarity']), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Ls.copper)),
+            ),
+        ]),
         const SizedBox(height: 4),
         Text(profileText(it, long: true), style: const TextStyle(fontSize: 13, color: Ls.text)),
         const SizedBox(height: 6),
@@ -400,6 +408,7 @@ class _ItemCard extends StatelessWidget {
         ]),
         const SizedBox(height: 8),
         Semantics(
+          container: true,
           label: 'wzmocnienie $tier z $maxTier',
           excludeSemantics: true,
           // Wrap: przy dużej czcionce kropki schodzą do nowej linii zamiast wystawać poza kartę
@@ -424,6 +433,10 @@ class _ItemCard extends StatelessWidget {
         ]),
         const SizedBox(height: 4),
         ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: frac.clamp(0.0, 1.0).toDouble(), minHeight: 6, color: dc, backgroundColor: Ls.border)),
+        if (next != null && next['techDone'] == false) ...[
+          const SizedBox(height: 8),
+          Text('Wymaga badania: ${next['techName'] ?? next['tech']}', style: const TextStyle(fontSize: 12, color: Ls.warnText)),
+        ],
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 6, children: [
           OutlinedButton(
@@ -445,7 +458,7 @@ class _ItemCard extends StatelessWidget {
             ),
           if (next != null)
             FilledButton(
-              onPressed: busy
+              onPressed: busy || next['techDone'] == false
                   ? null
                   : () async {
                       final ok =
@@ -485,7 +498,7 @@ class _InventoryRow extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${it['name']}, ${slotNames[it['slot']] ?? it['slot']}${inLo.isEmpty ? '' : ', w zestawie ${membershipText(inLo)}'}, wytrzymałość $dw',
+      label: '${it['name']}, ${it['rarity'] is Map ? '${(it['rarity'] as Map)['name']}, ' : ''}${slotNames[it['slot']] ?? it['slot']}${inLo.isEmpty ? '' : ', w zestawie ${membershipText(inLo)}'}, wytrzymałość $dw',
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
@@ -505,7 +518,7 @@ class _InventoryRow extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${it['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-                      Text('${profileText(it)} · wzmocnienie ${it['tier']}/${it['maxTier']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+                      Text('${it['rarity'] is Map ? '${rarityText(it['rarity'])} · ' : ''}${profileText(it)} · wzmocnienie ${it['tier']}/${it['maxTier']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
                     ]),
                   ),
                   if (inLo.isNotEmpty)

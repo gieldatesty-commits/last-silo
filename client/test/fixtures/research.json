@@ -458,6 +458,58 @@
         "karabin_pneumatyczny",
         "plyta_wartownika"
       ]
+    },
+    {
+      "id": "kuznia_glebi",
+      "name": "Kuźnia Głębi",
+      "branch": "inzynieria",
+      "state": "locked",
+      "labRequired": 8,
+      "requires": [
+        "precyzja",
+        "balistyka"
+      ],
+      "missing": [
+        "precyzja",
+        "balistyka"
+      ],
+      "ore": 9000,
+      "tokens": 60,
+      "samples": 0,
+      "materials": {
+        "miedz": 40,
+        "krysztal": 30,
+        "siarka": 30
+      },
+      "radioRequired": 5,
+      "seconds": 43200,
+      "effect": {},
+      "unlocks": []
+    },
+    {
+      "id": "kuznia_rdzenia",
+      "name": "Kuźnia Rdzenia",
+      "branch": "inzynieria",
+      "state": "locked",
+      "labRequired": 10,
+      "requires": [
+        "kuznia_glebi"
+      ],
+      "missing": [
+        "kuznia_glebi"
+      ],
+      "ore": 8000,
+      "tokens": 80,
+      "samples": 0,
+      "materials": {
+        "miedz": 80,
+        "krysztal": 60,
+        "siarka": 60
+      },
+      "radioRequired": 5,
+      "seconds": 86400,
+      "effect": {},
+      "unlocks": []
     }
   ]
 }
