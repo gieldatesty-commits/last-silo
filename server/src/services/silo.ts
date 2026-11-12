@@ -11,7 +11,7 @@ import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { resolveDueRaids } from './raids.js';
 import { resolveDueShipments } from './caravans.js';
 import { resolveDueContracts } from './contracts.js';
-import { activeLoadout, equippedBonus, loadEffects, wearLoadout } from './gear.js';
+import { activeLoadout, equippedBonus, loadEffects, loadoutProfile, wearLoadout, type LoadoutNo } from './gear.js';
 import { randomInt } from 'node:crypto';
 
 export class GameError extends Error {
@@ -199,11 +199,13 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
     const pool = await lockPool(trx, cfg, route, now);
     const fx = await loadEffects(trx, cfg, userId);
-    const bonus = (await equippedBonus(trx, cfg, userId)) + fx.divePower;
+    // moc z zestawu zapisana przy dodaniu zjazdu; zjazdy sprzed migracji 016 liczą się z zestawu 1
+    const lo: LoadoutNo = d.loadout === 2 ? 2 : 1;
+    const bonus = (d.item_bonus ?? (await loadoutProfile(trx, cfg, userId, 1)).dive) + fx.divePower;
     const sRow = await trx.selectFrom('silos').select('seed').where('user_id', '=', userId).executeTakeFirstOrThrow();
     const profile = geologyProfile(cfg, { lat: p.silo_lat!, lon: p.silo_lon! }, Number(sRow.seed));
     const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
-    await wearLoadout(trx, userId, await activeLoadout(trx, userId));
+    await wearLoadout(trx, userId, lo);
 
     await applyLedger(
       trx,
@@ -370,13 +372,16 @@ export async function startDiveTx(trx: Trx, ctx: Ctx, userId: string, routeId: s
   // zjazd zaczyna się, gdy skończy się poprzedni w kolejce (albo od razu)
   const startsAt = pending.length ? new Date(Math.max(now.getTime(), pending[pending.length - 1]!.ends_at.getTime())) : now;
   const endsAt = new Date(startsAt.getTime() + route.seconds * 1000);
+  // zrzut zestawu: przełączenie po dodaniu do kolejki nie zmienia mocy tego zjazdu (docs/ekwipunek-v1.0.md §3.2)
+  const loadout = await activeLoadout(trx, userId);
+  const itemBonus = (await loadoutProfile(trx, cfg, userId, loadout)).dive;
   const d = await trx
     .insertInto('dives')
-    .values({ user_id: userId, route_id: route.id, started_at: startsAt, ends_at: endsAt, seed, steam_cost: cost, result: null })
+    .values({ user_id: userId, route_id: route.id, started_at: startsAt, ends_at: endsAt, seed, steam_cost: cost, result: null, loadout, item_bonus: itemBonus })
     .returning('id')
     .executeTakeFirstOrThrow();
   await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_started', props: JSON.stringify({ routeId: route.id, steam: cost }) }).execute();
-  return { diveId: String(d.id), routeId: route.id, steamCost: cost, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), queuePosition: pending.length + 1 };
+  return { diveId: String(d.id), routeId: route.id, loadout, steamCost: cost, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), queuePosition: pending.length + 1 };
 }
 
 export async function listRoutes(ctx: Ctx, userId: string) {

@@ -209,6 +209,56 @@ describe('Zestawy', () => {
     expect((await app.inject({ url: '/silo', headers: h })).json().player.activeLoadout).toBe(2);
   });
 
+  const plytkiS = config.dives.routes.find((r) => r.id === 'plytki')!.seconds;
+  const durOf = async (itemId: string) => (await pool.query('SELECT durability FROM items WHERE id = $1', [itemId])).rows[0].durability as number;
+  const lomRc = config.items.recipes.find((r) => r.id === 'lom_bojowy')!;
+
+  it('zjazd liczy zestaw z chwili dodania; przełączenie potem nic nie zmienia', async () => {
+    const { h, k, lom } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-sn-e1');
+    await post(h, `/items/${lom.id}/equip`, 'zestaw-sn-e2', { loadout: 2 });
+    await post(h, '/loadouts/2/activate', 'zestaw-sn-a1');
+    const d = (await post(h, '/dives', 'zestaw-sn-d1', { routeId: 'plytki' })).json();
+    expect(d.loadout).toBe(2);
+    await post(h, '/loadouts/1/activate', 'zestaw-sn-a2');
+    tick(plytkiS + 1);
+    await app.inject({ url: '/items', headers: h });
+    const row = (await pool.query('SELECT loadout, item_bonus, state FROM dives WHERE id = $1', [d.diveId])).rows[0];
+    expect(row).toEqual({ loadout: 2, item_bonus: 0, state: 'resolved' });
+    expect(await durOf(k.id)).toBe(kilof.durability);
+    expect(await durOf(lom.id)).toBe(lomRc.durability - 1);
+  });
+
+  it('dwa zjazdy w kolejce, przełączenie między dodaniami: każdy ze swoim zestawem i zużyciem', async () => {
+    const { h, k, lom } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-q-e1');
+    await post(h, `/items/${lom.id}/equip`, 'zestaw-q-e2', { loadout: 2 });
+    const a = (await post(h, '/dives', 'zestaw-q-d1', { routeId: 'plytki' })).json();
+    await post(h, '/loadouts/2/activate', 'zestaw-q-a1');
+    const b = (await post(h, '/dives', 'zestaw-q-d2', { routeId: 'plytki' })).json();
+    tick(2 * plytkiS + 2);
+    await app.inject({ url: '/items', headers: h });
+    const rows = (await pool.query('SELECT id::text, loadout, item_bonus FROM dives WHERE id = ANY($1) ORDER BY id', [[a.diveId, b.diveId]])).rows;
+    expect(rows[0].loadout).toBe(1);
+    expect(rows[0].item_bonus).toBeCloseTo(kilof.bonus * k.quality, 1);
+    expect(rows[1]).toMatchObject({ loadout: 2, item_bonus: 0 });
+    expect(await durOf(k.id)).toBe(kilof.durability - 1);
+    expect(await durOf(lom.id)).toBe(lomRc.durability - 1);
+  });
+
+  it('zjazd sprzed migracji (item_bonus NULL) rozlicza się z zestawu 1', async () => {
+    const { h, k, lom } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-old-e1');
+    await post(h, `/items/${lom.id}/equip`, 'zestaw-old-e2', { loadout: 2 });
+    await post(h, '/loadouts/2/activate', 'zestaw-old-a1');
+    const d = (await post(h, '/dives', 'zestaw-old-d1', { routeId: 'plytki' })).json();
+    await pool.query('UPDATE dives SET item_bonus = NULL, loadout = NULL WHERE id = $1', [d.diveId]);
+    tick(plytkiS + 1);
+    await app.inject({ url: '/items', headers: h });
+    expect(await durOf(k.id)).toBe(kilof.durability - 1);
+    expect(await durOf(lom.id)).toBe(lomRc.durability);
+  });
+
   it('zepsuty przedmiot nie liczy się do profilu zestawu', async () => {
     const { h, k } = await kit();
     await post(h, `/items/${k.id}/equip`, 'zestaw-br-e1');
