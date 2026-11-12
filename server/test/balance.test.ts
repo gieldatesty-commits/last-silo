@@ -149,7 +149,7 @@ describe('wzmacnianie przedmiotów', () => {
     await setLevel(id, 'radiostacja', 5);
     await pool.query('UPDATE items SET tier = 5 WHERE id = $1', [crafted.id]);
     const inv = (await app.inject({ url: '/items', headers: h })).json().items[0];
-    expect(inv.nextUpgrade).toMatchObject({ tech: 'kuznia_glebi', techName: 'Kuźnia Głębi', workshop: 10 });
+    expect(inv.nextUpgrade).toMatchObject({ tech: 'kuznia_glebi', techName: 'Kuźnia Głębi', techDone: false, workshop: 10 });
     const ore0 = await db.transaction().execute((trx) => walletBalance(trx, id, 'ore'));
     const blocked = await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc0006');
     expect(blocked.statusCode).toBe(409);
@@ -158,6 +158,7 @@ describe('wzmacnianie przedmiotów', () => {
     expect(await auditLedger(db)).toEqual([]);
 
     await doneTech(id, 'kuznia_glebi');
+    expect((await app.inject({ url: '/items', headers: h })).json().items[0].nextUpgrade.techDone).toBe(true);
     expect((await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc1006')).json().tier).toBe(6);
     expect((await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc1007')).json().tier).toBe(7);
     const at8 = await post(h, `/items/${crafted.id}/upgrade`, 'upg-cccc1008');
