@@ -88,7 +88,7 @@ export async function listItems(ctx: Ctx, userId: string) {
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
     quality: { min: Math.round(qr.min * 100) / 100, max: Math.round(qr.max * 100) / 100 },
-    recipes: cfg.items.recipes.map((r) => ({ id: r.id, name: r.name, slot: r.slot, workshop: r.workshop, ore: r.ore, tokens: r.tokens, materials: r.materials, radio: r.radio ?? null, bonus: r.bonus, durability: r.durability, locked: wl < r.workshop || (!!r.tech && !fx.unlocked.has(r.id)) || (!!r.radio && rl < r.radio), needsTech: r.tech ?? null })),
+    recipes: cfg.items.recipes.map((r) => ({ id: r.id, name: r.name, slot: r.slot, workshop: r.workshop, ore: r.ore, tokens: r.tokens, materials: r.materials, radio: r.radio ?? null, bonus: r.bonus, attack: r.attack ?? 0, defense: r.defense ?? 0, durability: r.durability, locked: wl < r.workshop || (!!r.tech && !fx.unlocked.has(r.id)) || (!!r.radio && rl < r.radio), needsTech: r.tech ?? null })),
   };
 }
 

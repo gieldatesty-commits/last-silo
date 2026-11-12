@@ -59,6 +59,8 @@ describe('Warsztat i przedmioty', () => {
     expect(r.recipes).toHaveLength(20);
     expect(r.recipes.find((x: { id: string }) => x.id === 'kilof').locked).toBe(false);
     expect(r.recipes.find((x: { id: string }) => x.id === 'wiertlo_udarowe').locked).toBe(true);
+    expect(r.recipes.find((x: { id: string }) => x.id === 'lom_bojowy')).toMatchObject({ bonus: 0, attack: 0.6, defense: 0 });
+    expect(r.recipes.find((x: { id: string }) => x.id === 'kilof')).toMatchObject({ attack: 0, defense: 0 });
   });
 
   it('wytworzenie: koszt w dzienniku, jakość w zakresie, idempotencja, brak środków', async () => {
