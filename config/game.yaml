@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.6.0"
+version: "1.6.1"
 
 resources:
   - { id: ore, name: Ruda }

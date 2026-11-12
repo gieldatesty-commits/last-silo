@@ -19,7 +19,7 @@ import { computeEffects, researchSeconds } from '../game/research.js';
 import { placeSilo } from '../game/world.js';
 import { geologyProfile } from '../game/geology.js';
 import { attackPower, audible, defensePower, distanceKm, inLeague, isBroadcasting, playerPower, raidWinChance } from '../game/radio.js';
-import { protectedShare, oreCap } from '../game/formulas.js';
+import { protectedOre, protectedShare, oreCap } from '../game/formulas.js';
 
 const cfg = parseGameConfig(readFileSync(process.env.GAME_CONFIG_PATH ?? '../config/game.yaml', 'utf8'));
 const arg = (n: string, d: number) => Number(process.argv.find((a) => a.startsWith(`--${n}=`))?.split('=')[1] ?? d);
@@ -327,7 +327,7 @@ function tryRaid(p: P, nowMs: number) {
     if (!inLeague(cfg, powerOf(p, attackSet(p)), powerOf(q))) continue;
     const last = p.lastRaid.get(players.indexOf(q)) ?? -Infinity;
     if (nowMs - last < cfg.raids.same_target_cooldown_minutes * 60_000) continue;
-    const unprot = Math.floor(q.silo.oreReal * (1 - protectedShare(cfg, q.silo.levels.magazyn)));
+    const unprot = Math.floor(q.silo.oreReal - protectedOre(cfg, q.silo.levels.magazyn, q.silo.oreReal));
     const loot = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * unprot));
     const chance = raidWinChance(attackPower(p.stats) + setProfile(attackSet(p)).attack, defensePower(cfg, q.stats, q.silo.levels.wartownia) + siloDef(q));
     const ev = chance * loot;
@@ -345,7 +345,7 @@ function tryRaid(p: P, nowMs: number) {
   for (const g of q.gear.values()) if (g.dur > 0) g.dur--;
   if (win) {
     const share = protectedShare(cfg, q.silo.levels.magazyn);
-    const ore = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * Math.floor(q.silo.oreReal * (1 - share))));
+    const ore = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * Math.floor(q.silo.oreReal - protectedOre(cfg, q.silo.levels.magazyn, q.silo.oreReal))));
     const tok = Math.min(cfg.raids.loot_cap_tokens, Math.floor(cfg.raids.loot_fraction * Math.floor(q.tokens * (1 - share))));
     q.silo = { ...q.silo, oreReal: q.silo.oreReal - ore }; q.tokens -= tok;
     p.silo = { ...p.silo, oreReal: p.silo.oreReal + ore }; p.tokens += tok;

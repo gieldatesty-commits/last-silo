@@ -6,6 +6,7 @@ import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { applyLedger, auditLedger, walletBalance } from '../src/ledger.js';
 import { rng } from '../src/game/rng.js';
+import { oreCap, protectedOre, protectedShare } from '../src/game/formulas.js';
 import { attackPower, audible, bearingSector, defensePower, inLeague, listenRangeKm, raidWinChance, travelMinutes } from '../src/game/radio.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
@@ -195,9 +196,9 @@ describe('najazdy', () => {
     const hist = await get(a.h, '/raids');
     expect(hist[0]).toMatchObject({ role: 'attacker', state: 'resolved' });
     expect(hist[0].result.won).toBe(true);
-    const share = Math.min(config.effects.warehouse.protected_max, config.effects.warehouse.protected_step * 1);
     const gross = 10300; // 300 rudy startowej + 10000
-    const expectedOre = Math.min(config.raids.loot_cap_ore, Math.floor(config.raids.loot_fraction * Math.floor((oreD0 + hist[0].result.ore) * (1 - share))));
+    const before = oreD0 + hist[0].result.ore;
+    const expectedOre = Math.min(config.raids.loot_cap_ore, Math.floor(config.raids.loot_fraction * (before - protectedOre(config, 1, before))));
     expect(hist[0].result.ore).toBe(expectedOre);
     expect(hist[0].result.ore).toBeGreaterThan(0);
     expect(hist[0].result.tokens).toBeGreaterThan(0);
@@ -333,6 +334,22 @@ describe('najazdy', () => {
     await silo(d.h);
     expect((await lastRaid()).result.chancePct).toBe(Math.round(raidWinChance(A, D) * 100));
     expect(await dur(lom.id)).toBe(lom.rc.durability); // przed migracją najazdy nic nie zużywały
+  });
+
+  it('ruda ponad pojemność Magazynu nie jest chroniona: ochrona obejmuje tylko część w pojemności', async () => {
+    const { a, d } = await pair();
+    await grant(d.id, 5000); // 5300 rudy przy pojemności Magazynu 1 (1000)
+    setRaidSeed(true, await chanceOf(a, d));
+    await post(a.h, '/raids', key(), { targetId: d.id });
+    tick(150);
+    const after = (await silo(d.h)).wallet.ore;
+    const loot = (await get(a.h, '/raids'))[0].result.ore as number;
+    const before = after + loot;
+    const cap = oreCap(config, 1);
+    const prot = Math.floor(protectedShare(config, 1) * Math.min(before, cap));
+    expect(protectedOre(config, 1, before)).toBe(prot);
+    expect(loot).toBe(Math.min(config.raids.loot_cap_ore, Math.floor(config.raids.loot_fraction * (before - prot))));
+    expect(loot).toBeGreaterThan(Math.floor(config.raids.loot_fraction * Math.floor(before * (1 - protectedShare(config, 1))))); // więcej niż przy starej regule
   });
 
   it('limit łupu i ochrona Magazynu', async () => {

@@ -97,8 +97,14 @@ class _Hud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ore = (wallet['ore'] as num).toInt();
+    final cap = (caps['ore'] as num).toInt();
+    // ponad pojemność: Magazyn chroni tylko część w pojemności, szyb stoi; nadwyżka pokazana osobno, słowem (nie tylko kolorem)
+    final over = ore - cap;
     final items = <(String, String, String, String?)>[
-      ('ore', 'RUDA', '${fmtInt(wallet['ore'] as num)} / ${fmtInt(caps['ore'] as num)}', '+${rates['orePerHour']}/h'),
+      over > 0
+          ? ('ore', 'RUDA', '${fmtInt(cap)} + ${fmtInt(over)}', 'nadwyżka bez ochrony')
+          : ('ore', 'RUDA', '${fmtInt(ore)} / ${fmtInt(cap)}', ore >= cap ? 'pełny: szyb stoi' : '+${rates['orePerHour']}/h'),
       ('steam', 'PARA', '${fmtInt(wallet['steam'] as num)} / ${fmtInt(caps['steam'] as num)}', '+${rates['steamPerMin']}/min'),
       ('tokens', 'ŻETONY', fmtInt(wallet['tokens'] as num), null),
       ('samples', 'PRÓBKI', fmtInt(wallet['samples'] as num), null),
@@ -117,7 +123,7 @@ class _Hud extends StatelessWidget {
               Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 1.2, color: Ls.textFaint)),
             ]),
             Text(value, style: _display.copyWith(fontSize: 15, fontFeatures: const [FontFeature.tabularFigures()])),
-            if (sub != null) Text(sub, style: const TextStyle(fontSize: 10, color: Ls.textFaint)),
+            if (sub != null) Text(sub, style: TextStyle(fontSize: 10, color: sub == 'nadwyżka bez ochrony' ? Ls.warnText : Ls.textFaint)),
           ]),
       ]),
     );

@@ -123,8 +123,8 @@ describe('ekwipunek: profil przedmiotu', () => {
     expect(itemProfile(c, pancerny, 1, 0).defense).toBe(0.8);
     expect(addProfiles(ZERO_PROFILE, { dive: 1, attack: 2, defense: 3 })).toEqual({ dive: 1, attack: 2, defense: 3 });
   });
-  it('config 1.6.0: 7 receptur bojowych, balistyka odblokowuje karabin i płytę', () => {
-    expect(c.version).toBe('1.6.0');
+  it('config 1.6.x: 7 receptur bojowych, balistyka odblokowuje karabin i płytę', () => {
+    expect(c.version).toBe('1.6.1');
     const ids = ['lom_bojowy', 'nitownica', 'karabin_pneumatyczny', 'napiersnik', 'plyta_wartownika', 'noktowizor', 'celownik'];
     for (const id of ids) expect(c.items.recipes.some((r) => r.id === id)).toBe(true);
     const bal = c.research.techs.find((t) => t.id === 'balistyka')!;

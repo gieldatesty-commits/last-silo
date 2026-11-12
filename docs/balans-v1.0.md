@@ -37,3 +37,8 @@ Cel: świat ma dawać cele i sensowne wybory przez cały sezon (ok. 6 miesięcy)
 - Boty są szybsze od ludzi; po testach z prawdziwymi graczami skalować `xp_exp` i koszty.
 - Rynek (M4) dołoży ujścia (opłaty 5–10%), a handel materiałami zmieni ich popyt.
 - Najazdy w drugim półroczu rosną; do rozważenia ranking sezonowy zamiast stałego zachęcania do łupów.
+
+## Magazyn: nadwyżka bez ochrony (config 1.6.1)
+Pojemność Magazynu zatrzymuje tylko wydobycie szybu; zjazdy, łupy i zlecenia mogą ją przekroczyć (w symulacji średnio ok. 24 tys. rudy przy pojemności ok. 17 tys. na Magazynie 8). Od 1.6.1 Magazyn chroni przed najazdem tylko część rudy mieszczącą się w pojemności: `chronione = floor(protected × min(ruda, pojemność))` (`protectedOre` w `src/game/formulas.ts`), cała nadwyżka jest do wzięcia (dalej `loot_fraction` i `loot_cap_ore`). Poniżej pojemności nic się nie zmienia. Klient pokazuje rudę ponad pojemność jako „pojemność + nadwyżka” z opisem „nadwyżka bez ochrony”.
+
+`sim:world -- 180 --traders=5`, łupy z najazdów w dochodzie (1.6.0 → 1.6.1): ziarno 1: 9,7% → 13,5%; ziarno 2: 10,1% → 12,0%; ziarno 3: 10,1% → 12,9%. Mediana utraconego dochodu ok. 10% → 12,3–12,7%; ruda w magazynie bez zmian (ok. 24–25 tys.). Względem 1.5.0 (ok. 10,2%) to +1,8 do +3,3 pkt, czyli na granicy kryterium „+3 pkt” z `docs/ekwipunek-v1.0.md` §8 (ziarno 1 lekko ponad). Decyzja o ewentualnej korekcie (`loot_fraction`, `loot_cap_ore`) u Damiana.

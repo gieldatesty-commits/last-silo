@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import type { Database } from '../db.js';
 import type { GameConfig } from '../config.js';
 import { applyLedger, walletBalance } from '../ledger.js';
-import { protectedShare, initialLevels } from '../game/formulas.js';
+import { protectedOre, protectedShare, initialLevels } from '../game/formulas.js';
 import { addXp } from '../game/dive.js';
 import { rng } from '../game/rng.js';
 import { attackPower, audible, defensePower, distanceKm, inLeague, isBroadcasting, hasReceiver, playerPower, raidWinChance, travelMinutes, distanceBand, bearingSector } from '../game/radio.js';
@@ -68,7 +68,7 @@ async function resolveRaid(trx: Trx, cfg: GameConfig, raidId: string): Promise<v
     const share = protectedShare(cfg, defLv.magazyn);
     const defOre = await walletBalance(trx, raid.defender_id, 'ore');
     const defTok = await walletBalance(trx, raid.defender_id, 'tokens');
-    ore = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * Math.floor(defOre * (1 - share))));
+    ore = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * (defOre - protectedOre(cfg, defLv.magazyn, defOre))));
     tokens = Math.min(cfg.raids.loot_cap_tokens, Math.floor(cfg.raids.loot_fraction * Math.floor(defTok * (1 - share))));
     await applyLedger(
       trx,

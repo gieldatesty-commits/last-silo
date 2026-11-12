@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastsilo/api.dart';
 import 'package:lastsilo/app_state.dart';
+import 'package:lastsilo/format.dart';
 import 'package:lastsilo/screens/lab_screen.dart';
 import 'package:lastsilo/screens/silo_screen.dart';
 
@@ -137,6 +138,18 @@ void main() {
     // stan nadal czytelny bez ruchu: „…” w węźle i licznik w pasku
     expect(find.text('…'), findsOneWidget);
     expect(find.textContaining('W toku: Sejsmika'), findsOneWidget);
+  });
+
+  testWidgets('Silos: ruda ponad pojemność Magazynu jako „pojemność + nadwyżka” i opis „bez ochrony”', (tester) async {
+    final silo = fixture('silo');
+    final cap = ((silo['caps'] as Map)['ore'] as num).toInt();
+    (silo['wallet'] as Map)['ore'] = cap + 6806;
+    final state = AppState(FakeApi(research()))..silo = silo;
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SiloScreen(state: state))));
+    await tester.pump();
+    expect(find.text('${fmtInt(cap)} + ${fmtInt(6806)}'), findsOneWidget);
+    expect(find.text('nadwyżka bez ochrony'), findsOneWidget);
+    expect(find.text('${fmtInt(cap + 6806)} / ${fmtInt(cap)}'), findsNothing);
   });
 
   for (final (size, scale) in [(const Size(390, 844), 1.0), (const Size(320, 640), 1.0), (const Size(320, 640), 1.5)]) {

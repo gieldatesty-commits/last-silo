@@ -15,6 +15,9 @@ export const oreCap = (c: GameConfig, level: number) => Math.floor(c.effects.war
 export const protectedShare = (c: GameConfig, level: number) =>
   Math.min(c.effects.warehouse.protected_max, c.effects.warehouse.protected_step * level);
 
+/** Ruda chroniona przed najazdem: udział Magazynu z części mieszczącej się w jego pojemności; nadwyżka nie jest chroniona. */
+export const protectedOre = (c: GameConfig, level: number, ore: number) => Math.floor(protectedShare(c, level) * Math.min(ore, oreCap(c, level)));
+
 export const defenseBonus = (c: GameConfig, level: number) => c.effects.watchtower.defense_step * level;
 
 /** koszt w rudzie ulepszenia DO poziomu `toLevel` */
