@@ -1,1 +1,463 @@
-{"labLevel":6,"active":null,"techs":[{"id":"geologia_1","name":"Geologia I","branch":"gornictwo","state":"available","labRequired":1,"requires":[],"missing":[],"ore":200,"tokens":0,"samples":0,"materials":{},"radioRequired":null,"seconds":450,"effect":{"dive_ore_pct":3},"unlocks":[]},{"id":"geologia_2","name":"Geologia II","branch":"gornictwo","state":"locked","labRequired":3,"requires":["geologia_1"],"missing":["geologia_1"],"ore":900,"tokens":6,"samples":0,"materials":{},"radioRequired":null,"seconds":2700,"effect":{"dive_ore_pct":4},"unlocks":[]},{"id":"geologia_3","name":"Geologia III","branch":"gornictwo","state":"locked","labRequired":5,"requires":["geologia_2"],"missing":["geologia_2"],"ore":3500,"tokens":25,"samples":0,"materials":{"miedz":20},"radioRequired":5,"seconds":10800,"effect":{"dive_ore_pct":5},"unlocks":[]},{"id":"sejsmika","name":"Sejsmika","branch":"gornictwo","state":"locked","labRequired":3,"requires":["geologia_1"],"missing":["geologia_1"],"ore":800,"tokens":5,"samples":0,"materials":{},"radioRequired":null,"seconds":2700,"effect":{"dive_power":0.3},"unlocks":["skaner_sejsmiczny"]},{"id":"hydraulika_1","name":"Hydraulika I","branch":"inzynieria","state":"available","labRequired":1,"requires":[],"missing":[],"ore":250,"tokens":0,"samples":0,"materials":{},"radioRequired":null,"seconds":675,"effect":{"dive_steam_pct":-4},"unlocks":[]},{"id":"hydraulika_2","name":"Hydraulika II","branch":"inzynieria","state":"locked","labRequired":4,"requires":["hydraulika_1"],"missing":["hydraulika_1"],"ore":1500,"tokens":10,"samples":0,"materials":{"krysztal":12},"radioRequired":5,"seconds":5400,"effect":{"dive_steam_pct":-4},"unlocks":[]},{"id":"ekonomika_prac_1","name":"Organizacja robót I","branch":"inzynieria","state":"available","labRequired":2,"requires":[],"missing":[],"ore":400,"tokens":0,"samples":0,"materials":{},"radioRequired":null,"seconds":1350,"effect":{"upgrade_cost_pct":-5},"unlocks":[]},{"id":"ekonomika_prac_2","name":"Organizacja robót II","branch":"inzynieria","state":"locked","labRequired":5,"requires":["ekonomika_prac_1"],"missing":["ekonomika_prac_1"],"ore":2500,"tokens":15,"samples":0,"materials":{"miedz":15,"siarka":8},"radioRequired":5,"seconds":8100,"effect":{"upgrade_cost_pct":-5},"unlocks":[]},{"id":"metalurgia","name":"Metalurgia","branch":"inzynieria","state":"available","labRequired":2,"requires":[],"missing":[],"ore":500,"tokens":3,"samples":0,"materials":{},"radioRequired":null,"seconds":1350,"effect":{"repair_pct":-10},"unlocks":["helm_wzmocniony"]},{"id":"precyzja","name":"Precyzyjna obróbka","branch":"inzynieria","state":"locked","labRequired":3,"requires":["metalurgia"],"missing":["metalurgia"],"ore":1000,"tokens":6,"samples":0,"materials":{},"radioRequired":null,"seconds":4050,"effect":{"quality":0.04},"unlocks":[]},{"id":"obserwacja_rdzeniowcow","name":"Obserwacja Rdzeniowców","branch":"rdzeniowcy","state":"locked","labRequired":3,"requires":["sejsmika"],"missing":["sejsmika"],"ore":700,"tokens":4,"samples":3,"materials":{},"radioRequired":null,"seconds":4050,"effect":{},"unlocks":[]},{"id":"rezonans_skal","name":"Rezonans skał","branch":"rdzeniowcy","state":"locked","labRequired":4,"requires":["obserwacja_rdzeniowcow"],"missing":["obserwacja_rdzeniowcow"],"ore":1800,"tokens":14,"samples":4,"materials":{},"radioRequired":null,"seconds":6750,"effect":{"dive_power":0.3},"unlocks":["lampa_rezonansowa"]},{"id":"anatomia_rdzeniowcow","name":"Anatomia Rdzeniowców","branch":"rdzeniowcy","state":"locked","labRequired":4,"requires":["obserwacja_rdzeniowcow"],"missing":["obserwacja_rdzeniowcow"],"ore":1500,"tokens":10,"samples":8,"materials":{},"radioRequired":null,"seconds":6750,"effect":{"samples_pct":20},"unlocks":[]},{"id":"jezyk_wibracji_1","name":"Język wibracji I","branch":"rdzeniowcy","state":"locked","labRequired":4,"requires":["obserwacja_rdzeniowcow"],"missing":["obserwacja_rdzeniowcow"],"ore":2000,"tokens":15,"samples":6,"materials":{},"radioRequired":null,"seconds":8100,"effect":{"winded_pct":-25},"unlocks":[]},{"id":"jezyk_wibracji_2","name":"Język wibracji II","branch":"rdzeniowcy","state":"locked","labRequired":5,"requires":["jezyk_wibracji_1","rezonans_skal"],"missing":["jezyk_wibracji_1","rezonans_skal"],"ore":3500,"tokens":25,"samples":12,"materials":{"krysztal":15},"radioRequired":5,"seconds":12150,"effect":{"dive_power":0.3,"winded_pct":-25},"unlocks":[]},{"id":"jezyk_wibracji_3","name":"Język wibracji III","branch":"rdzeniowcy","state":"locked","labRequired":6,"requires":["jezyk_wibracji_2","anatomia_rdzeniowcow"],"missing":["jezyk_wibracji_2","anatomia_rdzeniowcow"],"ore":6000,"tokens":40,"samples":35,"materials":{"krysztal":30,"siarka":20},"radioRequired":5,"seconds":21600,"effect":{"dive_power":0.4},"unlocks":[]},{"id":"wiertla_rdzeniowe","name":"Wiertła rdzeniowe","branch":"rdzeniowcy","state":"locked","labRequired":5,"requires":["metalurgia","rezonans_skal"],"missing":["metalurgia","rezonans_skal"],"ore":3200,"tokens":22,"samples":10,"materials":{"miedz":25,"krysztal":15},"radioRequired":5,"seconds":10800,"effect":{},"unlocks":["wiertlo_rdzeniowe"]},{"id":"izolacja_rdzenia","name":"Izolacja przed rdzeniem","branch":"rdzeniowcy","state":"locked","labRequired":6,"requires":["metalurgia","anatomia_rdzeniowcow"],"missing":["metalurgia","anatomia_rdzeniowcow"],"ore":4500,"tokens":35,"samples":25,"materials":{"siarka":25,"miedz":15},"radioRequired":5,"seconds":16200,"effect":{"dive_power":0.3},"unlocks":["kombinezon_izolowany"]}]}
+{
+  "labLevel": 6,
+  "active": null,
+  "techs": [
+    {
+      "id": "geologia_1",
+      "name": "Geologia I",
+      "branch": "gornictwo",
+      "state": "available",
+      "labRequired": 1,
+      "requires": [],
+      "missing": [],
+      "ore": 200,
+      "tokens": 0,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 450,
+      "effect": {
+        "dive_ore_pct": 3
+      },
+      "unlocks": []
+    },
+    {
+      "id": "geologia_2",
+      "name": "Geologia II",
+      "branch": "gornictwo",
+      "state": "locked",
+      "labRequired": 3,
+      "requires": [
+        "geologia_1"
+      ],
+      "missing": [
+        "geologia_1"
+      ],
+      "ore": 900,
+      "tokens": 6,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 2700,
+      "effect": {
+        "dive_ore_pct": 4
+      },
+      "unlocks": []
+    },
+    {
+      "id": "geologia_3",
+      "name": "Geologia III",
+      "branch": "gornictwo",
+      "state": "locked",
+      "labRequired": 5,
+      "requires": [
+        "geologia_2"
+      ],
+      "missing": [
+        "geologia_2"
+      ],
+      "ore": 3500,
+      "tokens": 25,
+      "samples": 0,
+      "materials": {
+        "miedz": 20
+      },
+      "radioRequired": 5,
+      "seconds": 10800,
+      "effect": {
+        "dive_ore_pct": 5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "sejsmika",
+      "name": "Sejsmika",
+      "branch": "gornictwo",
+      "state": "locked",
+      "labRequired": 3,
+      "requires": [
+        "geologia_1"
+      ],
+      "missing": [
+        "geologia_1"
+      ],
+      "ore": 800,
+      "tokens": 5,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 2700,
+      "effect": {
+        "dive_power": 0.3
+      },
+      "unlocks": [
+        "skaner_sejsmiczny"
+      ]
+    },
+    {
+      "id": "hydraulika_1",
+      "name": "Hydraulika I",
+      "branch": "inzynieria",
+      "state": "available",
+      "labRequired": 1,
+      "requires": [],
+      "missing": [],
+      "ore": 250,
+      "tokens": 0,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 675,
+      "effect": {
+        "dive_steam_pct": -4
+      },
+      "unlocks": []
+    },
+    {
+      "id": "hydraulika_2",
+      "name": "Hydraulika II",
+      "branch": "inzynieria",
+      "state": "locked",
+      "labRequired": 4,
+      "requires": [
+        "hydraulika_1"
+      ],
+      "missing": [
+        "hydraulika_1"
+      ],
+      "ore": 1500,
+      "tokens": 10,
+      "samples": 0,
+      "materials": {
+        "krysztal": 12
+      },
+      "radioRequired": 5,
+      "seconds": 5400,
+      "effect": {
+        "dive_steam_pct": -4
+      },
+      "unlocks": []
+    },
+    {
+      "id": "ekonomika_prac_1",
+      "name": "Organizacja robót I",
+      "branch": "inzynieria",
+      "state": "available",
+      "labRequired": 2,
+      "requires": [],
+      "missing": [],
+      "ore": 400,
+      "tokens": 0,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 1350,
+      "effect": {
+        "upgrade_cost_pct": -5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "ekonomika_prac_2",
+      "name": "Organizacja robót II",
+      "branch": "inzynieria",
+      "state": "locked",
+      "labRequired": 5,
+      "requires": [
+        "ekonomika_prac_1"
+      ],
+      "missing": [
+        "ekonomika_prac_1"
+      ],
+      "ore": 2500,
+      "tokens": 15,
+      "samples": 0,
+      "materials": {
+        "miedz": 15,
+        "siarka": 8
+      },
+      "radioRequired": 5,
+      "seconds": 8100,
+      "effect": {
+        "upgrade_cost_pct": -5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "metalurgia",
+      "name": "Metalurgia",
+      "branch": "inzynieria",
+      "state": "available",
+      "labRequired": 2,
+      "requires": [],
+      "missing": [],
+      "ore": 500,
+      "tokens": 3,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 1350,
+      "effect": {
+        "repair_pct": -10
+      },
+      "unlocks": [
+        "helm_wzmocniony"
+      ]
+    },
+    {
+      "id": "precyzja",
+      "name": "Precyzyjna obróbka",
+      "branch": "inzynieria",
+      "state": "locked",
+      "labRequired": 3,
+      "requires": [
+        "metalurgia"
+      ],
+      "missing": [
+        "metalurgia"
+      ],
+      "ore": 1000,
+      "tokens": 6,
+      "samples": 0,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 4050,
+      "effect": {
+        "quality": 0.04
+      },
+      "unlocks": []
+    },
+    {
+      "id": "obserwacja_rdzeniowcow",
+      "name": "Obserwacja Rdzeniowców",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 3,
+      "requires": [
+        "sejsmika"
+      ],
+      "missing": [
+        "sejsmika"
+      ],
+      "ore": 700,
+      "tokens": 4,
+      "samples": 3,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 4050,
+      "effect": {},
+      "unlocks": []
+    },
+    {
+      "id": "rezonans_skal",
+      "name": "Rezonans skał",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 4,
+      "requires": [
+        "obserwacja_rdzeniowcow"
+      ],
+      "missing": [
+        "obserwacja_rdzeniowcow"
+      ],
+      "ore": 1800,
+      "tokens": 14,
+      "samples": 4,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 6750,
+      "effect": {
+        "dive_power": 0.3
+      },
+      "unlocks": [
+        "lampa_rezonansowa"
+      ]
+    },
+    {
+      "id": "anatomia_rdzeniowcow",
+      "name": "Anatomia Rdzeniowców",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 4,
+      "requires": [
+        "obserwacja_rdzeniowcow"
+      ],
+      "missing": [
+        "obserwacja_rdzeniowcow"
+      ],
+      "ore": 1500,
+      "tokens": 10,
+      "samples": 8,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 6750,
+      "effect": {
+        "samples_pct": 20
+      },
+      "unlocks": []
+    },
+    {
+      "id": "jezyk_wibracji_1",
+      "name": "Język wibracji I",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 4,
+      "requires": [
+        "obserwacja_rdzeniowcow"
+      ],
+      "missing": [
+        "obserwacja_rdzeniowcow"
+      ],
+      "ore": 2000,
+      "tokens": 15,
+      "samples": 6,
+      "materials": {},
+      "radioRequired": null,
+      "seconds": 8100,
+      "effect": {
+        "winded_pct": -25
+      },
+      "unlocks": []
+    },
+    {
+      "id": "jezyk_wibracji_2",
+      "name": "Język wibracji II",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 5,
+      "requires": [
+        "jezyk_wibracji_1",
+        "rezonans_skal"
+      ],
+      "missing": [
+        "jezyk_wibracji_1",
+        "rezonans_skal"
+      ],
+      "ore": 3500,
+      "tokens": 25,
+      "samples": 12,
+      "materials": {
+        "krysztal": 15
+      },
+      "radioRequired": 5,
+      "seconds": 12150,
+      "effect": {
+        "dive_power": 0.3,
+        "winded_pct": -25
+      },
+      "unlocks": []
+    },
+    {
+      "id": "jezyk_wibracji_3",
+      "name": "Język wibracji III",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 6,
+      "requires": [
+        "jezyk_wibracji_2",
+        "anatomia_rdzeniowcow"
+      ],
+      "missing": [
+        "jezyk_wibracji_2",
+        "anatomia_rdzeniowcow"
+      ],
+      "ore": 6000,
+      "tokens": 40,
+      "samples": 35,
+      "materials": {
+        "krysztal": 30,
+        "siarka": 20
+      },
+      "radioRequired": 5,
+      "seconds": 21600,
+      "effect": {
+        "dive_power": 0.4
+      },
+      "unlocks": []
+    },
+    {
+      "id": "wiertla_rdzeniowe",
+      "name": "Wiertła rdzeniowe",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 5,
+      "requires": [
+        "metalurgia",
+        "rezonans_skal"
+      ],
+      "missing": [
+        "metalurgia",
+        "rezonans_skal"
+      ],
+      "ore": 3200,
+      "tokens": 22,
+      "samples": 10,
+      "materials": {
+        "miedz": 25,
+        "krysztal": 15
+      },
+      "radioRequired": 5,
+      "seconds": 10800,
+      "effect": {},
+      "unlocks": [
+        "wiertlo_rdzeniowe"
+      ]
+    },
+    {
+      "id": "izolacja_rdzenia",
+      "name": "Izolacja przed rdzeniem",
+      "branch": "rdzeniowcy",
+      "state": "locked",
+      "labRequired": 6,
+      "requires": [
+        "metalurgia",
+        "anatomia_rdzeniowcow"
+      ],
+      "missing": [
+        "metalurgia",
+        "anatomia_rdzeniowcow"
+      ],
+      "ore": 4500,
+      "tokens": 35,
+      "samples": 25,
+      "materials": {
+        "siarka": 25,
+        "miedz": 15
+      },
+      "radioRequired": 5,
+      "seconds": 16200,
+      "effect": {
+        "dive_power": 0.3
+      },
+      "unlocks": [
+        "kombinezon_izolowany"
+      ]
+    },
+    {
+      "id": "balistyka",
+      "name": "Balistyka",
+      "branch": "inzynieria",
+      "state": "locked",
+      "labRequired": 5,
+      "requires": [
+        "metalurgia"
+      ],
+      "missing": [
+        "metalurgia"
+      ],
+      "ore": 3000,
+      "tokens": 25,
+      "samples": 0,
+      "materials": {
+        "siarka": 15
+      },
+      "radioRequired": 5,
+      "seconds": 14400,
+      "effect": {},
+      "unlocks": [
+        "karabin_pneumatyczny",
+        "plyta_wartownika"
+      ]
+    }
+  ]
+}

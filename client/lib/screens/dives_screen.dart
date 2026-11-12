@@ -6,6 +6,7 @@ import '../format.dart';
 import '../palette.dart';
 import '../strings.dart';
 import '../ui.dart';
+import '../widgets.dart';
 
 /// Zjazdy jako „szyb zjazdowy” (makieta Zjazdy.dc.html): kolejka z kabinami w drodze, trasy według głębokości
 /// przy skali stref i ostatnie wyniki. Logika bez zmian: trasy, kolejka i historia z AppState, start przez `state.startDive`.
@@ -51,6 +52,7 @@ class DivesScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 16),
                 children: [
                   _Header(steam: steam, cap: (caps['steam'] as num).toInt(), rate: rates['steamPerMin']),
+                  _LoadoutStrip(active: asNum((s['player'] as Map?)?['activeLoadout'] ?? 1).toInt() == 2 ? 2 : 1, state: state),
                   _Queue(queue: queue, slots: slots, extraMax: extraMax, routeName: routeName, state: state),
                   if (winded)
                     Padding(
@@ -119,6 +121,40 @@ class _Header extends StatelessWidget {
           ]),
         ]),
       );
+}
+
+/// Którym zestawem pójdzie nowy zjazd (zapisuje się przy dodaniu do kolejki) i szybka zmiana zestawu.
+class _LoadoutStrip extends StatelessWidget {
+  const _LoadoutStrip({required this.active, required this.state});
+  final int active;
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final other = active == 1 ? 2 : 1;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(color: Ls.card, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(14)),
+      child: Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6, children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text('Zjazd pójdzie zestawem ${loadoutName(active)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+          const Text('zestaw zapisuje się przy dodaniu do kolejki', style: TextStyle(fontSize: 11, color: Ls.textMuted)),
+        ]),
+        OutlinedButton(
+          onPressed: state.busy ? null : () => act(state, () => state.api.post('/loadouts/$other/activate', idempotent: true), state.refresh, ctx: context, okText: 'Aktywny zestaw ${loadoutName(other)}'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Ls.text,
+            side: const BorderSide(color: Ls.locked),
+            minimumSize: const Size(0, 44),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          child: Text('Zmień na ${loadoutName(other)}'),
+        ),
+      ]),
+    );
+  }
 }
 
 /// Kolejka: zajęte miejsca (w drodze / czeka) i wolne. Miejsce ponad dwa z subskrypcji przyjmuje tylko krótkie trasy.
@@ -209,7 +245,10 @@ class _QueueSlotState extends State<_QueueSlot> {
               child: LinearProgressIndicator(value: running ? pct.toDouble() : 0, minHeight: 5, color: c, backgroundColor: Ls.border),
             ),
             const SizedBox(height: 4),
-            Text(running ? 'wynik po powrocie' : 'ruszy po poprzednim zjeździe', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+            Wrap(spacing: 8, runSpacing: 2, children: [
+              Text(running ? 'wynik po powrocie' : 'ruszy po poprzednim zjeździe', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+              if (widget.q['loadout'] != null) Text('zestaw ${loadoutName(widget.q['loadout'])}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Ls.copper)),
+            ]),
           ]),
         ),
       ]),

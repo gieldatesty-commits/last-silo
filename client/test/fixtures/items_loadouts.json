@@ -1,0 +1,514 @@
+{
+  "items": [
+    {
+      "id": "1",
+      "recipeId": "kilof",
+      "name": "Kilof",
+      "slot": "narzedzie",
+      "quality": 0.99,
+      "bonus": 0.6,
+      "attack": 0,
+      "defense": 0,
+      "tier": 0,
+      "maxTier": 5,
+      "nextUpgrade": {
+        "ore": 90,
+        "tokens": 15,
+        "materials": {
+          "miedz": 6,
+          "krysztal": 5,
+          "siarka": 4
+        },
+        "workshop": 6,
+        "radio": 5
+      },
+      "durability": 20,
+      "maxDurability": 20,
+      "broken": false,
+      "equipped": true,
+      "inLoadouts": [
+        1
+      ],
+      "repairCost": 0
+    },
+    {
+      "id": "2",
+      "recipeId": "lom_bojowy",
+      "name": "Łom bojowy",
+      "slot": "narzedzie",
+      "quality": 0.97,
+      "bonus": 0,
+      "attack": 0.58,
+      "defense": 0,
+      "tier": 0,
+      "maxTier": 5,
+      "nextUpgrade": {
+        "ore": 210,
+        "tokens": 15,
+        "materials": {
+          "miedz": 6,
+          "krysztal": 5,
+          "siarka": 4
+        },
+        "workshop": 6,
+        "radio": 5
+      },
+      "durability": 20,
+      "maxDurability": 20,
+      "broken": false,
+      "equipped": false,
+      "inLoadouts": [
+        2
+      ],
+      "repairCost": 0
+    },
+    {
+      "id": "3",
+      "recipeId": "napiersnik",
+      "name": "Napierśnik",
+      "slot": "ochrona",
+      "quality": 0.92,
+      "bonus": 0,
+      "attack": 0,
+      "defense": 1.1,
+      "tier": 0,
+      "maxTier": 5,
+      "nextUpgrade": {
+        "ore": 390,
+        "tokens": 15,
+        "materials": {
+          "miedz": 6,
+          "krysztal": 5,
+          "siarka": 4
+        },
+        "workshop": 6,
+        "radio": 5
+      },
+      "durability": 25,
+      "maxDurability": 25,
+      "broken": false,
+      "equipped": false,
+      "inLoadouts": [
+        2
+      ],
+      "repairCost": 0
+    },
+    {
+      "id": "4",
+      "recipeId": "detektor_zylowy",
+      "name": "Detektor żył",
+      "slot": "sprzet",
+      "quality": 1.13,
+      "bonus": 0.79,
+      "attack": 0,
+      "defense": 0,
+      "tier": 0,
+      "maxTier": 5,
+      "nextUpgrade": {
+        "ore": 270,
+        "tokens": 15,
+        "materials": {
+          "miedz": 6,
+          "krysztal": 5,
+          "siarka": 4
+        },
+        "workshop": 6,
+        "radio": 5
+      },
+      "durability": 25,
+      "maxDurability": 25,
+      "broken": false,
+      "equipped": true,
+      "inLoadouts": [
+        1,
+        2
+      ],
+      "repairCost": 0
+    }
+  ],
+  "activeLoadout": 1,
+  "loadouts": {
+    "1": {
+      "narzedzie": "1",
+      "ochrona": null,
+      "lampa": null,
+      "sprzet": "4"
+    },
+    "2": {
+      "narzedzie": "2",
+      "ochrona": "3",
+      "lampa": null,
+      "sprzet": "4"
+    }
+  },
+  "loadoutStats": {
+    "1": {
+      "dive": 1.39,
+      "attack": 0,
+      "defense": 0
+    },
+    "2": {
+      "dive": 0.79,
+      "attack": 0.58,
+      "defense": 1.1
+    }
+  },
+  "inventoryMax": 24,
+  "workshopLevel": 4,
+  "quality": {
+    "min": 0.91,
+    "max": 1.17
+  },
+  "recipes": [
+    {
+      "id": "kilof",
+      "name": "Kilof",
+      "slot": "narzedzie",
+      "workshop": 1,
+      "ore": 150,
+      "tokens": 0,
+      "materials": {},
+      "radio": null,
+      "bonus": 0.6,
+      "attack": 0,
+      "defense": 0,
+      "durability": 20,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "mlot_pneumatyczny",
+      "name": "Młot pneumatyczny",
+      "slot": "narzedzie",
+      "workshop": 3,
+      "ore": 600,
+      "tokens": 4,
+      "materials": {},
+      "radio": null,
+      "bonus": 1,
+      "attack": 0,
+      "defense": 0,
+      "durability": 25,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "wiertlo_udarowe",
+      "name": "Wiertło udarowe",
+      "slot": "narzedzie",
+      "workshop": 4,
+      "ore": 1400,
+      "tokens": 12,
+      "materials": {
+        "miedz": 15,
+        "krysztal": 6
+      },
+      "radio": 5,
+      "bonus": 1.6,
+      "attack": 0,
+      "defense": 0,
+      "durability": 30,
+      "locked": true,
+      "needsTech": null
+    },
+    {
+      "id": "wiertlo_rdzeniowe",
+      "name": "Wiertło rdzeniowe",
+      "slot": "narzedzie",
+      "workshop": 6,
+      "ore": 4500,
+      "tokens": 40,
+      "materials": {
+        "miedz": 40,
+        "krysztal": 25
+      },
+      "radio": 5,
+      "bonus": 2.6,
+      "attack": 0,
+      "defense": 0,
+      "durability": 40,
+      "locked": true,
+      "needsTech": "wiertla_rdzeniowe"
+    },
+    {
+      "id": "kask_gornika",
+      "name": "Kask górnika",
+      "slot": "ochrona",
+      "workshop": 2,
+      "ore": 300,
+      "tokens": 2,
+      "materials": {},
+      "radio": null,
+      "bonus": 0.6,
+      "attack": 0,
+      "defense": 0,
+      "durability": 25,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "helm_wzmocniony",
+      "name": "Hełm wzmocniony",
+      "slot": "ochrona",
+      "workshop": 3,
+      "ore": 700,
+      "tokens": 5,
+      "materials": {},
+      "radio": null,
+      "bonus": 1,
+      "attack": 0,
+      "defense": 0,
+      "durability": 30,
+      "locked": true,
+      "needsTech": "metalurgia"
+    },
+    {
+      "id": "kombinezon_pancerny",
+      "name": "Kombinezon pancerny",
+      "slot": "ochrona",
+      "workshop": 5,
+      "ore": 2000,
+      "tokens": 18,
+      "materials": {
+        "miedz": 20,
+        "siarka": 8
+      },
+      "radio": 5,
+      "bonus": 1.5,
+      "attack": 0,
+      "defense": 0.8,
+      "durability": 35,
+      "locked": true,
+      "needsTech": null
+    },
+    {
+      "id": "kombinezon_izolowany",
+      "name": "Kombinezon izolowany",
+      "slot": "ochrona",
+      "workshop": 7,
+      "ore": 5500,
+      "tokens": 50,
+      "materials": {
+        "siarka": 35,
+        "krysztal": 20
+      },
+      "radio": 5,
+      "bonus": 2.4,
+      "attack": 0,
+      "defense": 0,
+      "durability": 45,
+      "locked": true,
+      "needsTech": "izolacja_rdzenia"
+    },
+    {
+      "id": "lampa_karbidowa",
+      "name": "Lampa karbidowa",
+      "slot": "lampa",
+      "workshop": 1,
+      "ore": 200,
+      "tokens": 0,
+      "materials": {},
+      "radio": null,
+      "bonus": 0.5,
+      "attack": 0,
+      "defense": 0,
+      "durability": 20,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "lampa_wibracyjna",
+      "name": "Lampa wibracyjna",
+      "slot": "lampa",
+      "workshop": 3,
+      "ore": 800,
+      "tokens": 8,
+      "materials": {},
+      "radio": null,
+      "bonus": 1.2,
+      "attack": 0,
+      "defense": 0,
+      "durability": 30,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "lampa_rezonansowa",
+      "name": "Lampa rezonansowa",
+      "slot": "lampa",
+      "workshop": 6,
+      "ore": 3800,
+      "tokens": 35,
+      "materials": {
+        "krysztal": 25,
+        "siarka": 10
+      },
+      "radio": 5,
+      "bonus": 2,
+      "attack": 0,
+      "defense": 0,
+      "durability": 40,
+      "locked": true,
+      "needsTech": "rezonans_skal"
+    },
+    {
+      "id": "detektor_zylowy",
+      "name": "Detektor żył",
+      "slot": "sprzet",
+      "workshop": 2,
+      "ore": 450,
+      "tokens": 3,
+      "materials": {},
+      "radio": null,
+      "bonus": 0.7,
+      "attack": 0,
+      "defense": 0,
+      "durability": 25,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "skaner_sejsmiczny",
+      "name": "Skaner sejsmiczny",
+      "slot": "sprzet",
+      "workshop": 5,
+      "ore": 2600,
+      "tokens": 22,
+      "materials": {
+        "miedz": 18,
+        "krysztal": 15
+      },
+      "radio": 5,
+      "bonus": 1.6,
+      "attack": 0,
+      "defense": 0,
+      "durability": 35,
+      "locked": true,
+      "needsTech": "sejsmika"
+    },
+    {
+      "id": "lom_bojowy",
+      "name": "Łom bojowy",
+      "slot": "narzedzie",
+      "workshop": 2,
+      "ore": 350,
+      "tokens": 2,
+      "materials": {},
+      "radio": null,
+      "bonus": 0,
+      "attack": 0.6,
+      "defense": 0,
+      "durability": 20,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "nitownica",
+      "name": "Nitownica",
+      "slot": "narzedzie",
+      "workshop": 4,
+      "ore": 1500,
+      "tokens": 12,
+      "materials": {
+        "miedz": 12
+      },
+      "radio": 5,
+      "bonus": 0,
+      "attack": 1.2,
+      "defense": 0,
+      "durability": 30,
+      "locked": true,
+      "needsTech": null
+    },
+    {
+      "id": "karabin_pneumatyczny",
+      "name": "Karabin pneumatyczny",
+      "slot": "narzedzie",
+      "workshop": 6,
+      "ore": 4200,
+      "tokens": 38,
+      "materials": {
+        "siarka": 30,
+        "miedz": 15
+      },
+      "radio": 5,
+      "bonus": 0,
+      "attack": 1.92,
+      "defense": 0,
+      "durability": 40,
+      "locked": true,
+      "needsTech": "balistyka"
+    },
+    {
+      "id": "napiersnik",
+      "name": "Napierśnik",
+      "slot": "ochrona",
+      "workshop": 3,
+      "ore": 650,
+      "tokens": 4,
+      "materials": {},
+      "radio": null,
+      "bonus": 0,
+      "attack": 0,
+      "defense": 1.2,
+      "durability": 25,
+      "locked": false,
+      "needsTech": null
+    },
+    {
+      "id": "plyta_wartownika",
+      "name": "Płyta Wartownika",
+      "slot": "ochrona",
+      "workshop": 6,
+      "ore": 4500,
+      "tokens": 40,
+      "materials": {
+        "krysztal": 30
+      },
+      "radio": 5,
+      "bonus": 0,
+      "attack": 0,
+      "defense": 3,
+      "durability": 45,
+      "locked": true,
+      "needsTech": "balistyka"
+    },
+    {
+      "id": "noktowizor",
+      "name": "Noktowizor",
+      "slot": "lampa",
+      "workshop": 4,
+      "ore": 1600,
+      "tokens": 14,
+      "materials": {
+        "krysztal": 12
+      },
+      "radio": 5,
+      "bonus": 0,
+      "attack": 0.48,
+      "defense": 0.6,
+      "durability": 30,
+      "locked": true,
+      "needsTech": null
+    },
+    {
+      "id": "celownik",
+      "name": "Celownik",
+      "slot": "sprzet",
+      "workshop": 5,
+      "ore": 2400,
+      "tokens": 20,
+      "materials": {
+        "krysztal": 10,
+        "siarka": 8
+      },
+      "radio": 5,
+      "bonus": 0,
+      "attack": 0.84,
+      "defense": 0,
+      "durability": 35,
+      "locked": true,
+      "needsTech": null
+    }
+  ]
+}

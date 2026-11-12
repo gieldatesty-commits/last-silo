@@ -79,6 +79,7 @@ void main() {
       expect(find.text('STREFA GÓRNE'), findsOneWidget);
       expect(find.text('Zjedź · 3 pary'), findsOneWidget);
       expect(find.text('Zjedź · 10 pary'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Brak pary (22)'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text('Brak pary (22)'), findsOneWidget); // Głęboki kosztuje 22, a jest 12
       await tester.scrollUntilVisible(find.textContaining('Zablokowane · od poziomu'), 300, scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('szansa '), findsWidgets);
@@ -123,9 +124,9 @@ void main() {
       final it = (api.items['items'] as List).first as Map;
       it['equipped'] = true;
       await pump(tester, WorkshopScreen(state: appState(api)));
-      expect(find.bySemanticsLabel(RegExp('^Narzędzie: ${it['name']}, wytrzymałość ')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Narzędzie: ${it['name']}, zjazd [+].*, wytrzymałość ')), findsOneWidget);
       expect(find.bySemanticsLabel('Ochrona: pusto'), findsOneWidget);
-      expect(find.text('Zdejmij'), findsOneWidget);
+      expect(find.text('Zdejmij z I'), findsOneWidget);
       expect(find.textContaining('Siła zjazdu +'), findsOneWidget);
       // filtr: tylko lampy
       await tester.scrollUntilVisible(find.text('Lampa'), 300, scrollable: find.byType(Scrollable).first);
@@ -141,11 +142,14 @@ void main() {
       final it = (api.items['items'] as List).first as Map;
       it['equipped'] = true;
       await pump(tester, WorkshopScreen(state: appState(api)));
-      await tester.tap(find.text('Zdejmij'));
+      await tester.tap(find.text('Zdejmij z I'));
       await tester.pump();
       expect(api.posts, ['/items/${it['id']}/unequip']);
       await tester.pump(const Duration(seconds: 5));
+      await tester.scrollUntilVisible(find.text('Receptury'), 300, scrollable: find.byType(Scrollable).first);
       await tester.scrollUntilVisible(find.text('Wytwórz').first, 300, scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(find.text('Wytwórz').first);
+      await tester.pump();
       await tester.tap(find.text('Wytwórz').first);
       await tester.pump();
       expect(api.posts.last, '/items/craft');
@@ -157,6 +161,7 @@ void main() {
       final state = appState(api);
       (state.silo!['wallet'] as Map)['ore'] = 100; // mniej niż Kilof (150)
       await pump(tester, WorkshopScreen(state: state));
+      await tester.scrollUntilVisible(find.text('Receptury'), 300, scrollable: find.byType(Scrollable).first);
       await tester.scrollUntilVisible(find.text('Brak').first, 300, scrollable: find.byType(Scrollable).first);
       expect(find.text('Brak'), findsWidgets);
       await tester.scrollUntilVisible(find.text('Zablokowane').first, 300, scrollable: find.byType(Scrollable).first);

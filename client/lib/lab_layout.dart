@@ -28,6 +28,7 @@ const Map<String, Offset> techPos = {
   'ekonomika_prac_2': Offset(334, 120),
   'metalurgia': Offset(293, 183),
   'precyzja': Offset(353, 172),
+  'balistyka': Offset(266, 258),
   'obserwacja_rdzeniowcow': Offset(195, 290),
   'rezonans_skal': Offset(255, 350),
   'anatomia_rdzeniowcow': Offset(175, 365),

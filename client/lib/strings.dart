@@ -91,6 +91,8 @@ const _errors = {
   'offer_expired': 'Zlecenie wygasło.',
   'offer_taken': 'Ktoś był szybszy: zlecenie jest już zajęte.',
   'already_accepted': 'Już przyjęte.',
+  'already_active': 'Ten zestaw jest już aktywny.',
+  'invalid_loadout': 'Nie ma takiego zestawu.',
 };
 
 String errorText(String code) {
@@ -98,6 +100,9 @@ String errorText(String code) {
   if (code.startsWith('insufficient_')) return 'Za mało zasobu: ${resName(code.substring(13))}.';
   return 'Coś poszło nie tak ($code).';
 }
+
+/// Numer zestawu ekwipunku (1, 2) jako cyfra rzymska, tak jak w grze: „Zestaw I”, „Zestaw II”.
+String loadoutName(Object? n) => n == 2 ? 'II' : 'I';
 
 const slotNames = {'narzedzie': 'Narzędzie', 'ochrona': 'Ochrona', 'lampa': 'Lampa', 'sprzet': 'Sprzęt'};
 const branchNames = {'gornictwo': 'Górnictwo', 'inzynieria': 'Inżynieria', 'rdzeniowcy': 'Rdzeniowcy'};

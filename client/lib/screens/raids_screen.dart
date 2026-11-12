@@ -16,8 +16,9 @@ class RaidsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Loader(
       load: () async {
-        final r = await Future.wait([state.api.get('/raids/targets'), state.api.get('/raids')]);
-        return {'targets': r[0], 'raids': r[1]};
+        // /items tylko dla paska zestawu; błąd = pasek bez liczb
+        final r = await Future.wait([state.api.get('/raids/targets'), state.api.get('/raids'), state.api.get('/items').catchError((_) => null)]);
+        return {'targets': r[0], 'raids': r[1], 'items': r[2]};
       },
       builder: (context, data, reload) {
         final d = asMap(data);
@@ -31,6 +32,7 @@ class RaidsScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             children: [
               LsHeader(null, subtitle: 'Cele pojawiają się po namierzeniu sygnału w Radiu. Najazd kosztuje parę i trwa tyle, ile droga do celu.', trailing: LsStat('CELE', '${targets.length}', alignEnd: true)),
+              if (d['items'] is Map) _LoadoutPanel(items: asMap(d['items']), state: state, reload: reload),
               if (active.isNotEmpty) ...[
                 const SectionTitle('W drodze'),
                 for (final r in active) _ActiveRaid(r: r, reload: reload),
@@ -45,6 +47,41 @@ class RaidsScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Aktywny zestaw w najazdach: atak i obrona sprzętu, przełączenie przed wysłaniem (atak zapisuje się przy wysłaniu).
+class _LoadoutPanel extends StatelessWidget {
+  const _LoadoutPanel({required this.items, required this.state, required this.reload});
+  final Map<String, dynamic> items;
+  final AppState state;
+  final Future<void> Function() reload;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = asNum(items['activeLoadout'] ?? 1).toInt() == 2 ? 2 : 1;
+    final other = active == 1 ? 2 : 1;
+    Map<String, dynamic> m(Object? v) => v is Map ? asMap(v) : <String, dynamic>{};
+    final stats = m(items['loadoutStats']);
+    final mine = m(stats['$active']);
+    final theirs = m(stats['$other']);
+    return LsCard(
+      border: Ls.warn.withValues(alpha: 0.4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Aktywny: zestaw ${loadoutName(active)}', style: lsDisplay.copyWith(fontSize: 16)),
+        const SizedBox(height: 6),
+        Text('atak sprzętu +${mine['attack'] ?? 0} · obrona sprzętu +${mine['defense'] ?? 0}', style: lsBody),
+        Text('z zestawem ${loadoutName(other)}: +${theirs['attack'] ?? 0} ataku', style: lsMuted),
+        const SizedBox(height: 6),
+        const Text('Atakujesz zestawem z chwili wysłania. Obrona silosu liczy też część pancerza z drugiego zestawu.', style: TextStyle(fontSize: 11, height: 1.4, color: Ls.textMuted)),
+        const SizedBox(height: 8),
+        LsButton(
+          'Przełącz na zestaw ${loadoutName(other)}',
+          color: Ls.amber,
+          onPressed: state.busy ? null : () => act(state, () => state.api.post('/loadouts/$other/activate', idempotent: true), reload, ctx: context, okText: 'Aktywny zestaw ${loadoutName(other)}'),
+        ),
+      ]),
     );
   }
 }
