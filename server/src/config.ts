@@ -64,6 +64,8 @@ export const GameConfigSchema = z
       repair_cost_fraction: z.number().min(0).max(2),
       quality: z.object({ min: pos, max: pos, min_step: z.number().min(0), max_step: z.number().min(0) }),
       slots: z.array(z.string()).min(1),
+      // dwa zestawy (docs/ekwipunek-v1.0.md §3): obrona silosu = obrona aktywnego + ta część obrony drugiego
+      loadouts: z.object({ passive_defense_share: z.number().min(0).max(1) }),
       upgrade: z.object({
         max_tier: z.number().int().min(1).max(10),
         workshop_base: z.number().int().min(1),     // poziom Warsztatu wymagany do tieru t = workshop_base + t

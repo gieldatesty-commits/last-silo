@@ -111,6 +111,8 @@ items:
   repair_cost_fraction: 0.18       # pełna naprawa = ta część kosztu rudy receptury (proporcjonalnie do ubytku)
   quality: { min: 0.85, max: 1.05, min_step: 0.02, max_step: 0.04 }   # zakres jakości rośnie z poziomem Warsztatu
   slots: [narzedzie, ochrona, lampa, sprzet]
+  # Dwa zestawy (docs/ekwipunek-v1.0.md §3): obrona silosu = obrona aktywnego zestawu + ta część obrony drugiego (pancerz chroni też, gdy siedzisz w zjazdowym)
+  loadouts: { passive_defense_share: 0.5 }
   # Wzmacnianie: stały cel dla rudy i materiałów w późnej grze. Tier t wymaga Warsztatu (workshop_base + t) i Radiostacji `radio`.
   upgrade:
     max_tier: 5

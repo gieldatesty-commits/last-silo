@@ -160,6 +160,8 @@ let seedCounter = 1000;
 
 /** Profil zestawu (niezepsute przedmioty). */
 const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier)) : sum), ZERO_PROFILE);
+/** Obrona silosu: zestaw aktywny (I) w pełni + część zestawu II. */
+const siloDef = (q: P) => setProfile(q.gear).defense + cfg.items.loadouts.passive_defense_share * setProfile(q.gear2).defense;
 /** Zestaw, którym gracz atakuje (bojowy, jeśli go ma). */
 const attackSet = (p: P) => (p.gear2.size ? p.gear2 : p.gear);
 const gearBonus = (p: P) => [...p.gear.values()].reduce((sum, g) => (g.dur > 0 ? sum + itemBonus(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier) : sum), 0);
@@ -300,7 +302,7 @@ function act(p: P, nowMs: number) {
   if (!NORAIDS) tryRaid(p, nowMs);
 }
 
-const powerOf = (q: P, set: Map<string, Gear> = q.gear) => { const pr = setProfile(set); return playerPower(q.stats, q.silo.levels) + pr.attack + pr.defense; };
+const powerOf = (q: P, set: Map<string, Gear> = q.gear) => playerPower(q.stats, q.silo.levels) + setProfile(set).attack + siloDef(q);
 const DAYMS = 86_400_000;
 let raidSeed = 50_000;
 
@@ -323,7 +325,7 @@ function tryRaid(p: P, nowMs: number) {
     if (nowMs - last < cfg.raids.same_target_cooldown_minutes * 60_000) continue;
     const unprot = Math.floor(q.silo.oreReal * (1 - protectedShare(cfg, q.silo.levels.magazyn)));
     const loot = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * unprot));
-    const chance = raidWinChance(attackPower(p.stats) + setProfile(attackSet(p)).attack, defensePower(cfg, q.stats, q.silo.levels.wartownia) + setProfile(q.gear).defense);
+    const chance = raidWinChance(attackPower(p.stats) + setProfile(attackSet(p)).attack, defensePower(cfg, q.stats, q.silo.levels.wartownia) + siloDef(q));
     const ev = chance * loot;
     if (chance >= 0.5 && loot >= 150 && (!best || ev > best.ev)) best = { q, ev, chance };
   }
@@ -559,7 +561,7 @@ console.log(`Sprzęt: śr. założonych ${avgAll((p) => p.gear.size).toFixed(1)}
 for (const st of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
   const g = players.filter((p) => p.style === st);
   const avg = (f: (p: P) => number) => g.reduce((a, p) => a + f(p), 0) / Math.max(1, g.length);
-  console.log(`Zestawy ${st}: z zestawem bojowym ${((g.filter((p) => p.gear2.size > 0).length / Math.max(1, g.length)) * 100).toFixed(0)}% | atak zestawu II śr. ${avg((p) => setProfile(p.gear2).attack).toFixed(2)} | obrona zestawu I śr. ${avg((p) => setProfile(p.gear).defense).toFixed(2)}`);
+  console.log(`Zestawy ${st}: z zestawem bojowym ${((g.filter((p) => p.gear2.size > 0).length / Math.max(1, g.length)) * 100).toFixed(0)}% | atak zestawu II śr. ${avg((p) => setProfile(p.gear2).attack).toFixed(2)} | obrona silosu śr. ${avg(siloDef).toFixed(2)}`);
 }
 console.log(`Poziom Warsztatu ${avgAll((p) => p.silo.levels.warsztat).toFixed(1)} | Laboratorium ${avgAll((p) => p.silo.levels.laboratorium).toFixed(1)}`);
 

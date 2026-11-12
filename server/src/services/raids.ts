@@ -7,7 +7,7 @@ import { addXp } from '../game/dive.js';
 import { rng } from '../game/rng.js';
 import { attackPower, audible, defensePower, distanceKm, inLeague, isBroadcasting, hasReceiver, playerPower, raidWinChance, travelMinutes, distanceBand, bearingSector } from '../game/radio.js';
 import { GameError, settle, settleCore, type Ctx, type Trx } from './silo.js';
-import { activeLoadout, loadoutProfile, wearLoadout, type LoadoutNo } from './gear.js';
+import { activeLoadout, loadoutProfile, siloDefense, wearLoadout, type LoadoutNo } from './gear.js';
 import type { Profile } from '../game/upgrade.js';
 
 type Levels = ReturnType<typeof initialLevels>;
@@ -58,7 +58,7 @@ async function resolveRaid(trx: Trx, cfg: GameConfig, raidId: string): Promise<v
   // atak: zrzut z chwili wysłania (najazdy sprzed migracji 016: same statystyki); obrona: aktywny zestaw obrońcy teraz
   const A = raid.attack_power ?? attackPower(statsOf(att));
   const defLoadout = await activeLoadout(trx, raid.defender_id);
-  const D = defensePower(cfg, statsOf(def), defLv.wartownia) + (await loadoutProfile(trx, cfg, raid.defender_id, defLoadout)).defense;
+  const D = defensePower(cfg, statsOf(def), defLv.wartownia) + (await siloDefense(trx, cfg, raid.defender_id, defLoadout));
   const chance = raidWinChance(A, D);
   const win = rng(Number(raid.seed))() < chance;
 
@@ -140,7 +140,7 @@ async function candidateOf(trx: Trx | Ctx['db'], cfg: GameConfig, userId: string
     nickname: p.nickname ?? '',
     level: p.level,
     // moc ligowa uwzględnia siłę bojową aktywnego zestawu (docs/ekwipunek-v1.0.md §2)
-    power: playerPower({ sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! }, lv) + profile.attack + profile.defense,
+    power: playerPower({ sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! }, lv) + profile.attack + (await siloDefense(trx, cfg, userId, loadout)),
     profile,
     loadout,
     radioLevel: lv.radiostacja!,

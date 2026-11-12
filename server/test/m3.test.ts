@@ -283,6 +283,19 @@ describe('najazdy', () => {
     expect(r.result.chancePct).not.toBe(Math.round(raidWinChance(A, D) * 100));
   });
 
+  it('obrona: zestaw nieaktywny dokłada część swojej obrony (items.loadouts.passive_defense_share)', async () => {
+    const { a, d } = await pair();
+    const nap = await giveItem(d.id, 'napiersnik', 2, 3); // w zestawie II, aktywny I
+    const { A, D } = await statsOf(a, d);
+    const share = config.items.loadouts.passive_defense_share;
+    expect(share).toBeGreaterThan(0);
+    expect(share).toBeLessThan(1);
+    await post(a.h, '/raids', key(), { targetId: d.id });
+    tick(150);
+    await silo(d.h);
+    expect((await lastRaid()).result.chancePct).toBe(Math.round(raidWinChance(A, D + share * nap.rc.defense * 3) * 100));
+  });
+
   it('najazd zużywa przedmioty: atakujący zestaw z wysłania, obrońca aktywny', async () => {
     const { a, d } = await pair();
     const lom = await giveItem(a.id, 'lom_bojowy', 2);
@@ -298,12 +311,15 @@ describe('najazdy', () => {
     expect(await dur(nap.id)).toBe(nap.rc.durability - 1);
   });
 
-  it('liga uwzględnia profil aktywnego zestawu', async () => {
+  it('liga: atak z aktywnego zestawu, obrona z obu (część z nieaktywnego)', async () => {
     const { a, d } = await pair();
     expect((await get(a.h, '/raids/targets'))[0].canRaid).toBe(true);
-    await giveItem(d.id, 'plyta_wartownika', 2, 30); // obrona 90: moc ligowa daleko poza ±40%
-    expect((await get(a.h, '/raids/targets'))[0].canRaid).toBe(true); // w zestawie 2, a aktywny 1
+    await giveItem(d.id, 'karabin_pneumatyczny', 2, 30); // atak 96: moc ligowa daleko poza ±40%
+    expect((await get(a.h, '/raids/targets'))[0].canRaid).toBe(true); // atak z nieaktywnego zestawu się nie liczy
     await pool.query('UPDATE players SET active_loadout = 2 WHERE user_id = $1', [d.id]);
+    expect((await get(a.h, '/raids/targets'))[0].blockedBy).toBe('out_of_league');
+    await pool.query('UPDATE players SET active_loadout = 1 WHERE user_id = $1', [d.id]);
+    await giveItem(d.id, 'plyta_wartownika', 2, 30); // obrona 90 w nieaktywnym: liczy się w części (passive_defense_share)
     expect((await get(a.h, '/raids/targets'))[0].blockedBy).toBe('out_of_league');
   });
 
