@@ -199,9 +199,11 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const stats: Stats = { sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! };
     const pool = await lockPool(trx, cfg, route, now);
     const fx = await loadEffects(trx, cfg, userId);
-    // moc z zestawu zapisana przy dodaniu zjazdu; zjazdy sprzed migracji 016 liczą się z zestawu 1
+    // moc zestawu: zapisana przy dodaniu zjazdu, ale nie większa niż moc tego zestawu teraz (przedmiot zepsuty
+    // na wcześniejszym zjeździe w kolejce albo zdjęty nic już nie daje); zjazdy sprzed migracji 016: zestaw 1
     const lo: LoadoutNo = d.loadout === 2 ? 2 : 1;
-    const bonus = (d.item_bonus ?? (await loadoutProfile(trx, cfg, userId, 1)).dive) + fx.divePower;
+    const nowDive = (await loadoutProfile(trx, cfg, userId, lo)).dive;
+    const bonus = Math.min(d.item_bonus ?? nowDive, nowDive) + fx.divePower;
     const sRow = await trx.selectFrom('silos').select('seed').where('user_id', '=', userId).executeTakeFirstOrThrow();
     const profile = geologyProfile(cfg, { lat: p.silo_lat!, lon: p.silo_lon! }, Number(sRow.seed));
     const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);

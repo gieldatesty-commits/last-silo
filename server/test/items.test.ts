@@ -5,7 +5,7 @@ import { parseGameConfig } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { applyLedger, auditLedger } from '../src/ledger.js';
-import { resolveDive } from '../src/game/dive.js';
+import { diveChance, resolveDive } from '../src/game/dive.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
 const { db, pool } = createDb(url);
@@ -247,6 +247,22 @@ describe('Zestawy', () => {
     expect(rows[1]).toMatchObject({ loadout: 2, item_bonus: 0 });
     expect(await durOf(k.id)).toBe(kilof.durability - 1);
     expect(await durOf(lom.id)).toBe(lomRc.durability - 1);
+  });
+
+  it('przedmiot zepsuty na zjeździe w kolejce nie daje mocy następnemu (moc = min(zrzut, zestaw teraz))', async () => {
+    const { id, h, k } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-br-q-e1');
+    await pool.query('UPDATE items SET durability = 1 WHERE id = $1', [k.id]);
+    const a = (await post(h, '/dives', 'zestaw-br-q-d1', { routeId: 'plytki' })).json();
+    const b = (await post(h, '/dives', 'zestaw-br-q-d2', { routeId: 'plytki' })).json();
+    tick(2 * plytkiS + 2);
+    await app.inject({ url: '/items', headers: h });
+    const p = (await pool.query('SELECT sila, technika, percepcja, wytrwalosc FROM players WHERE user_id = $1', [id])).rows[0];
+    const route = config.dives.routes.find((r) => r.id === 'plytki')!;
+    const res = async (diveId: string) => (await pool.query('SELECT result FROM dives WHERE id = $1', [diveId])).rows[0].result.chancePct as number;
+    expect(await res(a.diveId)).toBe(Math.round(diveChance(p, route.difficulty, kilof.bonus * k.quality) * 100));
+    expect(await res(b.diveId)).toBe(Math.round(diveChance(p, route.difficulty, 0) * 100));
+    expect(await durOf(k.id)).toBe(0);
   });
 
   it('zjazd sprzed migracji (item_bonus NULL) rozlicza się z zestawu 1', async () => {
