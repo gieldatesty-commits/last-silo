@@ -4,9 +4,9 @@ import type { GameConfig } from '../config.js';
 import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
-import { loadEffects } from './gear.js';
+import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, type LoadoutNo } from './gear.js';
 import { randomInt } from 'node:crypto';
-import { itemBonus, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { itemProfile, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
 
 type Trx = Transaction<Database>;
 
@@ -30,22 +30,37 @@ async function workshopLevel(trx: Trx, userId: string): Promise<number> {
   return b?.level ?? 1;
 }
 
-const view = (cfg: GameConfig, it: Selectable<Database['items']>, repairMult = 1) => {
+/** Zestawy, w których jest przedmiot, i aktywny zestaw gracza (do pól `inLoadouts` i `equipped`). */
+type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]> };
+
+async function membership(db: Trx | Ctx['db'], userId: string): Promise<Membership> {
+  const rows = await db.selectFrom('loadouts').select(['item_id', 'loadout']).where('user_id', '=', userId).orderBy('loadout').execute();
+  const of = new Map<string, LoadoutNo[]>();
+  for (const r of rows) of.set(String(r.item_id), [...(of.get(String(r.item_id)) ?? []), r.loadout as LoadoutNo]);
+  return { active: await activeLoadout(db, userId), of };
+}
+
+const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership, repairMult = 1) => {
   const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id)!;
+  const prof = itemProfile(cfg, rc, it.quality, it.tier);
+  const inLoadouts = m.of.get(String(it.id)) ?? [];
   return {
     id: String(it.id),
     recipeId: it.recipe_id,
     name: rc.name,
     slot: it.slot,
     quality: Math.round(it.quality * 100) / 100,
-    bonus: Math.round(itemBonus(cfg, rc, it.quality, it.tier) * 100) / 100,
+    bonus: Math.round(prof.dive * 100) / 100,
+    attack: Math.round(prof.attack * 100) / 100,
+    defense: Math.round(prof.defense * 100) / 100,
     tier: it.tier,
     maxTier: cfg.items.upgrade.max_tier,
     nextUpgrade: it.tier >= cfg.items.upgrade.max_tier ? null : upgradeTierCost(cfg, rc, it.tier + 1),
     durability: it.durability,
     maxDurability: it.max_durability,
     broken: it.durability <= 0,
-    equipped: Boolean(it.equipped),
+    equipped: inLoadouts.includes(m.active),
+    inLoadouts,
     repairCost: repairCost(cfg, rc, it.durability, it.max_durability, repairMult, it.tier),
   };
 };
@@ -58,8 +73,18 @@ export async function listItems(ctx: Ctx, userId: string) {
   const rl = await radioLevel(ctx.db, userId);
   const fx = await loadEffects(ctx.db, cfg, userId);
   const qr = qualityRange(cfg, wl, fx.quality);
+  const m = await membership(ctx.db, userId);
+  const slotsOf = (lo: LoadoutNo) => {
+    const out: Record<string, string | null> = Object.fromEntries(cfg.items.slots.map((s) => [s, null]));
+    for (const [itemId, los] of m.of) if (los.includes(lo)) out[items.find((i) => String(i.id) === itemId)!.slot] = itemId;
+    return out;
+  };
+  const round = (p: { dive: number; attack: number; defense: number }) => ({ dive: Math.round(p.dive * 100) / 100, attack: Math.round(p.attack * 100) / 100, defense: Math.round(p.defense * 100) / 100 });
   return {
-    items: items.map((i) => view(cfg, i as never, fx.repair)),
+    items: items.map((i) => view(cfg, i as never, m, fx.repair)),
+    activeLoadout: m.active,
+    loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
+    loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
     quality: { min: Math.round(qr.min * 100) / 100, max: Math.round(qr.max * 100) / 100 },
@@ -103,7 +128,7 @@ export async function craftTx(trx: Trx, ctx: Ctx, userId: string, recipeId: stri
     throw e;
   }
   await trx.insertInto('events_log').values({ user_id: userId, name: 'item_crafted', props: JSON.stringify({ recipeId: rc.id, quality }) }).execute();
-  return view(cfg, it as never);
+  return view(cfg, it as never, await membership(trx, userId));
 }
 
 async function lockItem(trx: Trx, userId: string, id: string) {
@@ -113,16 +138,32 @@ async function lockItem(trx: Trx, userId: string, id: string) {
   return it;
 }
 
-/** Zakładanie zastępuje przedmiot w tym samym slocie. Najpierw rozliczamy zjazdy, żeby zmiana nie działała wstecz. */
-export async function equipTx(trx: Trx, ctx: Ctx, userId: string, id: string, equip: boolean) {
+/** Zakładanie w zestawie zastępuje przedmiot w tym samym slocie tego zestawu (domyślnie aktywnego). Najpierw rozliczenie, żeby zmiana nie działała wstecz. */
+export async function equipTx(trx: Trx, ctx: Ctx, userId: string, id: string, equip: boolean, loadout?: LoadoutNo) {
   const cfg = ctx.config;
   await settle(trx, cfg, userId, ctx.now());
   const it = await lockItem(trx, userId, id);
+  const lo = loadout ?? (await activeLoadout(trx, userId));
   if (equip) {
-    await trx.updateTable('items').set({ equipped: false }).where('user_id', '=', userId).where('slot', '=', it.slot).where('equipped', '=', true).execute();
+    await trx
+      .insertInto('loadouts')
+      .values({ user_id: userId, loadout: lo, slot: it.slot, item_id: String(it.id) })
+      .onConflict((oc) => oc.columns(['user_id', 'loadout', 'slot']).doUpdateSet({ item_id: String(it.id) }))
+      .execute();
+  } else {
+    await trx.deleteFrom('loadouts').where('user_id', '=', userId).where('loadout', '=', lo).where('item_id', '=', String(it.id)).execute();
   }
-  const upd = await trx.updateTable('items').set({ equipped: equip }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
-  return view(cfg, upd as never);
+  return view(cfg, it as never, await membership(trx, userId));
+}
+
+/** Przełączenie aktywnego zestawu. Rozliczenie przed zmianą: zjazdy i najazdy, które już się skończyły, liczą się na starym zestawie. */
+export async function activateLoadoutTx(trx: Trx, ctx: Ctx, userId: string, loadout: number) {
+  if (!isLoadoutNo(loadout)) throw new GameError(400, 'invalid_loadout');
+  await settle(trx, ctx.config, userId, ctx.now());
+  if ((await activeLoadout(trx, userId)) === loadout) throw new GameError(409, 'already_active');
+  await trx.updateTable('players').set({ active_loadout: loadout }).where('user_id', '=', userId).execute();
+  await trx.insertInto('events_log').values({ user_id: userId, name: 'loadout_activated', props: JSON.stringify({ loadout }) }).execute();
+  return { activeLoadout: loadout };
 }
 
 export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
@@ -140,7 +181,7 @@ export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
     throw e;
   }
   const upd = await trx.updateTable('items').set({ durability: it.max_durability }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
-  return { ...view(cfg, upd as never, fx.repair), paid: cost };
+  return { ...view(cfg, upd as never, await membership(trx, userId), fx.repair), paid: cost };
 }
 
 /** Wzmocnienie przedmiotu o jeden tier: koszt w rudzie, żetonach i materiałach; wymaga Warsztatu i Radiostacji. Jakość i wytrzymałość zostają. */
@@ -170,7 +211,7 @@ export async function upgradeTx(trx: Trx, ctx: Ctx, userId: string, id: string) 
   }
   const upd = await trx.updateTable('items').set({ tier: it.tier + 1 }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
   await trx.insertInto('events_log').values({ user_id: userId, name: 'item_upgraded', props: JSON.stringify({ recipeId: rc.id, tier: it.tier + 1 }) }).execute();
-  return { ...view(cfg, upd as never), paid: cost };
+  return { ...view(cfg, upd as never, await membership(trx, userId)), paid: cost };
 }
 
 export { walletBalance };

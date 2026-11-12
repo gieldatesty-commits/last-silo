@@ -15,7 +15,7 @@ import { buyListingTx, cancelListingTx, createListingTx, listListings, marketOve
 import { acceptContractTx, listContracts } from './services/contracts.js';
 import { listShipments } from './services/caravans.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
-import { craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
+import { activateLoadoutTx, craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
 import { BillingUnavailable } from './billing.js';
 import { subscriptionView, syncToken, verifySubscriptionTx, type Billing } from './services/subscription.js';
 import { accountView, createGuest, deleteAccount, deviceLogin, googleLogin, issueNonce, linkGoogleTx, type GoogleAuth } from './services/account.js';
@@ -237,16 +237,26 @@ export function buildApp(deps: AppDeps) {
   for (const action of ['equip', 'unequip', 'repair', 'upgrade'] as const) {
     app.post(`/items/:id/${action}`, { onRequest: auth }, async (req, reply) => {
       const { id } = z.object({ id: z.string().min(1).max(20) }).parse(req.params);
+      const { loadout } = z.object({ loadout: z.union([z.literal(1), z.literal(2)]).optional() }).parse(req.body ?? {});
       const key = req.headers['idempotency-key'];
       if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
       const userId = req.user.sub;
       const res = await idempotent(db, userId, key as string, async (trx) => ({
         status: 200,
-        body: action === 'repair' ? await repairTx(trx, ctx, userId, id) : action === 'upgrade' ? await upgradeTx(trx, ctx, userId, id) : await equipTx(trx, ctx, userId, id, action === 'equip'),
+        body: action === 'repair' ? await repairTx(trx, ctx, userId, id) : action === 'upgrade' ? await upgradeTx(trx, ctx, userId, id) : await equipTx(trx, ctx, userId, id, action === 'equip', loadout),
       }));
       return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
     });
   }
+
+  app.post('/loadouts/:n/activate', { onRequest: auth }, async (req, reply) => {
+    const { n } = z.object({ n: z.string().max(3) }).parse(req.params);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 200, body: await activateLoadoutTx(trx, ctx, userId, Number(n)) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
 
   app.get('/radio', { onRequest: auth }, async (req) => getRadio(ctx, req.user.sub));
   app.post('/radio/contact', { onRequest: auth }, async (req, reply) => {

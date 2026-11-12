@@ -30,6 +30,7 @@ export interface Database {
     radio_on: Generated<boolean>;
     protected_until: Date | null;
     carry_bonus_ore: Generated<number>;
+    active_loadout: Generated<number>;
   };
   market_listings: { id: Generated<string>; seller_id: string; material: string; qty: number; qty_initial: number; unit_price: number; state: Generated<'active' | 'sold' | 'cancelled' | 'expired'>; created_at: Generated<Date>; expires_at: Date };
   market_trades: { id: Generated<string>; listing_id: string | null; buyer_id: string | null; bot_trade: Generated<boolean>; seller_id: string; material: string; qty: number; unit_price: number; gross: string | number; fee: Generated<string | number>; created_at: Generated<Date> };
@@ -85,6 +86,8 @@ export interface Database {
     steam_cost: number;
     state: Generated<'active' | 'resolved'>;
     result: unknown | null;
+    loadout: number | null;
+    item_bonus: number | null;
   };
   items: {
     id: Generated<string>;
@@ -94,7 +97,6 @@ export interface Database {
     quality: number;
     durability: number;
     max_durability: number;
-    equipped: Generated<boolean>;
     tier: Generated<number>;
     created_at: Generated<Date>;
   };
@@ -110,7 +112,10 @@ export interface Database {
     steam_cost: number;
     state: Generated<'active' | 'resolved'>;
     result: unknown | null;
+    attack_power: number | null;
+    attacker_loadout: number | null;
   };
+  loadouts: { user_id: string; loadout: number; slot: string; item_id: string };
   world_pools: { zone: string; resource: string; total: number; remaining: number; regen_at: Generated<Date> };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {

@@ -156,3 +156,64 @@ describe('Warsztat i przedmioty', () => {
     expect(over.json().error).toBe('inventory_full');
   });
 });
+
+describe('Zestawy', () => {
+  type It = { id: string; equipped: boolean; inLoadouts: number[] };
+  async function kit() {
+    const { id, h } = await newPlayer();
+    await grant(id, 5000, 20);
+    await pool.query("UPDATE buildings SET level = 2 WHERE user_id = $1 AND type = 'warsztat'", [id]);
+    const k = (await post(h, '/items/craft', 'zs-craft-k-1', { recipeId: 'kilof' })).json();
+    const lom = (await post(h, '/items/craft', 'zs-craft-l-1', { recipeId: 'lom_bojowy' })).json();
+    return { id, h, k, lom };
+  }
+
+  it('przedmiot w obu zestawach; zdjęcie z jednego zostawia drugi', async () => {
+    const { h, k } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-ld-1');
+    await post(h, `/items/${k.id}/equip`, 'zestaw-ld-2', { loadout: 2 });
+    let r = (await app.inject({ url: '/items', headers: h })).json();
+    expect(r.loadouts['1'].narzedzie).toBe(k.id);
+    expect(r.loadouts['2'].narzedzie).toBe(k.id);
+    expect(r.items.find((i: It) => i.id === k.id).inLoadouts).toEqual([1, 2]);
+    await post(h, `/items/${k.id}/unequip`, 'zestaw-ld-3', { loadout: 2 });
+    r = (await app.inject({ url: '/items', headers: h })).json();
+    expect(r.loadouts['1'].narzedzie).toBe(k.id);
+    expect(r.loadouts['2'].narzedzie).toBeNull();
+    expect(r.items.find((i: It) => i.id === k.id).inLoadouts).toEqual([1]);
+  });
+
+  it('aktywacja: equipped i loadoutStats idą za aktywnym zestawem; ponowienie idempotentne; already_active', async () => {
+    const { h, k, lom } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-ac-e1');
+    await post(h, `/items/${lom.id}/equip`, 'zestaw-ac-e2', { loadout: 2 });
+    const first = await post(h, '/loadouts/2/activate', 'zestaw-act-1');
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({ activeLoadout: 2 });
+    const again = await post(h, '/loadouts/2/activate', 'zestaw-act-1');
+    expect(again.headers['idempotent-replay']).toBe('true');
+    const dup = await post(h, '/loadouts/2/activate', 'zestaw-act-2');
+    expect(dup.statusCode).toBe(409);
+    expect(dup.json().error).toBe('already_active');
+    const bad = await post(h, '/loadouts/3/activate', 'zestaw-act-3');
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().error).toBe('invalid_loadout');
+    const r = (await app.inject({ url: '/items', headers: h })).json();
+    expect(r.activeLoadout).toBe(2);
+    expect(r.items.find((i: It) => i.id === lom.id).equipped).toBe(true);
+    expect(r.items.find((i: It) => i.id === k.id).equipped).toBe(false);
+    expect(r.items.find((i: It & { attack: number }) => i.id === lom.id).attack).toBeGreaterThan(0);
+    expect(r.loadoutStats['2'].attack).toBeGreaterThan(0);
+    expect(r.loadoutStats['2'].dive).toBe(0);
+    expect(r.loadoutStats['1'].dive).toBeGreaterThan(0);
+    expect((await app.inject({ url: '/silo', headers: h })).json().player.activeLoadout).toBe(2);
+  });
+
+  it('zepsuty przedmiot nie liczy się do profilu zestawu', async () => {
+    const { h, k } = await kit();
+    await post(h, `/items/${k.id}/equip`, 'zestaw-br-e1');
+    await pool.query('UPDATE items SET durability = 0 WHERE id = $1', [k.id]);
+    const r = (await app.inject({ url: '/items', headers: h })).json();
+    expect(r.loadoutStats['1']).toEqual({ dive: 0, attack: 0, defense: 0 });
+  });
+});

@@ -11,7 +11,7 @@ import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { resolveDueRaids } from './raids.js';
 import { resolveDueShipments } from './caravans.js';
 import { resolveDueContracts } from './contracts.js';
-import { equippedBonus, loadEffects, wearEquipped } from './gear.js';
+import { activeLoadout, equippedBonus, loadEffects, wearLoadout } from './gear.js';
 import { randomInt } from 'node:crypto';
 
 export class GameError extends Error {
@@ -203,7 +203,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const sRow = await trx.selectFrom('silos').select('seed').where('user_id', '=', userId).executeTakeFirstOrThrow();
     const profile = geologyProfile(cfg, { lat: p.silo_lat!, lon: p.silo_lon! }, Number(sRow.seed));
     const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
-    await wearEquipped(trx, userId);
+    await wearLoadout(trx, userId, await activeLoadout(trx, userId));
 
     await applyLedger(
       trx,
@@ -267,6 +267,7 @@ async function buildView(trx: Trx, cfg: GameConfig, userId: string, st: Settled)
       xpToNext: p.level >= cfg.progression.max_level ? null : xpToNext(cfg, p.level),
       stats: { sila: p.sila, technika: p.technika, percepcja: p.percepcja, wytrwalosc: p.wytrwalosc },
       freePoints: p.free_points,
+      activeLoadout: p.active_loadout,
     },
     silo: { lat: p.silo_lat, lon: p.silo_lon, depth: p.depth, deposit: depositHint(st.state.depositRemaining, st.state.depositTotal, cfg.economy.deposit.floor_fraction) },
     wallet: { ore: st.oreInt, steam: Math.floor(st.state.steam + EPS), tokens, samples, ...Object.fromEntries(await Promise.all(cfg.geology.materials.map(async (m) => [m, await walletBalance(trx, userId, m)]))) },
