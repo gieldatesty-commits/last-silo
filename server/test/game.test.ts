@@ -113,9 +113,9 @@ describe('świat', () => {
 describe('ekwipunek: profil przedmiotu', () => {
   it('profil przedmiotu: zjazd/atak/obrona × jakość × tier', () => {
     const lom = c.items.recipes.find((r) => r.id === 'lom_bojowy')!;
-    expect(itemProfile(c, lom, 1, 0)).toEqual({ dive: 0, attack: 1.0, defense: 0 });
-    const p = itemProfile(c, lom, 0.9, 2); // 1,0 × 0,9 × 1,2
-    expect(p.attack).toBeCloseTo(1.08, 6);
+    expect(itemProfile(c, lom, 1, 0)).toEqual({ dive: 0, attack: 0.6, defense: 0 });
+    const p = itemProfile(c, lom, 0.9, 2); // 0,6 × 0,9 × 1,2
+    expect(p.attack).toBeCloseTo(0.648, 6);
     const kilof = c.items.recipes.find((r) => r.id === 'kilof')!;
     expect(itemProfile(c, kilof, 1, 0)).toEqual({ dive: 0.6, attack: 0, defense: 0 });
     expect(itemBonus(c, kilof, 1, 0)).toBe(0.6);

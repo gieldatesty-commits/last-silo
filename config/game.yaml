@@ -112,7 +112,7 @@ items:
   quality: { min: 0.85, max: 1.05, min_step: 0.02, max_step: 0.04 }   # zakres jakości rośnie z poziomem Warsztatu
   slots: [narzedzie, ochrona, lampa, sprzet]
   # Dwa zestawy (docs/ekwipunek-v1.0.md §3): obrona silosu = obrona aktywnego zestawu + ta część obrony drugiego (pancerz chroni też, gdy siedzisz w zjazdowym)
-  loadouts: { passive_defense_share: 0.5 }
+  loadouts: { passive_defense_share: 0.75 }
   # Wzmacnianie: stały cel dla rudy i materiałów w późnej grze. Tier t wymaga Warsztatu (workshop_base + t) i Radiostacji `radio`.
   upgrade:
     max_tier: 5
@@ -139,13 +139,13 @@ items:
     - { id: detektor_zylowy,     name: Detektor żył,         slot: sprzet,    workshop: 2, ore: 450,  tokens: 3,  bonus: 0.7, durability: 25 }
     - { id: skaner_sejsmiczny,   name: Skaner sejsmiczny,    slot: sprzet,    workshop: 5, ore: 2600, tokens: 22, bonus: 1.6, durability: 35, radio: 5, materials: { miedz: 18, krysztal: 15 }, tech: sejsmika }
     # Sprzęt bojowy (docs/ekwipunek-v1.0.md §2): dzieli sloty z narzędziami zjazdowymi; bonus = moc zjazdu, attack/defense = najazdy
-    - { id: lom_bojowy,           name: Łom bojowy,           slot: narzedzie, workshop: 2, ore: 350,  tokens: 2,  bonus: 0, attack: 1.0, durability: 20 }
-    - { id: nitownica,            name: Nitownica,            slot: narzedzie, workshop: 4, ore: 1500, tokens: 12, bonus: 0, attack: 2.0, durability: 30, radio: 5, materials: { miedz: 12 } }
-    - { id: karabin_pneumatyczny, name: Karabin pneumatyczny, slot: narzedzie, workshop: 6, ore: 4200, tokens: 38, bonus: 0, attack: 3.2, durability: 40, radio: 5, materials: { siarka: 30, miedz: 15 }, tech: balistyka }
+    - { id: lom_bojowy,           name: Łom bojowy,           slot: narzedzie, workshop: 2, ore: 350,  tokens: 2,  bonus: 0, attack: 0.6, durability: 20 }
+    - { id: nitownica,            name: Nitownica,            slot: narzedzie, workshop: 4, ore: 1500, tokens: 12, bonus: 0, attack: 1.2, durability: 30, radio: 5, materials: { miedz: 12 } }
+    - { id: karabin_pneumatyczny, name: Karabin pneumatyczny, slot: narzedzie, workshop: 6, ore: 4200, tokens: 38, bonus: 0, attack: 1.92, durability: 40, radio: 5, materials: { siarka: 30, miedz: 15 }, tech: balistyka }
     - { id: napiersnik,           name: Napierśnik,           slot: ochrona,   workshop: 3, ore: 650,  tokens: 4,  bonus: 0, defense: 1.2, durability: 25 }
     - { id: plyta_wartownika,     name: Płyta Wartownika,     slot: ochrona,   workshop: 6, ore: 4500, tokens: 40, bonus: 0, defense: 3.0, durability: 45, radio: 5, materials: { krysztal: 30 }, tech: balistyka }
-    - { id: noktowizor,           name: Noktowizor,           slot: lampa,     workshop: 4, ore: 1600, tokens: 14, bonus: 0, attack: 0.8, defense: 0.6, durability: 30, radio: 5, materials: { krysztal: 12 } }
-    - { id: celownik,             name: Celownik,             slot: sprzet,    workshop: 5, ore: 2400, tokens: 20, bonus: 0, attack: 1.4, durability: 35, radio: 5, materials: { krysztal: 10, siarka: 8 } }
+    - { id: noktowizor,           name: Noktowizor,           slot: lampa,     workshop: 4, ore: 1600, tokens: 14, bonus: 0, attack: 0.48, defense: 0.6, durability: 30, radio: 5, materials: { krysztal: 12 } }
+    - { id: celownik,             name: Celownik,             slot: sprzet,    workshop: 5, ore: 2400, tokens: 20, bonus: 0, attack: 0.84, durability: 35, radio: 5, materials: { krysztal: 10, siarka: 8 } }
 
 # Dział nauki (Laboratorium): jedno badanie naraz; czas skraca się o 5% za każdy poziom Laboratorium (max −50%)
 research:

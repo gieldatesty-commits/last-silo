@@ -36,22 +36,23 @@ Nowe receptury (startowo):
 
 | id | Nazwa | Slot | Warsztat | Profil | Koszt | Wymaga |
 |---|---|---|---|---|---|---|
-| lom_bojowy | Łom bojowy | narzedzie | 2 | atak 1,0 | 350 rudy, 2 żet. | – |
-| nitownica | Nitownica | narzedzie | 4 | atak 2,0 | 1500 rudy, 12 żet., miedź 12 | Radio 5 |
-| karabin_pneumatyczny | Karabin pneumatyczny | narzedzie | 6 | atak 3,2 | 4200 rudy, 38 żet., siarka 30, miedź 15 | Radio 5, badanie `balistyka` |
+| lom_bojowy | Łom bojowy | narzedzie | 2 | atak 0,6 | 350 rudy, 2 żet. | – |
+| nitownica | Nitownica | narzedzie | 4 | atak 1,2 | 1500 rudy, 12 żet., miedź 12 | Radio 5 |
+| karabin_pneumatyczny | Karabin pneumatyczny | narzedzie | 6 | atak 1,92 | 4200 rudy, 38 żet., siarka 30, miedź 15 | Radio 5, badanie `balistyka` |
 | napiersnik | Napierśnik | ochrona | 3 | obrona 1,2 | 650 rudy, 4 żet. | – |
 | plyta_wartownika | Płyta Wartownika | ochrona | 6 | obrona 3,0 | 4500 rudy, 40 żet., kryształ 30 | Radio 5, badanie `balistyka` |
-| noktowizor | Noktowizor | lampa | 4 | atak 0,8, obrona 0,6 | 1600 rudy, 14 żet., kryształ 12 | Radio 5 |
-| celownik | Celownik | sprzet | 5 | atak 1,4 | 2400 rudy, 20 żet., kryształ 10, siarka 8 | Radio 5 |
+| noktowizor | Noktowizor | lampa | 4 | atak 0,48, obrona 0,6 | 1600 rudy, 14 żet., kryształ 12 | Radio 5 |
+| celownik | Celownik | sprzet | 5 | atak 0,84 | 2400 rudy, 20 żet., kryształ 10, siarka 8 | Radio 5 |
 
 Istniejące receptury dostają `attack: 0`, `defense: 0`, poza **Kombinezonem pancernym** (`defense: 0,8`), który z nazwy jest hybrydą. Nowe badanie `balistyka` (gałąź inżynieria, Lab 5) odblokowuje Karabin i Płytę.
 
 Wzory najazdu:
 ```
 atak   = Siła + 0,4·Percepcja + atak(zestaw atakującego)
-obrona = Wytrwałość + bonus Wartowni + obrona(zestaw obrońcy)
-moc ligowa = playerPower(...) + atak(aktywny) + obrona(aktywny)
+obrona = Wytrwałość + bonus Wartowni + obrona(aktywny) + passive_defense_share × obrona(drugi zestaw)
+moc ligowa = playerPower(...) + atak(aktywny) + obrona silosu (jak wyżej)
 ```
+`items.loadouts.passive_defense_share = 0,75` (config 1.6.0): pancerz chroni silos także wtedy, gdy gracz siedzi w zestawie zjazdowym. Bez tego atak (przełączenie na chwilę wysłania) był darmowy, a obrona nie (§10).
 Moc ligowa uwzględnia aktywny zestaw, więc przełączenie zmienia ligę. To zamierzone: kto siedzi w zestawie bojowym, trafia na silniejszych.
 
 ## 3. Zestawy
@@ -65,7 +66,7 @@ Moc ligowa uwzględnia aktywny zestaw, więc przełączenie zmienia ligę. To za
 Dziś bonus zjazdu liczy się przy rozliczeniu. Przy dwóch zestawach dałoby się dodać zjazd z zestawem bojowym i przełączyć na zjazdowy tuż przed rozliczeniem. Dlatego:
 - **Zjazd** zapisuje przy dodaniu do kolejki `dives.loadout` (który zestaw) i `dives.item_bonus` (moc z przedmiotów, run i kompletu w tej chwili). Rozliczenie używa zapisanej mocy. Zużycie: przedmioty, które **w chwili rozliczenia** są w zapisanym zestawie i nie są zepsute, tracą 1 wytrzymałości. (Jeśli gracz wyjął przedmiot z zestawu, ten się nie zużywa; moc i tak była zapisana.)
 - **Atak** zapisuje przy wysłaniu `raids.attack_power` (pełny atak ze statystykami i zestawem) i `raids.attacker_loadout`.
-- **Obrona** liczy się z zestawu aktywnego u obrońcy w chwili rozliczenia. Warunek konieczny: `POST /loadouts/{n}/activate`, `equip`, osadzanie i wyjmowanie run najpierw wołają `settle()`, które rozlicza też najazdy, w których gracz jest **obrońcą**, a które dotarły (`ends_at <= now`). Dziś `settle()` już to robi dla obu stron (`raids.ts`, rozliczanie najazdów gracza jako atakującego lub obrońcy); test etapu 1 ma to utrwalić: przełączenie po dotarciu napastnika, ale przed rozliczeniem, nie zmienia wyniku.
+- **Obrona** liczy się z zestawu aktywnego u obrońcy w chwili rozliczenia, plus `passive_defense_share` obrony drugiego zestawu. Warunek konieczny: `POST /loadouts/{n}/activate`, `equip`, osadzanie i wyjmowanie run najpierw wołają `settle()`, które rozlicza też najazdy, w których gracz jest **obrońcą**, a które dotarły (`ends_at <= now`). Dziś `settle()` już to robi dla obu stron (`raids.ts`, rozliczanie najazdów gracza jako atakującego lub obrońcy); test etapu 1 ma to utrwalić: przełączenie po dotarciu napastnika, ale przed rozliczeniem, nie zmienia wyniku.
 - Zjazdy sprzed migracji (bez `item_bonus`) rozliczają się po staremu, z zestawu 1.
 - Najazd zużywa przedmioty: atakującemu zestaw z `attacker_loadout`, obrońcy aktywny zestaw, po 1 wytrzymałości.
 
@@ -192,3 +193,14 @@ Kryteria z §8: 1 (zjazdy głównym źródłem) **spełnione**; 2 (najazdy +≤3
 Przyczyna: asymetria. Atak korzysta z zestawu bojowego za darmo (przełączenie na chwilę wysłania, zrzut ataku), a obrona wymaga siedzenia w zestawie bojowym kosztem zjazdów, więc nikt tego nie robi. Średni atak zestawu II: 6,8 (hardcore), 5,5 (regularni), wobec obrony zestawu I: 1,4 / 0,0. Boty atakują tylko przy szansie ≥ 50%, a broń podnosi szansę ponad próg u wielu par, stąd prawie 3× więcej najazdów.
 
 **Balansu nie zmieniano; decyzja u Damiana.** Możliwe kierunki: (a) mniejszy atak broni; (b) obrona liczy też część profilu zestawu nieaktywnego albo pancerz z obu zestawów; (c) atak z zestawu aktywnego w chwili **dotarcia** (zestaw bojowy trzeba utrzymać przez czas dojazdu, więc kosztuje zjazdy); (d) czas przełączenia zestawu (np. kilka minut „przezbrajania”).
+
+### 10.1 Decyzja: obrona z obu zestawów + słabsze bronie (config 1.6.0)
+Damian wybrał obronę z obu zestawów. Sam udział (0,5 / 0,75 / 1,0) obniżał łupy tylko do 17 / 16 / 14% dochodu, więc dobrano też atak broni (próby: ×0,4–×0,6). Wybrany wariant: **atak przedmiotów ×0,6** (wartości w tabeli §2) i **`passive_defense_share: 0,75`**.
+
+| Ziarno | Łupy w dochodzie (1.5.0 → 1.6.0) | Najazdy/gracz/dobę | Udział zjazdów (hardcore / regularni) | Ruda w magazynie | Mediana utraconego dochodu |
+|---|---|---|---|---|---|
+| 1 | 10,4% → 10,3% | 0,56 → 0,82 | 69/71% | 24,6 tys. | 10,2% |
+| 2 | 9,4% → 10,1% | 0,52 → 0,84 | 69/70% | 24,1 tys. | 10,2% |
+| 3 | 10,8% → 9,8% | 0,59 → 0,81 | 68/71% | 24,3 tys. | 10,2% |
+
+Kryteria §8: 1, 2, 3 spełnione (5 bez zmian w kodzie). Średni atak zestawu bojowego 4,1 (hardcore) / 3,3 (regularni), obrona silosu 4,8 / 2,7: sprzęt waży w obie strony. Najazdów jest ok. 50% więcej niż w 1.5.0, ale łup na najazd mniejszy; mediana utraconego dochodu rośnie z ok. 7,5% do 10%. Okazjonalni nie budują zestawu bojowego i bronią się samymi statystykami; do obserwacji w becie.
