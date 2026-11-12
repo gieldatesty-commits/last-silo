@@ -163,6 +163,15 @@ describe('ekwipunek: rzadkość i tiery 6–10', () => {
     expect(t10.tokens).toBe(c.items.upgrade.tokens_per_tier * 10);
     expect(c.items.upgrade.max_tier).toBe(10);
   });
+  it('próg „wysokich” tierów wynika z configu (pierwszy high_tiers.from), nie ze stałej w kodzie', () => {
+    const w = c.items.recipes.find((r) => r.id === 'wiertlo_rdzeniowe')!;
+    const shifted = { ...c, items: { ...c.items, upgrade: { ...c.items.upgrade, high_tiers: [{ from: 7, tech: 'kuznia_glebi' }] } } };
+    const u = c.items.upgrade;
+    const t6 = upgradeTierCost(shifted, w, 6);
+    expect(t6.ore).toBe(Math.ceil(w.ore * u.ore_fraction * u.growth ** 5)); // tier 6 jeszcze na zwykłej krzywej
+    expect(t6.tech).toBeNull();
+    expect(upgradeTierCost(shifted, w, 7).ore).toBe(Math.ceil(t6.ore * u.growth_high));
+  });
   it('ten sam seed: jakość to nadal pierwsza liczba strumienia, rzadkość druga', () => {
     const r = rng(12345);
     const q = r();

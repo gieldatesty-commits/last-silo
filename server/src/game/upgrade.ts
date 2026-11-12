@@ -38,12 +38,13 @@ export function itemProfile(c: GameConfig, rc: Pick<Recipe, 'bonus' | 'attack' |
 /** Moc zjazdu przedmiotu (zgodność: część `dive` profilu). */
 export const itemBonus = (c: GameConfig, rc: Pick<Recipe, 'bonus'>, quality: number, tier: number) => itemProfile(c, { bonus: rc.bonus, attack: 0, defense: 0 }, quality, tier).dive;
 
-/** Koszt wzmocnienia do `toTier` (1..max_tier). Tiery powyżej 5: ruda × growth_high, Warsztat na maksimum, badanie z `high_tiers`. */
+/** Koszt wzmocnienia do `toTier` (1..max_tier). Tiery od pierwszego progu `high_tiers`: ruda × growth_high, Warsztat na maksimum, badanie z `high_tiers`. */
 export function upgradeTierCost(c: GameConfig, rc: Recipe, toTier: number) {
   const u = c.items.upgrade;
   const materials: Record<string, number> = {};
   for (const [m, n] of Object.entries(u.materials_per_tier)) if (n > 0) materials[m] = n * toTier;
-  const LOW = 5;
+  // ostatni tier na zwykłej krzywej = tuż przed pierwszym progiem z high_tiers (bez progów: wszystkie tiery na zwykłej)
+  const LOW = u.high_tiers.length ? Math.min(...u.high_tiers.map((h) => h.from)) - 1 : u.max_tier;
   const base = rc.ore * u.ore_fraction;
   const ore = toTier <= LOW ? base * u.growth ** (toTier - 1) : Math.ceil(base * u.growth ** (LOW - 1)) * u.growth_high ** (toTier - LOW);
   const tech = [...u.high_tiers].filter((h) => h.from <= toTier).sort((a, b) => b.from - a.from)[0]?.tech ?? null;

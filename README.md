@@ -28,8 +28,8 @@ docker compose up -d --build
 | GET | `/dives/routes` | trasy zjazdów: koszt, czas, Twoja szansa, zakres nagród, bogactwo strefy (opis, bez liczb) |
 | POST | `/dives` | start zjazdu `{routeId}`; moc zestawu zapisana przy dodaniu (`loadout` w odpowiedzi); wymaga `Idempotency-Key` |
 | GET | `/dives/history` | ostatnie rozstrzygnięte zjazdy |
-| GET | `/items` | ekwipunek (profil `bonus`/`attack`/`defense`, `inLoadouts`, `equipped` = w aktywnym), receptury z profilem, zakres jakości; `activeLoadout`, `loadouts` (slot → przedmiot), `loadoutStats`, `siloDefense` (obrona silosu, gdyby aktywny był dany zestaw) |
-| POST | `/items/craft` | wytworzenie `{recipeId}`; ruda + żetony; `Idempotency-Key` |
+| GET | `/items` | ekwipunek (profil `bonus`/`attack`/`defense` z mnożnikiem rzadkości, `rarity {id, name, sockets}`, `nextUpgrade` z `tech`/`techName`/`techDone`, `inLoadouts`, `equipped` = w aktywnym), receptury z profilem, zakres jakości; `activeLoadout`, `loadouts` (slot → przedmiot), `loadoutStats`, `siloDefense` (obrona silosu, gdyby aktywny był dany zestaw) |
+| POST | `/items/craft` | wytworzenie `{recipeId}`; ruda + żetony; jakość i rzadkość losowane z zapisanego ziarna; `Idempotency-Key` |
 | POST | `/items/:id/equip` · `/unequip` · `/repair` | założenie (1 na slot w zestawie) / zdjęcie `{loadout?: 1\|2}` (domyślnie aktywny; zdjęcie spoza zestawu: 409 `not_equipped`), naprawa za rudę; `Idempotency-Key` |
 | POST | `/loadouts/:n/activate` | przełączenie aktywnego zestawu (1 albo 2; `already_active`, `invalid_loadout`); `Idempotency-Key` |
 | GET | `/radio` | stan Radiostacji + słyszane sygnały (kierunek, dystans zaokrąglony; nick dopiero po kontakcie) |
@@ -39,7 +39,7 @@ docker compose up -d --build
 | POST | `/raids` | start najazdu `{targetId}`; rozstrzygany leniwie po dojeździe; `Idempotency-Key` |
 | GET | `/ranking?type=power\|loot` | ranking nadających (Nadajnik) |
 | GET | `/geology` | jakościowy opis geologii okolicy: który materiał obfituje (bez liczb) |
-| POST | `/items/:id/upgrade` | wzmocnienie przedmiotu o tier (tier 1–5; Warsztat 5+t, Radiostacja 5; koszt: ruda, żetony, materiały); `Idempotency-Key` |
+| POST | `/items/:id/upgrade` | wzmocnienie przedmiotu o tier (1–10; Warsztat 5+t do maksimum, Radiostacja 5; tiery 6–7 wymagają badania Kuźnia Głębi, 8–10 Kuźnia Rdzenia, inaczej 409 `tech_required`; koszt: ruda, żetony, materiały); `Idempotency-Key` |
 | GET | `/market` | rynek: ceny NPC i bota, korytarze, średnia 7 dni, najlepsza oferta, limit bota |
 | GET | `/market/listings` | aktywne oferty materiału (`?material=`), od najtańszej |
 | GET | `/market/shipments` | karawany: przesyłki w drodze i ostatnie dostawy |
