@@ -302,7 +302,11 @@ function act(p: P, nowMs: number) {
   if (!NORAIDS) tryRaid(p, nowMs);
 }
 
-const powerOf = (q: P, set: Map<string, Gear> = q.gear) => playerPower(q.stats, q.silo.levels) + setProfile(set).attack + siloDef(q);
+/** Moc ligowa z zestawem `set` jako aktywnym: atak z niego, obrona pełna z niego + część z drugiego (jak serwer). */
+const powerOf = (q: P, set: Map<string, Gear> = q.gear) => {
+  const other = set === q.gear ? q.gear2 : q.gear;
+  return playerPower(q.stats, q.silo.levels) + setProfile(set).attack + setProfile(set).defense + cfg.items.loadouts.passive_defense_share * setProfile(other).defense;
+};
 const DAYMS = 86_400_000;
 let raidSeed = 50_000;
 

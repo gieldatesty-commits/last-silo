@@ -323,15 +323,16 @@ describe('najazdy', () => {
     expect((await get(a.h, '/raids/targets'))[0].blockedBy).toBe('out_of_league');
   });
 
-  it('najazd sprzed migracji (attack_power NULL) liczy atak ze statystyk', async () => {
+  it('najazd sprzed migracji (attack_power NULL) liczy atak ze statystyk i nie zużywa sprzętu atakującego', async () => {
     const { a, d } = await pair();
-    await giveItem(a.id, 'lom_bojowy', 1);
+    const lom = await giveItem(a.id, 'lom_bojowy', 1);
     const { A, D } = await statsOf(a, d);
     await post(a.h, '/raids', key(), { targetId: d.id });
     await pool.query('UPDATE raids SET attack_power = NULL, attacker_loadout = NULL');
     tick(150);
     await silo(d.h);
     expect((await lastRaid()).result.chancePct).toBe(Math.round(raidWinChance(A, D) * 100));
+    expect(await dur(lom.id)).toBe(lom.rc.durability); // przed migracją najazdy nic nie zużywały
   });
 
   it('limit łupu i ochrona Magazynu', async () => {

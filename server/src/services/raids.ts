@@ -102,7 +102,8 @@ async function resolveRaid(trx: Trx, cfg: GameConfig, raidId: string): Promise<v
     await trx.updateTable('players').set({ level: defXp.level, xp: String(defXp.xpInLevel), free_points: def.free_points + defXp.points }).where('user_id', '=', raid.defender_id).execute();
   }
 
-  await wearLoadout(trx, raid.attacker_id, (raid.attacker_loadout === 2 ? 2 : 1) as LoadoutNo);
+  // najazdy sprzed migracji 016 (bez zestawu) nie zużywały sprzętu atakującego
+  if (raid.attacker_loadout !== null) await wearLoadout(trx, raid.attacker_id, (raid.attacker_loadout === 2 ? 2 : 1) as LoadoutNo);
   await wearLoadout(trx, raid.defender_id, defLoadout);
 
   const result = { win, chancePct: Math.round(chance * 100), ore, tokens };
@@ -140,7 +141,7 @@ async function candidateOf(trx: Trx | Ctx['db'], cfg: GameConfig, userId: string
     nickname: p.nickname ?? '',
     level: p.level,
     // moc ligowa uwzględnia siłę bojową aktywnego zestawu (docs/ekwipunek-v1.0.md §2)
-    power: playerPower({ sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! }, lv) + profile.attack + (await siloDefense(trx, cfg, userId, loadout)),
+    power: playerPower({ sila: p.sila!, technika: p.technika!, percepcja: p.percepcja!, wytrwalosc: p.wytrwalosc! }, lv) + profile.attack + (await siloDefense(trx, cfg, userId, loadout, profile)),
     profile,
     loadout,
     radioLevel: lv.radiostacja!,

@@ -278,6 +278,25 @@ describe('Zestawy', () => {
     expect(await durOf(lom.id)).toBe(lomRc.durability);
   });
 
+  it('zdjęcie przedmiotu spoza zestawu: 409 not_equipped', async () => {
+    const { h, lom } = await kit();
+    await post(h, `/items/${lom.id}/equip`, 'zestaw-ne-e1', { loadout: 2 });
+    const r = await post(h, `/items/${lom.id}/unequip`, 'zestaw-ne-u1'); // domyślnie aktywny I, a łom jest tylko w II
+    expect(r.statusCode).toBe(409);
+    expect(r.json().error).toBe('not_equipped');
+  });
+
+  it('siloDefense: obrona silosu dla każdego zestawu jako aktywnego (pełna z niego + passive_defense_share z drugiego)', async () => {
+    const { id, h } = await kit();
+    const nap = (await post(h, '/items/craft', 'zestaw-sd-c1', { recipeId: 'napiersnik' })).json();
+    expect(id).toBeTruthy();
+    await post(h, `/items/${nap.id}/equip`, 'zestaw-sd-e1', { loadout: 2 });
+    const r = (await app.inject({ url: '/items', headers: h })).json();
+    const share = config.items.loadouts.passive_defense_share;
+    expect(r.siloDefense['2']).toBeCloseTo(r.loadoutStats['2'].defense, 2);
+    expect(r.siloDefense['1']).toBeCloseTo(share * r.loadoutStats['2'].defense, 2);
+  });
+
   it('zepsuty przedmiot nie liczy się do profilu zestawu', async () => {
     const { h, k } = await kit();
     await post(h, `/items/${k.id}/equip`, 'zestaw-br-e1');

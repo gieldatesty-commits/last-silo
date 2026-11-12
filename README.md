@@ -23,14 +23,15 @@ docker compose up -d --build
 | POST | `/auth/guest` | konto gościa (lub ponowne logowanie z `userId` + `guestSecret`) |
 | GET | `/me` | podstawowy profil |
 | POST | `/players` | tworzy postać: `{nickname, archetype}`, losuje pozycję silosu i ukryte złoże |
-| GET | `/silo` | stan silosu; rozlicza produkcję, parę i ukończone ulepszenia |
+| GET | `/silo` | stan silosu; rozlicza produkcję, parę i ukończone ulepszenia; `player.activeLoadout`, w `queue` numer zestawu zjazdu (`loadout`) |
 | POST | `/buildings/:type/upgrade` | ulepszenie budynku; wymaga nagłówka `Idempotency-Key` |
 | GET | `/dives/routes` | trasy zjazdów: koszt, czas, Twoja szansa, zakres nagród, bogactwo strefy (opis, bez liczb) |
-| POST | `/dives` | start zjazdu `{routeId}`; wymaga `Idempotency-Key` |
+| POST | `/dives` | start zjazdu `{routeId}`; moc zestawu zapisana przy dodaniu (`loadout` w odpowiedzi); wymaga `Idempotency-Key` |
 | GET | `/dives/history` | ostatnie rozstrzygnięte zjazdy |
-| GET | `/items` | ekwipunek, receptury (zablokowane poziomem Warsztatu), zakres jakości |
+| GET | `/items` | ekwipunek (profil `bonus`/`attack`/`defense`, `inLoadouts`, `equipped` = w aktywnym), receptury z profilem, zakres jakości; `activeLoadout`, `loadouts` (slot → przedmiot), `loadoutStats`, `siloDefense` (obrona silosu, gdyby aktywny był dany zestaw) |
 | POST | `/items/craft` | wytworzenie `{recipeId}`; ruda + żetony; `Idempotency-Key` |
-| POST | `/items/:id/equip` · `/unequip` · `/repair` | założenie (1 na slot), zdjęcie, naprawa za rudę; `Idempotency-Key` |
+| POST | `/items/:id/equip` · `/unequip` · `/repair` | założenie (1 na slot w zestawie) / zdjęcie `{loadout?: 1\|2}` (domyślnie aktywny; zdjęcie spoza zestawu: 409 `not_equipped`), naprawa za rudę; `Idempotency-Key` |
+| POST | `/loadouts/:n/activate` | przełączenie aktywnego zestawu (1 albo 2; `already_active`, `invalid_loadout`); `Idempotency-Key` |
 | GET | `/radio` | stan Radiostacji + słyszane sygnały (kierunek, dystans zaokrąglony; nick dopiero po kontakcie) |
 | POST | `/radio/contact` | namierzenie `{signalId}` (para); `Idempotency-Key` |
 | POST | `/radio/broadcast` | `{on}` – cisza radiowa / nadawanie (od Nadajnika) |

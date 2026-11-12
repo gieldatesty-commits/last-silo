@@ -4,7 +4,7 @@ import type { GameConfig } from '../config.js';
 import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
-import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, type LoadoutNo } from './gear.js';
+import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
 import { randomInt } from 'node:crypto';
 import { itemProfile, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
 
@@ -85,6 +85,8 @@ export async function listItems(ctx: Ctx, userId: string) {
     activeLoadout: m.active,
     loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
     loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
+    // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)
+    siloDefense: { '1': Math.round((await siloDefense(ctx.db, cfg, userId, 1)) * 100) / 100, '2': Math.round((await siloDefense(ctx.db, cfg, userId, 2)) * 100) / 100 },
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
     quality: { min: Math.round(qr.min * 100) / 100, max: Math.round(qr.max * 100) / 100 },
@@ -151,7 +153,8 @@ export async function equipTx(trx: Trx, ctx: Ctx, userId: string, id: string, eq
       .onConflict((oc) => oc.columns(['user_id', 'loadout', 'slot']).doUpdateSet({ item_id: String(it.id) }))
       .execute();
   } else {
-    await trx.deleteFrom('loadouts').where('user_id', '=', userId).where('loadout', '=', lo).where('item_id', '=', String(it.id)).execute();
+    const del = await trx.deleteFrom('loadouts').where('user_id', '=', userId).where('loadout', '=', lo).where('item_id', '=', String(it.id)).executeTakeFirst();
+    if (Number(del.numDeletedRows) === 0) throw new GameError(409, 'not_equipped');
   }
   return view(cfg, it as never, await membership(trx, userId));
 }

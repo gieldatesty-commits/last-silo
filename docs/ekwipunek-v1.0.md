@@ -163,6 +163,8 @@ Każdy etap: migracja, config (`version`), `src/game` + testy jednostkowe, serwi
 | 3 | Runy: wytwarzanie, łup III, osadzanie, wyjmowanie | 018: `item_runes` | 1.8.0 |
 | 4 | Komplety | – | 1.9.0 |
 
+**Wdrożenie etapu 1:** migracja 016 usuwa `items.equipped` (przenosi do `loadouts`), więc powrót do serwera sprzed 1.6.0 wymaga odtworzenia bazy z kopii. Przed wdrożeniem: kopia bazy.
+
 `sim:world` musi modelować nowe wybory: gracze hardcore utrzymują dwa zestawy i przełączają przed atakiem, regularni mają jeden zestaw zjazdowy i czasem bojowy, okazjonalni nie przełączają wcale.
 
 Kryteria akceptacji symulacji (po każdym etapie):

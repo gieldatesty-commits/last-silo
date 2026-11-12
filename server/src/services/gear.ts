@@ -39,10 +39,11 @@ export async function loadoutProfile(db: Trx, cfg: GameConfig, userId: string, l
   return sum;
 }
 
-/** Obrona silosu: pełna z aktywnego zestawu + `passive_defense_share` z drugiego. */
-export async function siloDefense(db: Trx, cfg: GameConfig, userId: string, active: LoadoutNo): Promise<number> {
+/** Obrona silosu: pełna z aktywnego zestawu + `passive_defense_share` z drugiego. `activeProfile` oszczędza zapytanie, gdy już policzony. */
+export async function siloDefense(db: Trx, cfg: GameConfig, userId: string, active: LoadoutNo, activeProfile?: Profile): Promise<number> {
   const other: LoadoutNo = active === 1 ? 2 : 1;
-  return (await loadoutProfile(db, cfg, userId, active)).defense + cfg.items.loadouts.passive_defense_share * (await loadoutProfile(db, cfg, userId, other)).defense;
+  const mine = activeProfile ?? (await loadoutProfile(db, cfg, userId, active));
+  return mine.defense + cfg.items.loadouts.passive_defense_share * (await loadoutProfile(db, cfg, userId, other)).defense;
 }
 
 /** Moc zjazdu z aktywnego zestawu (podgląd szans tras). */
