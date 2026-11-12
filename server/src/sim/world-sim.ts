@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js';
 import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
-import { itemBonus, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { addProfiles, itemBonus, itemProfile, tierRepairMult, upgradeTierCost, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
 import { dayIndex, genOffers } from '../game/contracts.js';
 const takenOffers = new Set<string>();
 import { ambushChance, shipFeePerUnit, shipKm, shipMinutes, survivingQty } from '../game/caravan.js';
@@ -36,6 +36,8 @@ const NORAIDS = arg('noraids', 0) === 1; // wyłącza najazdy (punkt odniesienia
 type Style = 'hardcore' | 'regularny' | 'okazjonalny';
 const ONLINE_P: Record<Style, number> = { hardcore: 0.5, regularny: 0.06, okazjonalny: 0.011 }; // na 10-min tick w godz. 8–23
 
+type Gear = { recipe: string; quality: number; dur: number; max: number; tier: number };
+
 interface P {
   style: Style;
   trader: boolean;
@@ -57,7 +59,9 @@ interface P {
   diveOre: number;
   prodOre: number;
   samples: number;
-  gear: Map<string, { recipe: string; quality: number; dur: number; max: number; tier: number }>;
+  gear: Map<string, Gear>;
+  /** zestaw II (bojowy): hardcore i regularni; aktywny tylko na chwilę wysłania najazdu, więc bronią się zestawem I */
+  gear2: Map<string, Gear>;
   done: Set<string>;
   research: { id: string; endsAt: number } | null;
   spent: { buildings: number; research: number; craft: number; repair: number; upgrade: number };
@@ -90,7 +94,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     style, arch, trader: false, tradeStart: -1, cseed: (i + 1) * 7919, contractOre: 0, contractsDone: new Set(),
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
-    samples: 0, gear: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
+    samples: 0, gear: new Map(), gear2: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
     lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, marketBuyOre: 0, marketNet: 0, botOre: 0, botDay: -1, botQty: 0, radio5At: -1, firstTier2At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
@@ -154,6 +158,10 @@ function sweepBook(nowMs: number) {
 const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: poolTotal(cfg, z, N), total: poolTotal(cfg, z, N), at: 0 }]));
 let seedCounter = 1000;
 
+/** Profil zestawu (niezepsute przedmioty). */
+const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier)) : sum), ZERO_PROFILE);
+/** Zestaw, którym gracz atakuje (bojowy, jeśli go ma). */
+const attackSet = (p: P) => (p.gear2.size ? p.gear2 : p.gear);
 const gearBonus = (p: P) => [...p.gear.values()].reduce((sum, g) => (g.dur > 0 ? sum + itemBonus(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier) : sum), 0);
 const fxOf = (p: P) => computeEffects(cfg, p.done);
 const bonusOf = (p: P) => gearBonus(p) + fxOf(p).divePower;
@@ -292,7 +300,7 @@ function act(p: P, nowMs: number) {
   if (!NORAIDS) tryRaid(p, nowMs);
 }
 
-const powerOf = (q: P) => playerPower(q.stats, q.silo.levels);
+const powerOf = (q: P, set: Map<string, Gear> = q.gear) => { const pr = setProfile(set); return playerPower(q.stats, q.silo.levels) + pr.attack + pr.defense; };
 const DAYMS = 86_400_000;
 let raidSeed = 50_000;
 
@@ -310,12 +318,12 @@ function tryRaid(p: P, nowMs: number) {
     const km = distanceKm(p, q, cfg.world.radius_km);
     if (!isBroadcasting(cfg, q.silo.levels.radiostacja, true) || !audible(cfg, L.radiostacja, q.silo.levels.radiostacja, km)) continue;
     if (q.level < cfg.raids.beginner_protection_level || q.protectedUntil > nowMs) continue;
-    if (!inLeague(cfg, powerOf(p), powerOf(q))) continue;
+    if (!inLeague(cfg, powerOf(p, attackSet(p)), powerOf(q))) continue;
     const last = p.lastRaid.get(players.indexOf(q)) ?? -Infinity;
     if (nowMs - last < cfg.raids.same_target_cooldown_minutes * 60_000) continue;
     const unprot = Math.floor(q.silo.oreReal * (1 - protectedShare(cfg, q.silo.levels.magazyn)));
     const loot = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * unprot));
-    const chance = raidWinChance(attackPower(p.stats), defensePower(cfg, q.stats, q.silo.levels.wartownia));
+    const chance = raidWinChance(attackPower(p.stats) + setProfile(attackSet(p)).attack, defensePower(cfg, q.stats, q.silo.levels.wartownia) + setProfile(q.gear).defense);
     const ev = chance * loot;
     if (chance >= 0.5 && loot >= 150 && (!best || ev > best.ev)) best = { q, ev, chance };
   }
@@ -327,6 +335,8 @@ function tryRaid(p: P, nowMs: number) {
   p.raid.attempts++;
   q.raid.against++;
   const win = rng(raidSeed++)() < best.chance;
+  for (const g of attackSet(p).values()) if (g.dur > 0) g.dur--;
+  for (const g of q.gear.values()) if (g.dur > 0) g.dur--;
   if (win) {
     const share = protectedShare(cfg, q.silo.levels.magazyn);
     const ore = Math.min(cfg.raids.loot_cap_ore, Math.floor(cfg.raids.loot_fraction * Math.floor(q.silo.oreReal * (1 - share))));
@@ -377,8 +387,8 @@ function spendGear(p: P, nowMs: number) {
   const pay = (k: keyof P['spent'], n: number) => { p.silo = { ...p.silo, oreReal: p.silo.oreReal - n }; p.spent[k] += n; };
   // zakończ badanie
   if (p.research && p.research.endsAt <= nowMs) { p.done.add(p.research.id); p.research = null; }
-  // naprawy
-  for (const g of p.gear.values()) {
+  // naprawy (oba zestawy)
+  for (const g of [...p.gear.values(), ...p.gear2.values()]) {
     const rc = cfg.items.recipes.find((r) => r.id === g.recipe)!;
     if (g.dur <= g.max * 0.2) {
       const c = Math.ceil(rc.ore * cfg.items.repair_cost_fraction * fx.repair * tierRepairMult(cfg, g.tier) * ((g.max - g.dur) / g.max));
@@ -411,6 +421,23 @@ function spendGear(p: P, nowMs: number) {
       pay('craft', best.ore); p.tokens -= best.tokens;
       const q = qualityMid(wl, fx.quality);
       p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability, tier: 0 });
+    }
+  }
+  // zestaw bojowy (II): najsilniejsza w boju receptura na slot; okazjonalni go nie budują
+  const combat = (r: (typeof cfg.items.recipes)[number]) => (r.attack ?? 0) + (r.defense ?? 0);
+  if (!NORAIDS && p.style !== 'okazjonalny' && p.level >= cfg.raids.min_level && p.silo.levels.radiostacja >= cfg.radio.levels.receiver) {
+    const reserve = p.style === 'hardcore' ? 2 : 4;
+    for (const slot of cfg.items.slots) {
+      const cur = p.gear2.get(slot);
+      const curC = cur ? combat(cfg.items.recipes.find((r) => r.id === cur.recipe)!) : 0;
+      const best = cfg.items.recipes
+        .filter((r) => { const pl = matPlan(r.radio, r.materials); return r.slot === slot && combat(r) > curC && r.workshop <= wl && (!r.tech || fx.unlocked.has(r.id)) && pl !== null && ore() >= (r.ore + pl.exch) * reserve && p.tokens >= r.tokens; })
+        .sort((a, b) => combat(b) - combat(a))[0];
+      if (best) {
+        takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
+        pay('craft', best.ore); p.tokens -= best.tokens;
+        p.gear2.set(slot, { recipe: best.id, quality: qualityMid(wl, fx.quality), dur: best.durability, max: best.durability, tier: 0 });
+      }
     }
   }
   // wzmacnianie przedmiotów (tier): najtańsze możliwe, gdy stać z zapasem
@@ -529,6 +556,11 @@ console.log(`  dochód łączny ${Math.round(income)} | zostaje w magazynie ${Ma
 console.log(`\nZjazdy: śr. ${avgAll((p) => p.dives).toFixed(0)} na gracza | sukcesy ${(100 * avgAll((p) => p.wins) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}% | śr. szansa ${(100 * avgAll((p) => p.chanceSum) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}%`);
 console.log(`Badania: śr. ${avgAll((p) => p.done.size).toFixed(1)} z ${cfg.research.techs.length} | próbki w zapasie ${avgAll((p) => p.samples).toFixed(1)} | wpisy kodeksu ${avgAll((p) => cfg.codex.filter((c) => p.done.has(c.tech)).length).toFixed(1)} z ${cfg.codex.length}`);
 console.log(`Sprzęt: śr. założonych ${avgAll((p) => p.gear.size).toFixed(1)} z ${cfg.items.slots.length} | śr. bonus ${avgAll(gearBonus).toFixed(2)} (+badania ${avgAll((p) => fxOf(p).divePower).toFixed(2)})`);
+for (const st of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
+  const g = players.filter((p) => p.style === st);
+  const avg = (f: (p: P) => number) => g.reduce((a, p) => a + f(p), 0) / Math.max(1, g.length);
+  console.log(`Zestawy ${st}: z zestawem bojowym ${((g.filter((p) => p.gear2.size > 0).length / Math.max(1, g.length)) * 100).toFixed(0)}% | atak zestawu II śr. ${avg((p) => setProfile(p.gear2).attack).toFixed(2)} | obrona zestawu I śr. ${avg((p) => setProfile(p.gear).defense).toFixed(2)}`);
+}
 console.log(`Poziom Warsztatu ${avgAll((p) => p.silo.levels.warsztat).toFixed(1)} | Laboratorium ${avgAll((p) => p.silo.levels.laboratorium).toFixed(1)}`);
 
 if (!NORAIDS) {

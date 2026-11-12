@@ -177,3 +177,18 @@ Jeśli kryterium nie wychodzi, nie zmieniamy balansu na własną rękę: liczby 
 - **Przełączanie jako obowiązek:** jeśli zestaw bojowy w obronie daje dużo więcej, gracze będą siedzieć w nim stale i stracą na zjazdach, albo przeciwnie. Symulacja mierzy, ile dochodu traci gracz, który nigdy nie przełącza (cel: najwyżej kilka procent).
 - **Dodatkowe zapytania w `settle()`:** zestaw, runy i komplety w każdym rozliczeniu zjazdu. Zrzut mocy przy dodaniu do kolejki to ogranicza; rozliczenie czyta tylko zapisane liczby i zużywa przedmioty jednym `UPDATE`.
 - **Zgodność klienta:** pole `equipped` zostaje (znaczy „w aktywnym zestawie”), więc obecny klient działa do czasu nowego Warsztatu.
+
+## 10. Wyniki etapu 1 (config 1.6.0, `sim:world -- 180 --traders=5`)
+Punkt odniesienia: 1.5.0 (commit fdfca61). W symulacji hardcore i regularni budują zestaw bojowy (II) i przełączają się na niego tylko na chwilę wysłania najazdu, więc bronią się zestawem zjazdowym (I); okazjonalni mają jeden zestaw.
+
+| Ziarno | Łupy z najazdów w dochodzie 1.5.0 → 1.6.0 | Najazdy na gracza/dobę | Udział zjazdów (hardcore / regularni) | Ruda w magazynie (średnio) | Mediana utraconego dochodu |
+|---|---|---|---|---|---|
+| 1 | 10,4% → 19,1% | 0,56 → 1,54 | 70/73% → 68/69% | 30,3 tys. → 21,1 tys. | 7,1% → 15,4% |
+| 2 | 9,4% → 19,1% | 0,52 → 1,53 | 71/72% → 69/70% | 29,4 tys. → 21,4 tys. | 7,7% → 16,2% |
+| 3 | 10,8% → 19,0% | 0,59 → 1,52 | 70/73% → 68/70% | 30,3 tys. → 20,6 tys. | 8,4% → 15,4% |
+
+Kryteria z §8: 1 (zjazdy głównym źródłem) **spełnione**; 2 (najazdy +≤3 pkt) **niespełnione: +9 pkt**; 3 (ruda nie zalega) spełnione (spada o ok. 30%, głównie przez naprawy: 29% → 38% dochodu); 5 (ochrona początkujących) bez zmian w kodzie.
+
+Przyczyna: asymetria. Atak korzysta z zestawu bojowego za darmo (przełączenie na chwilę wysłania, zrzut ataku), a obrona wymaga siedzenia w zestawie bojowym kosztem zjazdów, więc nikt tego nie robi. Średni atak zestawu II: 6,8 (hardcore), 5,5 (regularni), wobec obrony zestawu I: 1,4 / 0,0. Boty atakują tylko przy szansie ≥ 50%, a broń podnosi szansę ponad próg u wielu par, stąd prawie 3× więcej najazdów.
+
+**Balansu nie zmieniano; decyzja u Damiana.** Możliwe kierunki: (a) mniejszy atak broni; (b) obrona liczy też część profilu zestawu nieaktywnego albo pancerz z obu zestawów; (c) atak z zestawu aktywnego w chwili **dotarcia** (zestaw bojowy trzeba utrzymać przez czas dojazdu, więc kosztuje zjazdy); (d) czas przełączenia zestawu (np. kilka minut „przezbrajania”).
