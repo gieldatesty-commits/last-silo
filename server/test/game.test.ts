@@ -5,6 +5,8 @@ import { orePerHour, oreCap, steamCap, upgradeCost, upgradeSeconds, initialLevel
 import { advance, produce, type SiloState } from '../src/game/silo.js';
 import { distanceKm, placeSilo, rollLocalDeposit } from '../src/game/world.js';
 import { rng } from '../src/game/rng.js';
+import { allRuneIds, parseRune, rollRuneDrop, runeCraftCost, runesProfile, runesRepairMult, unsocketFee } from '../src/game/runes.js';
+import { resolveDive } from '../src/game/dive.js';
 import { addProfiles, itemBonus, itemProfile, rarityOf, rollRarity, upgradeTierCost, ZERO_PROFILE } from '../src/game/upgrade.js';
 
 const c = parseGameConfig(readFileSync('../config/game.yaml', 'utf8'));
@@ -124,7 +126,7 @@ describe('ekwipunek: profil przedmiotu', () => {
     expect(addProfiles(ZERO_PROFILE, { dive: 1, attack: 2, defense: 3 })).toEqual({ dive: 1, attack: 2, defense: 3 });
   });
   it('config 1.6.x: 7 receptur bojowych, balistyka odblokowuje karabin i płytę', () => {
-    expect(c.version).toBe('1.7.0');
+    expect(c.version).toBe('1.8.0');
     const ids = ['lom_bojowy', 'nitownica', 'karabin_pneumatyczny', 'napiersnik', 'plyta_wartownika', 'noktowizor', 'celownik'];
     for (const id of ids) expect(c.items.recipes.some((r) => r.id === id)).toBe(true);
     const bal = c.research.techs.find((t) => t.id === 'balistyka')!;
@@ -184,5 +186,53 @@ describe('ekwipunek: rzadkość i tiery 6–10', () => {
     const kr = c.research.techs.find((t) => t.id === 'kuznia_rdzenia')!;
     expect(kg).toMatchObject({ lab: 8, requires: ['precyzja', 'balistyka'] });
     expect(kr).toMatchObject({ lab: 10, requires: ['kuznia_glebi'] });
+  });
+});
+
+describe('runy (czyste funkcje)', () => {
+  it('12 run: 4 rodzaje × 3 poziomy; bonus stały z configu', () => {
+    expect(allRuneIds(c)).toHaveLength(12);
+    expect(allRuneIds(c)).toContain('runa_trwalosci_3');
+    expect(parseRune(c, 'runa_ostrza_2')).toMatchObject({ kind: 'ostrza', level: 2, effect: 'attack', value: 0.6 });
+    expect(parseRune(c, 'runa_nieznana_1')).toBeNull();
+    expect(parseRune(c, 'runa_zyly_4')).toBeNull();
+    const p = runesProfile(c, ['runa_zyly_1', 'runa_zyly_3', 'runa_bastionu_2']);
+    expect(p.dive).toBeCloseTo(0.9, 6);
+    expect(p.defense).toBeCloseTo(0.6, 6);
+    expect(p.attack).toBe(0);
+    expect(runesProfile(c, ['runa_trwalosci_3'])).toEqual({ dive: 0, attack: 0, defense: 0 });
+  });
+  it('Trwałości: zniżka napraw sumuje się do 40%', () => {
+    expect(runesRepairMult(c, [])).toBe(1);
+    expect(runesRepairMult(c, ['runa_trwalosci_2'])).toBeCloseTo(0.9, 6);
+    expect(runesRepairMult(c, ['runa_trwalosci_3', 'runa_trwalosci_3', 'runa_trwalosci_3'])).toBeCloseTo(0.6, 6);
+  });
+  it('koszt wytwarzania I–II, III tylko z łupu; opłata za wyjęcie', () => {
+    expect(runeCraftCost(c, 'runa_zyly_1')).toEqual({ ore: 300, tokens: 0, materials: { miedz: 8 }, workshop: 3, radio: 5 });
+    expect(runeCraftCost(c, 'runa_ostrza_2')).toMatchObject({ ore: 1200, tokens: 10, materials: { siarka: 25 }, workshop: 6 });
+    expect(runeCraftCost(c, 'runa_trwalosci_2')!.materials).toEqual({ miedz: 9, krysztal: 9, siarka: 9 });
+    expect(runeCraftCost(c, 'runa_zyly_3')).toBeNull();
+    expect([1, 2, 3].map((l) => unsocketFee(c, `runa_zyly_${l}`))).toEqual([100, 400, 1000]);
+  });
+  it('łup runy III: deterministyczny, częstość ≈ base × minuty/480 × strefa', () => {
+    const route = { seconds: 480 * 60, zone: 'jadro' };
+    expect(rollRuneDrop(c, route, 123)).toBe(rollRuneDrop(c, route, 123));
+    let n = 0;
+    const kinds = new Set<string>();
+    for (let s = 1; s <= 20000; s++) {
+      const r = rollRuneDrop(c, route, s);
+      if (r) { n++; kinds.add(r); expect(r).toMatch(/_3$/); }
+    }
+    expect(n / 20000).toBeGreaterThan(0.025);
+    expect(n / 20000).toBeLessThan(0.035);
+    expect(kinds.size).toBe(4);
+    expect(rollRuneDrop(c, { seconds: 180, zone: 'gorne' }, 5)).toBeNull();
+  });
+  it('wektor: wynik zjazdu dla tego samego ziarna bez zmian (runa z osobnego strumienia)', () => {
+    const r = c.dives.routes.find((x) => x.id === 'gleboki')!;
+    const run = (s: number) => resolveDive(c, r, { sila: 5, technika: 6, percepcja: 4, wytrwalosc: 4 }, 1.1, s, { remaining: 1000, total: 1000 }, 1.5, 1, { miedz: 1, krysztal: 0.5, siarka: 0.2 });
+    expect(run(11)).toMatchObject({ success: true, ore: 108, tokens: 8, samples: 1, materials: { siarka: 1 }, xp: 65 });
+    expect(run(777)).toMatchObject({ success: false, ore: 26, tokens: 0, samples: 0, materials: {}, xp: 20 });
+    expect(run(4242)).toMatchObject({ success: true, ore: 98, tokens: 10, samples: 1, materials: {}, xp: 65 });
   });
 });

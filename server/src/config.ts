@@ -103,6 +103,14 @@ export const GameConfigSchema = z
         }),
       ),
     }),
+    // runy (docs/ekwipunek-v1.0.md §5)
+    runes: z.object({
+      kinds: z.array(z.object({ id: z.string().regex(/^[a-z]+$/), name: z.string(), effect: z.enum(['dive', 'attack', 'defense', 'repair_pct']), values: z.array(z.number()).length(3), material: z.string() })).min(1),
+      craft: z.array(z.object({ level: z.number().int().min(1).max(3), workshop: z.number().int().min(1), radio: z.number().int().min(1), ore: z.number().int().min(0), tokens: z.number().int().min(0), material: z.number().int().min(0) })),
+      unsocket_fee: z.array(z.number().int().min(0)).length(3),
+      repair_cap: z.number().min(0).max(1),
+      drop: z.object({ base: z.number().min(0).max(1), reference_minutes: pos, zone_mult: z.record(z.string(), z.number().min(0)) }),
+    }),
     research: z.object({
       lab_time_step: z.number().min(0).max(0.1),
       techs: z.array(
@@ -256,6 +264,7 @@ export const GameConfigSchema = z
     if (new Set(recipeIdList).size !== recipeIdList.length) ctx.addIssue({ code: 'custom', message: 'duplikaty id receptur' });
     const resourceIds = new Set(cfg.resources.map((r) => r.id));
     for (const m of cfg.geology.materials) if (!resourceIds.has(m)) ctx.addIssue({ code: 'custom', message: `geologia: brak zasobu ${m}` });
+    for (const k of cfg.runes.kinds) if (k.material !== 'mix' && !cfg.geology.materials.includes(k.material)) ctx.addIssue({ code: 'custom', message: `runy: nieznany materiał ${k.material}` });
     for (const m of cfg.geology.materials) if (!cfg.exchange.buy_ore[m]) ctx.addIssue({ code: 'custom', message: `wymiana: brak ceny ${m}` });
     for (const x of [...cfg.items.recipes, ...cfg.research.techs]) for (const m of Object.keys(x.materials)) if (!cfg.geology.materials.includes(m)) ctx.addIssue({ code: 'custom', message: `${x.id}: nieznany materiał ${m}` });
     const tids = new Set(cfg.research.techs.map((t) => t.id));

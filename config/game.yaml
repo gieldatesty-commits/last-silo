@@ -1,5 +1,5 @@
 # Konfiguracja gry Last Silo. Wartości startowe do strojenia w symulatorze (server: npm run sim).
-version: "1.7.0"
+version: "1.8.0"
 
 resources:
   - { id: ore, name: Ruda }
@@ -155,6 +155,23 @@ items:
     - { id: plyta_wartownika,     name: Płyta Wartownika,     slot: ochrona,   workshop: 6, ore: 4500, tokens: 40, bonus: 0, defense: 3.0, durability: 45, radio: 5, materials: { krysztal: 30 }, tech: balistyka }
     - { id: noktowizor,           name: Noktowizor,           slot: lampa,     workshop: 4, ore: 1600, tokens: 14, bonus: 0, attack: 0.48, defense: 0.6, durability: 30, radio: 5, materials: { krysztal: 12 } }
     - { id: celownik,             name: Celownik,             slot: sprzet,    workshop: 5, ore: 2400, tokens: 20, bonus: 0, attack: 0.84, durability: 35, radio: 5, materials: { krysztal: 10, siarka: 8 } }
+
+# Runy (docs/ekwipunek-v1.0.md §5): zasób w portfelu `runa_{rodzaj}_{poziom}`; stały bonus (nie mnoży się przez jakość/tier/rzadkość)
+runes:
+  kinds:
+    - { id: zyly,      name: Żyły,      effect: dive,       values: [0.2, 0.4, 0.7], material: miedz }
+    - { id: ostrza,    name: Ostrza,    effect: attack,     values: [0.3, 0.6, 1.0], material: siarka }
+    - { id: bastionu,  name: Bastionu,  effect: defense,    values: [0.3, 0.6, 1.0], material: krysztal }
+    - { id: trwalosci, name: Trwałości, effect: repair_pct, values: [-5, -10, -18],  material: mix }   # mix = po ⌈n/3⌉ z każdego materiału
+  craft:   # poziom III tylko z łupu zjazdów
+    - { level: 1, workshop: 3, radio: 5, ore: 300,  tokens: 0,  material: 8 }
+    - { level: 2, workshop: 6, radio: 5, ore: 1200, tokens: 10, material: 25 }
+  unsocket_fee: [100, 400, 1000]   # ruda za wyjęcie runy I / II / III
+  repair_cap: 0.4                  # Trwałości w jednym przedmiocie: najwyżej −40% kosztu naprawy
+  drop:                            # łup runy III po udanym zjeździe: base × (minuty / reference_minutes) × mnożnik strefy
+    base: 0.02
+    reference_minutes: 480
+    zone_mult: { gorne: 0.5, glebokie: 1.0, jadro: 1.5 }
 
 # Dział nauki (Laboratorium): jedno badanie naraz; czas skraca się o 5% za każdy poziom Laboratorium (max −50%)
 research:
