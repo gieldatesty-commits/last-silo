@@ -3,7 +3,7 @@ import type { Transaction } from 'kysely';
 import type { Database } from '../db.js';
 import type { GameConfig } from '../config.js';
 import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
-import { allRuneIds, parseRune, runeCraftCost } from '../game/runes.js';
+import { allRuneIds, parseRune, runeCraftCost, unsocketFee } from '../game/runes.js';
 import { GameError, settle, type Ctx } from './silo.js';
 import { radioLevel } from './items.js';
 
@@ -19,6 +19,13 @@ export async function runeWallet(db: Trx | Ctx['db'], cfg: GameConfig, userId: s
   const rows = await db.selectFrom('wallets').select(['resource', 'balance']).where('user_id', '=', userId).where('resource', 'in', ids).execute();
   return Object.fromEntries(rows.filter((r) => Number(r.balance) > 0).map((r) => [r.resource, Number(r.balance)]));
 }
+
+/** Wszystkie runy z opisem (do opisu run w portfelu i w gniazdach po stronie klienta). */
+export const runeCatalog = (cfg: GameConfig) =>
+  allRuneIds(cfg).map((id) => {
+    const r = parseRune(cfg, id)!;
+    return { id, kind: r.kind, level: r.level, name: r.name, effect: r.effect, value: r.value, fee: unsocketFee(cfg, id), craftable: runeCraftCost(cfg, id) !== null };
+  });
 
 /** Receptury run I–II z blokadą wg Warsztatu i Radia (do GET /items). */
 export async function runeRecipes(db: Trx | Ctx['db'], cfg: GameConfig, userId: string) {

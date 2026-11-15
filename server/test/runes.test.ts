@@ -92,6 +92,8 @@ describe('Runy: wytwarzanie', () => {
     const r = (await app.inject({ url: '/items', headers: h })).json();
     expect(r.runes).toEqual({ runa_zyly_1: 1 });
     expect(r.runeRecipes).toHaveLength(8); // 4 rodzaje × poziomy I–II
+    expect(r.runeCatalog).toHaveLength(12);
+    expect(r.runeCatalog.find((x: { id: string }) => x.id === 'runa_ostrza_3')).toEqual({ id: 'runa_ostrza_3', kind: 'ostrza', level: 3, name: 'Ostrza', effect: 'attack', value: 1, fee: 1000, craftable: false });
     expect(r.runeRecipes.find((x: { id: string }) => x.id === 'runa_zyly_1')).toMatchObject({ kind: 'zyly', level: 1, name: 'Żyły', effect: 'dive', value: 0.2, ore: 300, materials: { miedz: 8 }, locked: false });
     await setLevel(id, 'warsztat', 4);
     const r2 = (await app.inject({ url: '/items', headers: h })).json();
@@ -117,7 +119,7 @@ describe('Runy: osadzanie i wyjmowanie', () => {
     const { id, h, k, before } = await withPick();
     const r = await post(h, `/items/${k.id}/runes`, 'rs-sock-0001', { socket: 0, rune: 'runa_zyly_1' });
     expect(r.statusCode).toBe(200);
-    expect(r.json()).toMatchObject({ sockets: 1, runes: [{ socket: 0, runeId: 'runa_zyly_1', name: 'Żyły' }] });
+    expect(r.json()).toMatchObject({ sockets: 1, runes: [{ socket: 0, runeId: 'runa_zyly_1', name: 'Żyły', level: 1, effect: 'dive', value: 0.2, fee: 100 }] });
     expect(await bal(id, 'runa_zyly_1')).toBe(0);
     const after = await items(h);
     expect(after.items[0].bonus).toBeCloseTo(before.items[0].bonus + 0.2, 2);
@@ -161,7 +163,7 @@ describe('Runy: osadzanie i wyjmowanie', () => {
     const poor = await post(h, `/items/${k.id}/runes/0/remove`, 'rs-out-0005');
     expect(poor.statusCode).toBe(402);
     expect(poor.json().error).toBe('insufficient_ore');
-    expect((await items(h)).items[0].runes).toEqual([{ socket: 0, runeId: 'runa_zyly_1', name: 'Żyły' }]);
+    expect((await items(h)).items[0].runes).toMatchObject([{ socket: 0, runeId: 'runa_zyly_1', name: 'Żyły' }]);
     expect(await auditLedger(db)).toEqual([]);
   });
 

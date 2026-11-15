@@ -5,7 +5,7 @@ import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
 import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
-import { runeRecipes, runeWallet } from './runes.js';
+import { runeCatalog, runeRecipes, runeWallet } from './runes.js';
 import { parseRune, runesProfile, runesRepairMult, unsocketFee } from '../game/runes.js';
 import { randomUUID } from 'node:crypto';
 import { randomInt } from 'node:crypto';
@@ -72,7 +72,10 @@ const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership,
     defense: Math.round(prof.defense * 100) / 100,
     rarity: { id: rar.id, name: rar.name, sockets: rar.sockets },
     sockets: rar.sockets,
-    runes: runes.map((r) => ({ socket: r.socket, runeId: r.rune_id, name: parseRune(cfg, r.rune_id)?.name ?? r.rune_id })),
+    runes: runes.map((r) => {
+      const info = parseRune(cfg, r.rune_id);
+      return { socket: r.socket, runeId: r.rune_id, name: info?.name ?? r.rune_id, level: info?.level ?? 1, effect: info?.effect ?? null, value: info?.value ?? 0, fee: unsocketFee(cfg, r.rune_id) };
+    }),
     tier: it.tier,
     maxTier: cfg.items.upgrade.max_tier,
     nextUpgrade: it.tier >= cfg.items.upgrade.max_tier ? null : withTechName(cfg, upgradeTierCost(cfg, rc, it.tier + 1), m.done),
@@ -105,6 +108,7 @@ export async function listItems(ctx: Ctx, userId: string) {
     activeLoadout: m.active,
     runes: await runeWallet(ctx.db, cfg, userId),
     runeRecipes: await runeRecipes(ctx.db, cfg, userId),
+    runeCatalog: runeCatalog(cfg),
     loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
     loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
     // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)
