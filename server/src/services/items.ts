@@ -1,3 +1,4 @@
+import { randomInt, randomUUID } from 'node:crypto';
 import type { Selectable, Transaction } from 'kysely';
 import type { Database } from '../db.js';
 import type { GameConfig } from '../config.js';
@@ -7,8 +8,6 @@ import { GameError, settle, type Ctx } from './silo.js';
 import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
 import { runeCatalog, runeRecipes, runeWallet } from './runes.js';
 import { parseRune, runesProfile, runesRepairMult, unsocketFee } from '../game/runes.js';
-import { randomUUID } from 'node:crypto';
-import { randomInt } from 'node:crypto';
 import { addProfiles, itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
 
 type Trx = Transaction<Database>;
@@ -264,7 +263,7 @@ export async function socketRuneTx(trx: Trx, ctx: Ctx, userId: string, id: strin
     throw e;
   }
   await trx.insertInto('item_runes').values({ item_id: String(it.id), socket, rune_id: runeId }).execute();
-  return view(cfg, it as never, await membership(trx, cfg, userId));
+  return view(cfg, it as never, await membership(trx, cfg, userId), (await loadEffects(trx, cfg, userId)).repair);
 }
 
 /** Wyjęcie runy z gniazda: opłata w rudzie, runa wraca do portfela. */
@@ -291,7 +290,7 @@ export async function unsocketRuneTx(trx: Trx, ctx: Ctx, userId: string, id: str
     throw e;
   }
   await trx.deleteFrom('item_runes').where('item_id', '=', String(it.id)).where('socket', '=', socket).execute();
-  return { ...view(cfg, it as never, await membership(trx, cfg, userId)), paid: fee };
+  return { ...view(cfg, it as never, await membership(trx, cfg, userId), (await loadEffects(trx, cfg, userId)).repair), paid: fee };
 }
 
 export { walletBalance };

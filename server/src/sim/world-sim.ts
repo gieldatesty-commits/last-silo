@@ -378,9 +378,10 @@ function tryRaid(p: P, nowMs: number) {
 
 /** Bot: badania (najtańsze dostępne), wytwarzanie najlepszego dostępnego sprzętu na slot, naprawy przy niskiej trwałości. */
 function spendGear(p: P, nowMs: number) {
-  /** Wymiana przedmiotu: gracz wyjmuje runy za opłatą i odkłada do magazynu. */
+  /** Wymiana przedmiotu: gracz wyjmuje runy za opłatą (jeśli go stać) i odkłada do magazynu. */
   const returnRunes = (g: Gear) => {
-    for (const id of g.runes) { const fee = unsocketFee(cfg, id); p.silo = { ...p.silo, oreReal: p.silo.oreReal - fee }; p.spent.runes += fee; p.runeInv[id] = (p.runeInv[id] ?? 0) + 1; }
+    // runa wraca tylko, gdy stać na opłatę; inaczej zostaje w starym przedmiocie (serwer niczego nie wyjmuje sam)
+    for (const id of g.runes) { const fee = unsocketFee(cfg, id); if (p.silo.oreReal < fee) continue; p.silo = { ...p.silo, oreReal: p.silo.oreReal - fee }; p.spent.runes += fee; p.runeInv[id] = (p.runeInv[id] ?? 0) + 1; }
     g.runes = [];
   };
   const fx = fxOf(p);

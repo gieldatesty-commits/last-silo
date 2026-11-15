@@ -104,3 +104,24 @@ export async function auditLedger(trx: Transaction<Database> | import('kysely').
     .execute();
   return rows.filter((r) => Number(r.balance) !== Number(r.total ?? 0));
 }
+
+/**
+ * Audyt gniazd run: runy osadzone w przedmiotach (item_runes) muszą się zgadzać z dziennikiem,
+ * czyli z liczbą osadzeń (rune_socket, −1 z portfela) minus wyjęć (rune_unsocket, +1) dla gracza i runy.
+ */
+export async function auditSockets(db: Transaction<Database> | import('kysely').Kysely<Database>) {
+  const r = await sql<{ user_id: string; rune: string; socketed: number; ledger: number }>`
+    WITH s AS (
+      SELECT i.user_id, ir.rune_id AS rune, count(*)::int AS n
+      FROM item_runes ir JOIN items i ON i.id = ir.item_id
+      GROUP BY i.user_id, ir.rune_id
+    ), l AS (
+      SELECT user_id, resource AS rune, (-sum(delta) FILTER (WHERE reason = 'rune_socket') - coalesce(sum(delta) FILTER (WHERE reason = 'rune_unsocket'), 0))::int AS n
+      FROM ledger_entries WHERE reason IN ('rune_socket', 'rune_unsocket')
+      GROUP BY user_id, resource
+    )
+    SELECT coalesce(s.user_id, l.user_id) AS user_id, coalesce(s.rune, l.rune) AS rune, coalesce(s.n, 0) AS socketed, coalesce(l.n, 0) AS ledger
+    FROM s FULL JOIN l ON l.user_id = s.user_id AND l.rune = s.rune
+    WHERE coalesce(s.n, 0) <> coalesce(l.n, 0)`.execute(db);
+  return r.rows;
+}

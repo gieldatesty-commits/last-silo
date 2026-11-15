@@ -4,7 +4,7 @@ import { buildApp } from '../src/app.js';
 import { parseGameConfig } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
-import { applyLedger, auditLedger, walletBalance } from '../src/ledger.js';
+import { applyLedger, auditLedger, auditSockets, walletBalance } from '../src/ledger.js';
 import { rollRuneDrop } from '../src/game/runes.js';
 import { resolveDive } from '../src/game/dive.js';
 
@@ -174,6 +174,28 @@ describe('Runy: osadzanie i wyjmowanie', () => {
     expect((await items(h)).loadoutStats['1'].dive).toBe(0);
     await post(h, `/items/${k.id}/repair`, 'rs-br-0002');
     expect((await items(h)).loadoutStats['1'].dive).toBeGreaterThan(0.2);
+  });
+
+  it('odpowiedź osadzenia i wyjęcia: koszt naprawy taki sam jak w GET /items (zniżka z badań)', async () => {
+    const { id, h, k } = await withPick();
+    await pool.query("INSERT INTO research (user_id, tech_id, state, ends_at) VALUES ($1, 'metalurgia', 'done', now())", [id]);
+    await pool.query('UPDATE items SET durability = 1 WHERE id = $1', [k.id]);
+    const sock = (await post(h, `/items/${k.id}/runes`, 'rs-rc-0001', { socket: 0, rune: 'runa_zyly_1' })).json();
+    expect(sock.repairCost).toBe((await items(h)).items[0].repairCost);
+    const out = (await post(h, `/items/${k.id}/runes/0/remove`, 'rs-rc-0002')).json();
+    expect(out.repairCost).toBe((await items(h)).items[0].repairCost);
+  });
+
+  it('audyt gniazd: runy w item_runes zgadzają się z dziennikiem (osadzone − wyjęte); rozjazd wykryty', async () => {
+    const { h, k } = await withPick('mistrzowski', { runa_zyly_1: 2 });
+    await post(h, `/items/${k.id}/runes`, 'rs-au-0001', { socket: 0, rune: 'runa_zyly_1' });
+    await post(h, `/items/${k.id}/runes`, 'rs-au-0002', { socket: 1, rune: 'runa_zyly_1' });
+    await post(h, `/items/${k.id}/runes/0/remove`, 'rs-au-0003');
+    expect(await auditSockets(db)).toEqual([]);
+    await pool.query("INSERT INTO item_runes (item_id, socket, rune_id) VALUES ($1, 0, 'runa_ostrza_1')", [k.id]); // runa spoza dziennika
+    const bad = await auditSockets(db);
+    expect(bad).toHaveLength(1);
+    expect(bad[0]).toMatchObject({ rune: 'runa_ostrza_1', socketed: 1, ledger: 0 });
   });
 
   it('Trwałości obniża koszt naprawy (widok i pobranie)', async () => {
