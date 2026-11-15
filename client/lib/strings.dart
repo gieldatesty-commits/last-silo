@@ -104,6 +104,7 @@ const _errors = {
 
 String errorText(String code) {
   if (_errors.containsKey(code)) return _errors[code]!;
+  if (code.startsWith('insufficient_runa_')) return 'Za mało zasobu: ${runeLabelFromId(code.substring(13))}.';
   if (code.startsWith('insufficient_')) return 'Za mało zasobu: ${resName(code.substring(13))}.';
   return 'Coś poszło nie tak ($code).';
 }

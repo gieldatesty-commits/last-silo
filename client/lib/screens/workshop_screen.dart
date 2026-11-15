@@ -732,7 +732,7 @@ class _Sockets extends StatelessWidget {
     final used = (it['runes'] as List? ?? const []).length;
     Widget tile(int socket) {
       final r = _rune(socket);
-      final label = r == null ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę' : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}';
+      final label = r == null ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę' : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}, stuknij, aby wyjąć';
       return Semantics(
         button: true,
         label: label,

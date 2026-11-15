@@ -69,7 +69,7 @@ void main() {
     final handle = tester.ensureSemantics();
     await pumpWorkshop(tester); // kilof jest wybrany (pierwszy w zestawie I)
     expect(find.text('Gniazda na runy: 1 z 2 zajęte'), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp(r'^gniazdo 1: Żyły I, zjazd \+0\.2')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'^gniazdo 1: Żyły I, zjazd \+0\.2, stuknij, aby wyjąć')), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp(r'^gniazdo 2: puste')), findsOneWidget);
     expect(find.text('Wyjmij Żyły I · 100 rudy'), findsOneWidget);
     handle.dispose();
@@ -154,6 +154,7 @@ void main() {
     expect(runeLabel({'name': 'Ostrza', 'level': 3}), 'Ostrza III');
     expect(runeEffectText('repair_pct', -10), 'naprawy −10%');
     expect(runeEffectText('attack', 0.6), 'atak +0.6');
+    expect(errorText('insufficient_runa_ostrza_1'), 'Za mało zasobu: Ostrza I.');
     for (final code in ['no_socket', 'socket_taken', 'socket_empty', 'unknown_rune', 'rune_not_craftable']) {
       expect(errorText(code), isNot(startsWith('Coś poszło nie tak')), reason: code);
     }
