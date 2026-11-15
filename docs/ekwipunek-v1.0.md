@@ -218,3 +218,14 @@ Pierwsza propozycja (`growth_high` 1,35; Kuźnia Rdzenia 20 000 rudy, 120 żet.,
 | 3 | dzień 157 | 7/15 (166) | 12,9% → 10,9% | 17,5 tys. | 19% | 61/69% |
 
 Rzadkość wytworzonych: 68,8% / 23,5% / 7,1% / 0,6% (zgodnie z configiem). Regularni i okazjonalni nie dochodzą do tieru 10 (najwyżej 5 / 3). Kryteria §8 spełnione: pierwszy tier 10 w 5. miesiącu, zjazdy głównym źródłem, ruda nie zalega (spada z ok. 24 tys. do 17 tys., wzmocnienia są ujściem), łupy niższe niż w 1.6.1. Szyb u hardcore produkuje więcej (magazyn rzadziej pełny, bo ruda idzie na wzmocnienia).
+
+### 10.3 Etap 3: runy (config 1.8.0)
+Model w symulacji: łup runy III z `rollRuneDrop` (osobny strumień ziarna, jak w serwerze); hardcore i regularni wypełniają wolne gniazda (Żyły w zestawie zjazdowym, Ostrza / Bastionu w bojowym), najpierw z magazynu, potem wytwarzając runy I–II przy zapasie rudy ×2 (hardcore) / ×4 (regularni); przy wymianie przedmiotu runy wracają do magazynu za opłatą; okazjonalni nie osadzają; Trwałości pominięte. Liczby jak w §5 (bez strojenia).
+
+| Ziarno | Łupy w dochodzie (1.7.0 → 1.8.0) | Pierwszy tier 10 (hardcore) | Ruda w magazynie | Runy hardcore: wytworzone / z łupu / w przedmiotach | Ruda na runy (hardcore) | Udział zjazdów (hardcore / regularni) |
+|---|---|---|---|---|---|---|
+| 1 | 10,8% → 12,1% | dzień 158 | 15,6 tys. | 3,6 / 6,4 / 3,2 | 5,0 tys. | 62/68% |
+| 2 | 10,3% → 11,3% | dzień 157 | 15,2 tys. | 4,1 / 6,3 / 3,2 | 6,0 tys. | 61/68% |
+| 3 | 10,9% → 12,2% | dzień 154 | 16,2 tys. | 4,3 / 6,7 / 3,7 | 6,5 tys. | 62/68% |
+
+Kryteria §8 spełnione: zjazdy głównym źródłem, ruda nie zalega, pierwszy tier 10 po dniu 120. Łupy rosną o 1–1,3 pkt (runy Ostrzy w zestawach bojowych), nadal poniżej 1.6.1 (12–13,5%). Runy to małe ujście (ok. 2% dochodu hardcore); łup III to ok. 6 run na sezon u hardcore i 3–4 u okazjonalnych.

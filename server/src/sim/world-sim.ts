@@ -8,7 +8,8 @@ import { readFileSync } from 'node:fs';
 import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js';
 import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
-import { addProfiles, itemProfile, rollRarity, tierRepairMult, upgradeTierCost, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
+import { rollRuneDrop, runeCraftCost, runesProfile, unsocketFee } from '../game/runes.js';
+import { addProfiles, itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
 import { dayIndex, genOffers } from '../game/contracts.js';
 const takenOffers = new Set<string>();
 import { ambushChance, shipFeePerUnit, shipKm, shipMinutes, survivingQty } from '../game/caravan.js';
@@ -37,7 +38,7 @@ type Style = 'hardcore' | 'regularny' | 'okazjonalny';
 const ONLINE_P: Record<Style, number> = { hardcore: 0.5, regularny: 0.06, okazjonalny: 0.011 }; // na 10-min tick w godz. 8–23
 
 /** rm = mnożnik rzadkości, rar = id rzadkości (losowane z ziarna przy wytwarzaniu, jak w serwerze) */
-type Gear = { recipe: string; quality: number; dur: number; max: number; tier: number; rm: number; rar: string };
+type Gear = { recipe: string; quality: number; dur: number; max: number; tier: number; rm: number; rar: string; runes: string[] };
 
 interface P {
   style: Style;
@@ -65,7 +66,10 @@ interface P {
   gear2: Map<string, Gear>;
   done: Set<string>;
   research: { id: string; endsAt: number } | null;
-  spent: { buildings: number; research: number; craft: number; repair: number; upgrade: number };
+  spent: { buildings: number; research: number; craft: number; repair: number; upgrade: number; runes: number };
+  /** runy w magazynie (łup III i wytworzone, przed osadzeniem) */
+  runeInv: Record<string, number>;
+  runeStats: { crafted: number; dropped: number; socketed: number };
   dives: number;
   wins: number;
   chanceSum: number;
@@ -97,7 +101,7 @@ const players: P[] = styles.slice(0, N).map((style, i) => {
     style, arch, trader: false, tradeStart: -1, cseed: (i + 1) * 7919, contractOre: 0, contractsDone: new Set(),
     silo: { levels: initialLevels(), oreReal: cfg.economy.start_ore, steam: 100, depositTotal: total, depositRemaining: total, at: new Date(t0) },
     pending: [], stats: { ...arch.stats }, level: 1, xp: 0, tokens: 0, windedUntil: 0, queue: [], slots: R() < SUB ? cfg.dives.queue_slots.subscriber : cfg.dives.queue_slots.free, nextId: 1, diveOre: 0, prodOre: 0,
-    samples: 0, gear: new Map(), gear2: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0 }, dives: 0, wins: 0, chanceSum: 0,
+    samples: 0, gear: new Map(), gear2: new Map(), done: new Set(), research: null, spent: { buildings: 0, research: 0, craft: 0, repair: 0, upgrade: 0, runes: 0 }, runeInv: {}, runeStats: { crafted: 0, dropped: 0, socketed: 0 }, dives: 0, wins: 0, chanceSum: 0,
     lat: 0, lon: 0, protectedUntil: 0, raidDay: -1, raidsToday: 0, lastRaid: new Map(), mats: { miedz: 0, krysztal: 0, siarka: 0 }, profile: {}, exchangeOre: 0, marketBuyOre: 0, marketNet: 0, botOre: 0, botDay: -1, botQty: 0, radio5At: -1, firstTier2At: -1, firstTier10At: -1, raid: { attempts: 0, wins: 0, looted: 0, lost: 0, against: 0, lootedTokens: 0 },
   };
 });
@@ -162,7 +166,7 @@ const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: p
 let seedCounter = 1000;
 
 /** Profil zestawu (niezepsute przedmioty). */
-const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier, g.rm)) : sum), ZERO_PROFILE);
+const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier, g.rm)), runesProfile(cfg, g.runes)) : sum), ZERO_PROFILE);
 /** Obrona silosu: zestaw aktywny (I) w pełni + część zestawu II. */
 const siloDef = (q: P) => setProfile(q.gear).defense + cfg.items.loadouts.passive_defense_share * setProfile(q.gear2).defense;
 /** Zestaw, którym gracz atakuje (bojowy, jeśli go ma). */
@@ -176,7 +180,7 @@ const rollGear = () => {
   r();
   const rar = rollRarity(cfg, r());
   crafted[rar.id] = (crafted[rar.id] ?? 0) + 1;
-  return { rm: rar.mult, rar: rar.id };
+  return { rm: rar.mult, rar: rar.id, runes: [] as string[] };
 };
 const fxOf = (p: P) => computeEffects(cfg, p.done);
 const bonusOf = (p: P) => gearBonus(p) + fxOf(p).divePower;
@@ -260,6 +264,9 @@ function act(p: P, nowMs: number) {
     for (const [m, n] of Object.entries(out.materials)) p.mats[m] = (p.mats[m] ?? 0) + n;
     for (const g of p.gear.values()) if (g.dur > 0) g.dur--;
     p.samples += out.samples;
+    // łup runy III (osobny strumień ziarna, jak w serwerze)
+    const rune = out.success ? rollRuneDrop(cfg, route, d.seed) : null;
+    if (rune) { p.runeInv[rune] = (p.runeInv[rune] ?? 0) + 1; p.runeStats.dropped++; }
     p.dives++;
     if (out.success) p.wins++;
     p.chanceSum += out.chance;
@@ -371,6 +378,11 @@ function tryRaid(p: P, nowMs: number) {
 
 /** Bot: badania (najtańsze dostępne), wytwarzanie najlepszego dostępnego sprzętu na slot, naprawy przy niskiej trwałości. */
 function spendGear(p: P, nowMs: number) {
+  /** Wymiana przedmiotu: gracz wyjmuje runy za opłatą i odkłada do magazynu. */
+  const returnRunes = (g: Gear) => {
+    for (const id of g.runes) { const fee = unsocketFee(cfg, id); p.silo = { ...p.silo, oreReal: p.silo.oreReal - fee }; p.spent.runes += fee; p.runeInv[id] = (p.runeInv[id] ?? 0) + 1; }
+    g.runes = [];
+  };
   const fx = fxOf(p);
   if (p.radio5At < 0 && p.silo.levels.radiostacja >= 5) p.radio5At = nowMs;
   /** Czy gracz może spełnić wymóg radia/materiałów (kupując braki u NPC za rudę); zwraca koszt wymiany albo null. */
@@ -439,6 +451,7 @@ function spendGear(p: P, nowMs: number) {
       takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
       pay('craft', best.ore); p.tokens -= best.tokens;
       const q = qualityMid(wl, fx.quality);
+      if (cur) returnRunes(cur);
       p.gear.set(slot, { recipe: best.id, quality: q, dur: best.durability, max: best.durability, tier: 0, ...rollGear() });
     }
   }
@@ -455,9 +468,40 @@ function spendGear(p: P, nowMs: number) {
       if (best) {
         takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
         pay('craft', best.ore); p.tokens -= best.tokens;
+        if (cur) returnRunes(cur);
         p.gear2.set(slot, { recipe: best.id, quality: qualityMid(wl, fx.quality), dur: best.durability, max: best.durability, tier: 0, ...rollGear() });
       }
     }
+  }
+  // runy: wolne gniazda w zestawie I (Żyły) i II (Ostrza; ochrona: Bastionu); najpierw z magazynu, potem wytworzenie I/II
+  if (p.style !== 'okazjonalny') {
+    const reserve = p.style === 'hardcore' ? 2 : 4;
+    const fill = (set: Map<string, Gear>, kindOf: (slot: string) => string) => {
+      for (const [slot, g] of set) {
+        const free = rarityOf(cfg, g.rar).sockets - g.runes.length;
+        for (let i = 0; i < free; i++) {
+          const kind = kindOf(slot);
+          const have = [3, 2, 1].map((l) => `runa_${kind}_${l}`).find((id) => (p.runeInv[id] ?? 0) > 0);
+          let id = have;
+          if (!id) {
+            const want = `runa_${kind}_${wl >= (cfg.runes.craft.find((c) => c.level === 2)?.workshop ?? 99) ? 2 : 1}`;
+            const cost = runeCraftCost(cfg, want);
+            const pl = cost && matPlan(cost.radio, cost.materials);
+            if (!cost || !pl || wl < cost.workshop || ore() < (cost.ore + pl.exch) * reserve || p.tokens < cost.tokens) break;
+            takeMats(cost.materials, pl.exch);
+            p.silo = { ...p.silo, oreReal: p.silo.oreReal - cost.ore }; p.spent.runes += cost.ore; p.tokens -= cost.tokens;
+            p.runeStats.crafted++;
+            p.runeInv[want] = (p.runeInv[want] ?? 0) + 1;
+            id = want;
+          }
+          p.runeInv[id] = (p.runeInv[id] ?? 0) - 1;
+          g.runes.push(id);
+          p.runeStats.socketed++;
+        }
+      }
+    };
+    fill(p.gear, () => 'zyly');
+    if (p.gear2.size) fill(p.gear2, (slot) => (slot === 'ochrona' ? 'bastionu' : 'ostrza'));
   }
   // wzmacnianie przedmiotów (tier): najtańsze możliwe, gdy stać z zapasem
   for (const g of p.gear.values()) {
@@ -576,6 +620,13 @@ console.log(`  dochód łączny ${Math.round(income)} | zostaje w magazynie ${Ma
 console.log(`\nZjazdy: śr. ${avgAll((p) => p.dives).toFixed(0)} na gracza | sukcesy ${(100 * avgAll((p) => p.wins) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}% | śr. szansa ${(100 * avgAll((p) => p.chanceSum) / Math.max(1, avgAll((p) => p.dives))).toFixed(0)}%`);
 console.log(`Badania: śr. ${avgAll((p) => p.done.size).toFixed(1)} z ${cfg.research.techs.length} | próbki w zapasie ${avgAll((p) => p.samples).toFixed(1)} | wpisy kodeksu ${avgAll((p) => cfg.codex.filter((c) => p.done.has(c.tech)).length).toFixed(1)} z ${cfg.codex.length}`);
 console.log(`Sprzęt: śr. założonych ${avgAll((p) => p.gear.size).toFixed(1)} z ${cfg.items.slots.length} | śr. bonus ${avgAll(gearBonus).toFixed(2)} (+badania ${avgAll((p) => fxOf(p).divePower).toFixed(2)})`);
+{
+  for (const st of ['hardcore', 'regularny', 'okazjonalny'] as Style[]) {
+    const g = players.filter((p) => p.style === st);
+    const avg = (f: (p: P) => number) => g.reduce((a, p) => a + f(p), 0) / Math.max(1, g.length);
+    console.log(`Runy ${st}: wytworzone ${avg((p) => p.runeStats.crafted).toFixed(1)} | z łupu ${avg((p) => p.runeStats.dropped).toFixed(1)} | osadzone ${avg((p) => p.runeStats.socketed).toFixed(1)} | w przedmiotach teraz ${avg((p) => [...p.gear.values(), ...p.gear2.values()].reduce((a, x) => a + x.runes.length, 0)).toFixed(1)} | ruda na runy ${avg((p) => p.spent.runes).toFixed(0)}`);
+  }
+}
 {
   const tot = Object.values(crafted).reduce((a, b) => a + b, 0) || 1;
   console.log(`Rzadkość wytworzonych (${tot}): ${cfg.items.rarity.map((r) => `${r.id} ${(((crafted[r.id] ?? 0) / tot) * 100).toFixed(1)}%`).join(' | ')}`);
