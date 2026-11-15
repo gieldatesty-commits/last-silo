@@ -4,6 +4,7 @@ import type { Database } from '../db.js';
 import type { GameConfig } from '../config.js';
 import { computeEffects } from '../game/research.js';
 import { addProfiles, itemProfile, rarityOf, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
+import { runesProfile } from '../game/runes.js';
 
 type Trx = Transaction<Database> | Kysely<Database>;
 
@@ -26,12 +27,14 @@ export async function loadoutProfile(db: Trx, cfg: GameConfig, userId: string, l
   const rows = await db
     .selectFrom('loadouts')
     .innerJoin('items', 'items.id', 'loadouts.item_id')
-    .select(['items.recipe_id', 'items.quality', 'items.durability', 'items.tier', 'items.rarity'])
+    .select(['items.id', 'items.recipe_id', 'items.quality', 'items.durability', 'items.tier', 'items.rarity'])
     .where('loadouts.user_id', '=', userId)
     .where('loadouts.loadout', '=', loadout)
     .where('items.durability', '>', 0)
     .execute();
-  let sum = ZERO_PROFILE;
+  // runy osadzone w tych (niezepsutych) przedmiotach: stały bonus (docs/ekwipunek-v1.0.md §5)
+  const runes = rows.length ? await db.selectFrom('item_runes').select('rune_id').where('item_id', 'in', rows.map((r) => String(r.id))).execute() : [];
+  let sum = runesProfile(cfg, runes.map((r) => r.rune_id));
   for (const it of rows) {
     const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id);
     if (rc) sum = addProfiles(sum, itemProfile(cfg, rc, it.quality, it.tier, rarityOf(cfg, it.rarity).mult));

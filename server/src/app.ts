@@ -15,7 +15,7 @@ import { buyListingTx, cancelListingTx, createListingTx, listListings, marketOve
 import { acceptContractTx, listContracts } from './services/contracts.js';
 import { listShipments } from './services/caravans.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
-import { activateLoadoutTx, craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
+import { activateLoadoutTx, craftTx, equipTx, listItems, repairTx, socketRuneTx, unsocketRuneTx, upgradeTx } from './services/items.js';
 import { craftRuneTx } from './services/runes.js';
 import { BillingUnavailable } from './billing.js';
 import { subscriptionView, syncToken, verifySubscriptionTx, type Billing } from './services/subscription.js';
@@ -249,6 +249,25 @@ export function buildApp(deps: AppDeps) {
       return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
     });
   }
+
+  app.post('/items/:id/runes', { onRequest: auth }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().min(1).max(20) }).parse(req.params);
+    const { socket, rune } = z.object({ socket: z.number().int(), rune: z.string().min(1).max(40) }).parse(req.body);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 200, body: await socketRuneTx(trx, ctx, userId, id, socket, rune) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
+
+  app.post('/items/:id/runes/:socket/remove', { onRequest: auth }, async (req, reply) => {
+    const { id, socket } = z.object({ id: z.string().min(1).max(20), socket: z.coerce.number().int().min(0).max(10) }).parse(req.params);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 200, body: await unsocketRuneTx(trx, ctx, userId, id, socket) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
 
   app.post('/runes/:id/craft', { onRequest: auth }, async (req, reply) => {
     const { id } = z.object({ id: z.string().min(1).max(40) }).parse(req.params);

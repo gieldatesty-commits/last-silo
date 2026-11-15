@@ -6,8 +6,10 @@ import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
 import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
 import { runeRecipes, runeWallet } from './runes.js';
+import { parseRune, runesProfile, runesRepairMult, unsocketFee } from '../game/runes.js';
+import { randomUUID } from 'node:crypto';
 import { randomInt } from 'node:crypto';
-import { itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
+import { addProfiles, itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
 
 type Trx = Transaction<Database>;
 
@@ -39,19 +41,25 @@ const withTechName = (cfg: GameConfig, c: ReturnType<typeof upgradeTierCost>, do
 });
 
 /** Zestawy, w których jest przedmiot, i aktywny zestaw gracza (do pól `inLoadouts` i `equipped`). */
-type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]>; done: Set<string> };
+type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]>; done: Set<string>; runesOf: Map<string, { socket: number; rune_id: string }[]> };
 
 async function membership(db: Trx | Ctx['db'], cfg: GameConfig, userId: string): Promise<Membership> {
   const rows = await db.selectFrom('loadouts').select(['item_id', 'loadout']).where('user_id', '=', userId).orderBy('loadout').execute();
   const of = new Map<string, LoadoutNo[]>();
   for (const r of rows) of.set(String(r.item_id), [...(of.get(String(r.item_id)) ?? []), r.loadout as LoadoutNo]);
-  return { active: await activeLoadout(db, userId), of, done: (await loadEffects(db, cfg, userId)).done };
+  const runeRows = await db.selectFrom('item_runes').innerJoin('items', 'items.id', 'item_runes.item_id').select(['item_runes.item_id', 'item_runes.socket', 'item_runes.rune_id']).where('items.user_id', '=', userId).orderBy('item_runes.socket').execute();
+  const runesOf = new Map<string, { socket: number; rune_id: string }[]>();
+  for (const r of runeRows) runesOf.set(String(r.item_id), [...(runesOf.get(String(r.item_id)) ?? []), { socket: r.socket, rune_id: r.rune_id }]);
+  return { active: await activeLoadout(db, userId), of, done: (await loadEffects(db, cfg, userId)).done, runesOf };
 }
 
 const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership, repairMult = 1) => {
   const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id)!;
   const rar = rarityOf(cfg, it.rarity);
-  const prof = itemProfile(cfg, rc, it.quality, it.tier, rar.mult);
+  const runes = m.runesOf.get(String(it.id)) ?? [];
+  const runeIds = runes.map((r) => r.rune_id);
+  // profil przedmiotu z runami (stały bonus); zepsuty i tak nic nie daje w zestawie (gear.loadoutProfile)
+  const prof = addProfiles(itemProfile(cfg, rc, it.quality, it.tier, rar.mult), runesProfile(cfg, runeIds));
   const inLoadouts = m.of.get(String(it.id)) ?? [];
   return {
     id: String(it.id),
@@ -63,6 +71,8 @@ const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership,
     attack: Math.round(prof.attack * 100) / 100,
     defense: Math.round(prof.defense * 100) / 100,
     rarity: { id: rar.id, name: rar.name, sockets: rar.sockets },
+    sockets: rar.sockets,
+    runes: runes.map((r) => ({ socket: r.socket, runeId: r.rune_id, name: parseRune(cfg, r.rune_id)?.name ?? r.rune_id })),
     tier: it.tier,
     maxTier: cfg.items.upgrade.max_tier,
     nextUpgrade: it.tier >= cfg.items.upgrade.max_tier ? null : withTechName(cfg, upgradeTierCost(cfg, rc, it.tier + 1), m.done),
@@ -71,7 +81,7 @@ const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership,
     broken: it.durability <= 0,
     equipped: inLoadouts.includes(m.active),
     inLoadouts,
-    repairCost: repairCost(cfg, rc, it.durability, it.max_durability, repairMult, it.tier),
+    repairCost: repairCost(cfg, rc, it.durability, it.max_durability, repairMult * runesRepairMult(cfg, runeIds), it.tier),
   };
 };
 
@@ -191,7 +201,8 @@ export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
   const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id)!;
   if (it.durability >= it.max_durability) throw new GameError(409, 'nothing_to_repair');
   const fx = await loadEffects(trx, cfg, userId);
-  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair, it.tier);
+  const itemRunes = (await trx.selectFrom('item_runes').select('rune_id').where('item_id', '=', String(it.id)).execute()).map((r) => r.rune_id);
+  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair * runesRepairMult(cfg, itemRunes), it.tier);
   try {
     await applyLedger(trx, userId, [{ resource: 'ore', delta: -cost, reason: 'repair_cost', ref: `repair:${it.id}:${it.durability}` }], cfg.version);
   } catch (e) {
@@ -231,6 +242,52 @@ export async function upgradeTx(trx: Trx, ctx: Ctx, userId: string, id: string) 
   const upd = await trx.updateTable('items').set({ tier: it.tier + 1 }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
   await trx.insertInto('events_log').values({ user_id: userId, name: 'item_upgraded', props: JSON.stringify({ recipeId: rc.id, tier: it.tier + 1 }) }).execute();
   return { ...view(cfg, upd as never, await membership(trx, cfg, userId)), paid: cost };
+}
+
+/** Osadzenie runy z portfela w gnieździe przedmiotu (liczba gniazd z rzadkości). */
+export async function socketRuneTx(trx: Trx, ctx: Ctx, userId: string, id: string, socket: number, runeId: string) {
+  const cfg = ctx.config;
+  if (!parseRune(cfg, runeId)) throw new GameError(400, 'unknown_rune');
+  await settle(trx, cfg, userId, ctx.now());
+  const it = await lockItem(trx, userId, id);
+  if (!Number.isInteger(socket) || socket < 0 || socket >= rarityOf(cfg, it.rarity).sockets) throw new GameError(409, 'no_socket');
+  const taken = await trx.selectFrom('item_runes').select('rune_id').where('item_id', '=', String(it.id)).where('socket', '=', socket).executeTakeFirst();
+  if (taken) throw new GameError(409, 'socket_taken');
+  try {
+    await applyLedger(trx, userId, [{ resource: runeId, delta: -1, reason: 'rune_socket', ref: `socket:${it.id}:${socket}:${randomUUID()}` }], cfg.version);
+  } catch (e) {
+    if (e instanceof InsufficientFunds) throw new GameError(402, `insufficient_${e.resource}`);
+    throw e;
+  }
+  await trx.insertInto('item_runes').values({ item_id: String(it.id), socket, rune_id: runeId }).execute();
+  return view(cfg, it as never, await membership(trx, cfg, userId));
+}
+
+/** Wyjęcie runy z gniazda: opłata w rudzie, runa wraca do portfela. */
+export async function unsocketRuneTx(trx: Trx, ctx: Ctx, userId: string, id: string, socket: number) {
+  const cfg = ctx.config;
+  await settle(trx, cfg, userId, ctx.now());
+  const it = await lockItem(trx, userId, id);
+  const row = await trx.selectFrom('item_runes').select('rune_id').where('item_id', '=', String(it.id)).where('socket', '=', socket).executeTakeFirst();
+  if (!row) throw new GameError(409, 'socket_empty');
+  const fee = unsocketFee(cfg, row.rune_id);
+  const ref = `unsocket:${it.id}:${socket}:${randomUUID()}`;
+  try {
+    await applyLedger(
+      trx,
+      userId,
+      [
+        ...(fee > 0 ? [{ resource: 'ore', delta: -fee, reason: 'rune_unsocket_fee' as const, ref }] : []),
+        { resource: row.rune_id, delta: 1, reason: 'rune_unsocket', ref },
+      ],
+      cfg.version,
+    );
+  } catch (e) {
+    if (e instanceof InsufficientFunds) throw new GameError(402, `insufficient_${e.resource}`);
+    throw e;
+  }
+  await trx.deleteFrom('item_runes').where('item_id', '=', String(it.id)).where('socket', '=', socket).execute();
+  return { ...view(cfg, it as never, await membership(trx, cfg, userId)), paid: fee };
 }
 
 export { walletBalance };
