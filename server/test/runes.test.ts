@@ -5,6 +5,8 @@ import { parseGameConfig } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { applyLedger, auditLedger, walletBalance } from '../src/ledger.js';
+import { rollRuneDrop } from '../src/game/runes.js';
+import { resolveDive } from '../src/game/dive.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
 const { db, pool } = createDb(url);
@@ -183,5 +185,45 @@ describe('Runy: osadzanie i wyjmowanie', () => {
     const r = await post(h, `/items/${k.id}/repair`, 'rs-tr-0002');
     expect(r.json().paid).toBe(cheap);
     expect(await bal(id, 'ore')).toBe(ore0 - cheap);
+  });
+});
+
+describe('Runy: łup III ze zjazdów', () => {
+  const plytki = config.dives.routes.find((r) => r.id === 'plytki')!;
+  /** Ziarno z udanym (albo nieudanym) zjazdem dla gracza bez sprzętu i z trafieniem runy w osobnym strumieniu. */
+  async function seedFor(id: string, success: boolean) {
+    const p = (await pool.query('SELECT sila, technika, percepcja, wytrwalosc FROM players WHERE user_id = $1', [id])).rows[0];
+    for (let s = 1; s < 2_000_000; s++) {
+      if (!rollRuneDrop(config, plytki, s)) continue;
+      if (resolveDive(config, plytki, p, 1.1, s, { remaining: 1000, total: 1000 }).success === success) return s;
+    }
+    throw new Error('brak ziarna');
+  }
+
+  it('udany zjazd z trafieniem: +1 runa III w portfelu, result.rune, historia; bez dublowania', async () => {
+    const { id, h } = await newPlayer();
+    const s = await seedFor(id, true);
+    nextSeed = s;
+    await post(h, '/dives', 'rd-dive-0001', { routeId: 'plytki' });
+    tick(plytki.seconds + 1);
+    await app.inject({ url: '/silo', headers: h });
+    const rune = rollRuneDrop(config, plytki, s)!;
+    expect(await bal(id, rune)).toBe(1);
+    const hist = (await app.inject({ url: '/dives/history', headers: h })).json();
+    expect(hist[0].result.rune).toBe(rune);
+    await app.inject({ url: '/silo', headers: h });
+    expect(await bal(id, rune)).toBe(1);
+    expect(await auditLedger(db)).toEqual([]);
+  });
+
+  it('nieudany zjazd: brak runy nawet przy trafionym ziarnie', async () => {
+    const { id, h } = await newPlayer();
+    const s = await seedFor(id, false);
+    nextSeed = s;
+    await post(h, '/dives', 'rd-dive-0002', { routeId: 'plytki' });
+    tick(plytki.seconds + 1);
+    await app.inject({ url: '/silo', headers: h });
+    expect(await bal(id, rollRuneDrop(config, plytki, s)!)).toBe(0);
+    expect((await app.inject({ url: '/dives/history', headers: h })).json()[0].result.rune).toBeNull();
   });
 });

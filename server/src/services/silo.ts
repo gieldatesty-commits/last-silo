@@ -11,6 +11,7 @@ import { applyLedger, walletBalance, InsufficientFunds } from '../ledger.js';
 import { resolveDueRaids } from './raids.js';
 import { resolveDueShipments } from './caravans.js';
 import { resolveDueContracts } from './contracts.js';
+import { rollRuneDrop } from '../game/runes.js';
 import { activeLoadout, equippedBonus, loadEffects, loadoutProfile, wearLoadout, type LoadoutNo } from './gear.js';
 import { randomInt } from 'node:crypto';
 
@@ -209,6 +210,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
     await wearLoadout(trx, userId, lo);
 
+    const rune = out.success ? rollRuneDrop(cfg, route, Number(d.seed)) : null;
     await applyLedger(
       trx,
       userId,
@@ -217,6 +219,8 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
         { resource: 'tokens', delta: out.tokens, reason: 'dive_reward', ref: `dive:${d.id}:tokens` },
         { resource: 'samples', delta: out.samples, reason: 'dive_reward', ref: `dive:${d.id}:samples` },
         ...Object.entries(out.materials).map(([m, n]) => ({ resource: m, delta: n, reason: 'dive_reward' as const, ref: `dive:${d.id}:mat:${m}` })),
+        // runa III z łupu: osobny strumień ziarna, tylko po udanym zjeździe (docs/ekwipunek-v1.0.md §5.3)
+        ...(rune ? [{ resource: rune, delta: 1, reason: 'dive_reward' as const, ref: `dive:${d.id}:rune` }] : []),
       ],
       cfg.version,
     );
@@ -225,7 +229,7 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const lv = addXp(cfg, p.level, Number(p.xp), out.xp);
     await trx.updateTable('players').set({ level: lv.level, xp: String(lv.xpInLevel), free_points: p.free_points + lv.points }).where('user_id', '=', userId).execute();
     if (!out.success) await trx.updateTable('silos').set({ winded_until: new Date(d.ends_at.getTime() + cfg.dives.winded_seconds * fx.winded * 1000) }).where('user_id', '=', userId).execute();
-    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, samples: out.samples, materials: out.materials, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
+    const result = { success: out.success, chancePct: Math.round(out.chance * 100), ore: out.ore, tokens: out.tokens, samples: out.samples, materials: out.materials, rune, xp: out.xp, level: lv.level, levelUp: lv.level > p.level };
     await trx.updateTable('dives').set({ state: 'resolved', result: JSON.stringify(result) }).where('id', '=', d.id).execute();
     await trx.insertInto('notifications').values({ user_id: userId, type: 'dive_done', payload: JSON.stringify({ routeId: route.id, ...result }), sent_at: null, read_at: null }).execute();
     await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_done', props: JSON.stringify({ routeId: route.id, ...result }) }).execute();
