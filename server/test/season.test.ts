@@ -67,6 +67,7 @@ describe('cykl sezonu', () => {
     // ekwipunek w zestawie 2 (aktywny): po resecie ma zniknąć, a aktywny wraca na 1
     const itemId = (await pool.query("INSERT INTO items (user_id, recipe_id, slot, quality, durability, max_durability) VALUES ($1, 'kilof', 'narzedzie', 1, 20, 20) RETURNING id", [a.id])).rows[0].id;
     await pool.query("INSERT INTO loadouts (user_id, loadout, slot, item_id) VALUES ($1, 2, 'narzedzie', $2)", [a.id, itemId]);
+    await pool.query("INSERT INTO item_runes (item_id, socket, rune_id) VALUES ($1, 0, 'runa_zyly_1')", [itemId]);
     await pool.query('UPDATE players SET active_loadout = 2 WHERE user_id = $1', [a.id]);
 
     // dzień 100: gra normalnie
@@ -110,6 +111,7 @@ describe('cykl sezonu', () => {
     expect((await pool.query('SELECT count(*)::int AS n FROM silos')).rows[0].n).toBe(0);
     expect((await pool.query('SELECT count(*)::int AS n FROM ledger_entries')).rows[0].n).toBe(0);
     expect((await pool.query('SELECT count(*)::int AS n FROM loadouts')).rows[0].n).toBe(0);
+    expect((await pool.query('SELECT count(*)::int AS n FROM item_runes')).rows[0].n).toBe(0);
     expect((await pool.query('SELECT active_loadout FROM players WHERE user_id = $1', [a.id])).rows[0].active_loadout).toBe(1);
     expect((await pool.query('SELECT count(*)::int AS n FROM ledger_archive WHERE season_id = 1')).rows[0].n).toBeGreaterThan(0);
 

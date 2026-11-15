@@ -16,6 +16,7 @@ import { acceptContractTx, listContracts } from './services/contracts.js';
 import { listShipments } from './services/caravans.js';
 import { currentSeason, seasonResults, seasonTick, seasonView } from './services/season.js';
 import { activateLoadoutTx, craftTx, equipTx, listItems, repairTx, upgradeTx } from './services/items.js';
+import { craftRuneTx } from './services/runes.js';
 import { BillingUnavailable } from './billing.js';
 import { subscriptionView, syncToken, verifySubscriptionTx, type Billing } from './services/subscription.js';
 import { accountView, createGuest, deleteAccount, deviceLogin, googleLogin, issueNonce, linkGoogleTx, type GoogleAuth } from './services/account.js';
@@ -248,6 +249,15 @@ export function buildApp(deps: AppDeps) {
       return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
     });
   }
+
+  app.post('/runes/:id/craft', { onRequest: auth }, async (req, reply) => {
+    const { id } = z.object({ id: z.string().min(1).max(40) }).parse(req.params);
+    const key = req.headers['idempotency-key'];
+    if (!idemRoute(req.user.sub, key)) return reply.code(400).send({ error: 'missing_idempotency_key' });
+    const userId = req.user.sub;
+    const res = await idempotent(db, userId, key as string, async (trx) => ({ status: 201, body: await craftRuneTx(trx, ctx, userId, id) }));
+    return reply.code(res.status).header('idempotent-replay', String(res.replay)).send(res.body);
+  });
 
   app.post('/loadouts/:n/activate', { onRequest: auth }, async (req, reply) => {
     const { n } = z.object({ n: z.string().max(3) }).parse(req.params);

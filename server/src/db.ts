@@ -118,6 +118,7 @@ export interface Database {
     attacker_loadout: number | null;
   };
   loadouts: { user_id: string; loadout: number; slot: string; item_id: string };
+  item_runes: { item_id: string; socket: number; rune_id: string };
   world_pools: { zone: string; resource: string; total: number; remaining: number; regen_at: Generated<Date> };
   buildings: { user_id: string; type: string; level: Generated<number> };
   jobs: {

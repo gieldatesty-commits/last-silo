@@ -5,6 +5,7 @@ import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
 import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
+import { runeRecipes, runeWallet } from './runes.js';
 import { randomInt } from 'node:crypto';
 import { itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
 
@@ -92,6 +93,8 @@ export async function listItems(ctx: Ctx, userId: string) {
   return {
     items: items.map((i) => view(cfg, i as never, m, fx.repair)),
     activeLoadout: m.active,
+    runes: await runeWallet(ctx.db, cfg, userId),
+    runeRecipes: await runeRecipes(ctx.db, cfg, userId),
     loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
     loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
     // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)

@@ -24,6 +24,11 @@ export const LEDGER_REASONS = [
   'market_fee',
   'tutorial_reward',
   'admin_adjust',
+  'rune_craft',
+  'rune_craft_cost',
+  'rune_socket',
+  'rune_unsocket',
+  'rune_unsocket_fee',
 ] as const;
 export type LedgerReason = (typeof LEDGER_REASONS)[number];
 
