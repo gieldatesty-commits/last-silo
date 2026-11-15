@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastsilo/api.dart';
 import 'package:lastsilo/app_state.dart';
+import 'package:lastsilo/format.dart';
 import 'package:lastsilo/screens/dives_screen.dart';
 import 'package:lastsilo/screens/workshop_screen.dart';
 import 'package:lastsilo/strings.dart';
@@ -69,7 +70,11 @@ void main() {
     final handle = tester.ensureSemantics();
     await pumpWorkshop(tester); // kilof jest wybrany (pierwszy w zestawie I)
     expect(find.text('Gniazda na runy: 1 z 2 zajęte'), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp(r'^gniazdo 1: Żyły I, zjazd \+0\.2, stuknij, aby wyjąć')), findsOneWidget);
+    // zajęte gniazdo to informacja (bez akcji); wyjmuje jeden przycisk pod gniazdami
+    expect(find.bySemanticsLabel(RegExp(r'^gniazdo 1: Żyły I, zjazd \+0,2$')), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel(RegExp(r'^gniazdo 1: ')));
+    await tester.pumpAndSettle();
+    expect(find.text('Wyjąć runę Żyły I?'), findsNothing);
     expect(find.bySemanticsLabel(RegExp(r'^gniazdo 2: puste')), findsOneWidget);
     expect(find.text('Wyjmij Żyły I · 100 rudy'), findsOneWidget);
     handle.dispose();
@@ -83,6 +88,7 @@ void main() {
     expect(find.text('Osadź w gnieździe 2'), findsOneWidget);
     expect(find.text('Bastionu III'), findsOneWidget);
     expect(find.text('obrona +1'), findsOneWidget);
+    expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('zjazd +0,2')), findsOneWidget);
     await tester.tap(find.text('Ostrza I'));
     await tester.pumpAndSettle();
     expect(api.posts.single.$1, '/items/${kilofOf(api)['id']}/runes');
@@ -111,7 +117,7 @@ void main() {
     await tester.pump();
     await tester.scrollUntilVisible(find.text('Runy III tylko z łupu zjazdów'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('Żyły I × 1'), findsOneWidget);
-    final zyly = find.ancestor(of: find.text('zjazd +0.2 · Warsztat 3'), matching: find.byType(Container)).first;
+    final zyly = find.ancestor(of: find.text('zjazd +0,2 · Warsztat 3'), matching: find.byType(Container)).first;
     await tester.ensureVisible(zyly);
     await tester.tap(find.descendant(of: zyly, matching: find.text('Wytwórz')));
     await tester.pump();
@@ -153,7 +159,8 @@ void main() {
   test('nazwy run i komunikaty błędów po polsku', () {
     expect(runeLabel({'name': 'Ostrza', 'level': 3}), 'Ostrza III');
     expect(runeEffectText('repair_pct', -10), 'naprawy −10%');
-    expect(runeEffectText('attack', 0.6), 'atak +0.6');
+    expect(runeEffectText('attack', 0.6), 'atak +0,6');
+    expect([fmtDec(0.58), fmtDec(1), fmtDec(1.25), fmtDec(0.648), fmtDec(-10)], ['0,58', '1', '1,25', '0,65', '-10']);
     expect(errorText('insufficient_runa_ostrza_1'), 'Za mało zasobu: Ostrza I.');
     for (final code in ['no_socket', 'socket_taken', 'socket_empty', 'unknown_rune', 'rune_not_craftable']) {
       expect(errorText(code), isNot(startsWith('Coś poszło nie tak')), reason: code);

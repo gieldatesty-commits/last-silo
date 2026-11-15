@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastsilo/api.dart';
 import 'package:lastsilo/app_state.dart';
+import 'package:lastsilo/format.dart';
 import 'package:lastsilo/lab_layout.dart';
 import 'package:lastsilo/screens/dives_screen.dart';
 import 'package:lastsilo/screens/raids_screen.dart';
@@ -101,7 +102,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.bySemanticsLabel(RegExp(r'^Narzędzie: Łom bojowy')));
       await tester.pump();
-      expect(find.text('Atak +${itemOf(api, 'lom_bojowy')['attack']}'), findsOneWidget);
+      expect(find.text('Atak +${fmtDec(itemOf(api, 'lom_bojowy')['attack'] as num)}'), findsOneWidget);
       expect(find.text('✓ w zestawie II'), findsOneWidget);
       await tester.ensureVisible(find.text('Zdejmij z II'));
       await tester.pump();
@@ -134,10 +135,10 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, 'Bojowe'));
       await tester.pump();
       await tester.scrollUntilVisible(find.text('Łom bojowy').last, 300, scrollable: find.byType(Scrollable).first);
-      expect(find.textContaining('atak +0.6 · 20 wytrz.'), findsOneWidget);
+      expect(find.textContaining('atak +0,6 · 20 wytrz.'), findsOneWidget);
       expect(find.text('Kilof'), findsNothing);
       await tester.scrollUntilVisible(find.text('Napierśnik').last, 300, scrollable: find.byType(Scrollable).first);
-      expect(find.textContaining('obrona +1.2 · 25 wytrz.'), findsOneWidget);
+      expect(find.textContaining('obrona +1,2 · 25 wytrz.'), findsOneWidget);
       // broń ma własną ikonę (nie kilof ze slotu narzędzia)
       expect(find.byWidgetPredicate((w) => w is SlotIcon && w.slot == 'bron'), findsWidgets);
     });
@@ -178,9 +179,9 @@ void main() {
       expect(find.text('Aktywny: zestaw I'), findsOneWidget);
       final st = api.items['loadoutStats'] as Map;
       final sd = api.items['siloDefense'] as Map;
-      expect(find.textContaining('atak sprzętu +${(st['1'] as Map)['attack']}'), findsOneWidget);
-      expect(find.textContaining('obrona silosu +${sd['1']}'), findsOneWidget); // z częścią pancerza z zestawu II
-      expect(find.textContaining('z zestawem II: atak +${(st['2'] as Map)['attack']}, obrona silosu +${sd['2']}'), findsOneWidget);
+      expect(find.textContaining('atak sprzętu +${fmtDec((st['1'] as Map)['attack'] as num)}'), findsOneWidget);
+      expect(find.textContaining('obrona silosu +${fmtDec(sd['1'] as num)}'), findsOneWidget); // z częścią pancerza z zestawu II
+      expect(find.textContaining('z zestawem II: atak +${fmtDec((st['2'] as Map)['attack'] as num)}, obrona silosu +${fmtDec(sd['2'] as num)}'), findsOneWidget);
       await tester.tap(find.text('Przełącz na zestaw II'));
       await tester.pump();
       expect(api.posts.single.$1, '/loadouts/2/activate');

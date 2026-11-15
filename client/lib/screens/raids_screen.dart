@@ -72,8 +72,8 @@ class _LoadoutPanel extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Aktywny: zestaw ${loadoutName(active)}', style: lsDisplay.copyWith(fontSize: 16)),
         const SizedBox(height: 6),
-        Text('atak sprzętu +${mine['attack'] ?? 0} · obrona silosu +${silo['$active'] ?? mine['defense'] ?? 0}', style: lsBody),
-        Text('z zestawem ${loadoutName(other)}: atak +${theirs['attack'] ?? 0}, obrona silosu +${silo['$other'] ?? theirs['defense'] ?? 0}', style: lsMuted),
+        Text('atak sprzętu +${fmtDec(asNum(mine['attack'] ?? 0))} · obrona silosu +${fmtDec(asNum(silo['$active'] ?? mine['defense'] ?? 0))}', style: lsBody),
+        Text('z zestawem ${loadoutName(other)}: atak +${fmtDec(asNum(theirs['attack'] ?? 0))}, obrona silosu +${fmtDec(asNum(silo['$other'] ?? theirs['defense'] ?? 0))}', style: lsMuted),
         const SizedBox(height: 6),
         const Text('Atakujesz zestawem z chwili wysłania. Obrona silosu liczy też część pancerza z drugiego zestawu.', style: TextStyle(fontSize: 11, height: 1.4, color: Ls.textMuted)),
         const SizedBox(height: 8),

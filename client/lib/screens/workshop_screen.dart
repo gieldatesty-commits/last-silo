@@ -46,9 +46,9 @@ const _section = TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, 
 /// Profil przedmiotu lub receptury słowami: tylko niezerowe pola (zjazd, atak, obrona).
 String profileText(Map m, {bool long = false}) {
   final parts = <String>[
-    if (asNum(m['bonus']) > 0) '${long ? 'Siła zjazdu' : 'zjazd'} +${m['bonus']}',
-    if (asNum(m['attack']) > 0) '${long ? 'Atak' : 'atak'} +${m['attack']}',
-    if (asNum(m['defense']) > 0) '${long ? 'Obrona' : 'obrona'} +${m['defense']}',
+    if (asNum(m['bonus']) > 0) '${long ? 'Siła zjazdu' : 'zjazd'} +${fmtDec(asNum(m['bonus']))}',
+    if (asNum(m['attack']) > 0) '${long ? 'Atak' : 'atak'} +${fmtDec(asNum(m['attack']))}',
+    if (asNum(m['defense']) > 0) '${long ? 'Obrona' : 'obrona'} +${fmtDec(asNum(m['defense']))}',
   ];
   return parts.isEmpty ? 'bez bonusu' : parts.join(long ? '   ' : ' · ');
 }
@@ -242,7 +242,7 @@ class _LoadoutTiles extends StatelessWidget {
       final isActive = n == active;
       final shown = n == editing;
       final parts = [('zjazd', st['dive']), ('atak', st['attack']), ('obrona', st['defense'])];
-      final label = 'Zestaw ${loadoutName(n)}, ${isActive ? 'aktywny' : 'nieaktywny'}, ${parts.map((p) => '${p.$1} +${p.$2 ?? 0}').join(', ')}';
+      final label = 'Zestaw ${loadoutName(n)}, ${isActive ? 'aktywny' : 'nieaktywny'}, ${parts.map((p) => '${p.$1} +${fmtDec(asNum(p.$2 ?? 0))}').join(', ')}';
       return Semantics(
         button: true,
         selected: shown,
@@ -272,7 +272,7 @@ class _LoadoutTiles extends StatelessWidget {
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, runSpacing: 2, children: [
                     for (final (name, v) in parts)
-                      Text('$name +${v ?? 0}', style: TextStyle(fontSize: 12, color: asNum(v ?? 0) > 0 ? Ls.text : Ls.textFaint, fontWeight: asNum(v ?? 0) > 0 ? FontWeight.w600 : FontWeight.w400)),
+                      Text('$name +${fmtDec(asNum(v ?? 0))}', style: TextStyle(fontSize: 12, color: asNum(v ?? 0) > 0 ? Ls.text : Ls.textFaint, fontWeight: asNum(v ?? 0) > 0 ? FontWeight.w600 : FontWeight.w400)),
                   ]),
                 ]),
               ),
@@ -384,7 +384,7 @@ class _ItemCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(border: Border.all(color: Ls.teal), borderRadius: BorderRadius.circular(10)),
-            child: Text('jakość ${it['quality']}', style: const TextStyle(fontSize: 12, color: Ls.teal)),
+            child: Text('jakość ${fmtDec(asNum(it['quality']))}', style: const TextStyle(fontSize: 12, color: Ls.teal)),
           ),
         ]),
         const SizedBox(height: 6),
@@ -732,9 +732,11 @@ class _Sockets extends StatelessWidget {
     final used = (it['runes'] as List? ?? const []).length;
     Widget tile(int socket) {
       final r = _rune(socket);
-      final label = r == null ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę' : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}, stuknij, aby wyjąć';
+      final label = r == null ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę' : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}';
+      // zajęte gniazdo to informacja; wyjmuje jeden przycisk „Wyjmij …” pod gniazdami
       return Semantics(
-        button: true,
+        container: true,
+        button: r == null,
         label: label,
         excludeSemantics: true,
         child: Material(
@@ -742,7 +744,7 @@ class _Sockets extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: r == null ? Ls.locked : const Color(0xFF2B3546))),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: state.busy ? null : () => r == null ? _pick(context, socket) : _remove(context, r),
+            onTap: r != null || state.busy ? null : () => _pick(context, socket),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 56),
               child: Padding(

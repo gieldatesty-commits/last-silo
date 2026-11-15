@@ -1,6 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+/// Liczba dziesiętna po polsku: najwyżej 2 miejsca, przecinek, bez zer na końcu (0,58 · 1 · 1,25).
+String fmtDec(num v) {
+  final r = (v * 100).round() / 100;
+  if (r == r.roundToDouble()) return '${r.toInt()}';
+  return r.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst('.', ',');
+}
+
 /// 1 234 567 (spacja jako separator tysięcy, bez zależności od intl).
 String fmtInt(num n) {
   final s = n.round().abs().toString();
