@@ -80,6 +80,7 @@ class _BenchState extends State<_Bench> {
         null => true,
         'dive' => asNum(r['bonus']) > 0,
         'combat' => asNum(r['attack']) > 0 || asNum(r['defense']) > 0,
+        'runes' => false,
         final slot => r['slot'] == slot,
       };
 
@@ -184,7 +185,7 @@ class _BenchState extends State<_Bench> {
             ]),
           ),
         ),
-        if (sel != null) _ItemCard(it: sel, state: widget.state, reload: widget.reload, active: active, editing: editing),
+        if (sel != null) _ItemCard(it: sel, d: d, state: widget.state, reload: widget.reload, active: active, editing: editing),
         const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('EKWIPUNEK', style: _section)),
         if (items.isEmpty)
           const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Nic jeszcze nie wytworzyłeś. Zacznij od receptury poniżej.', style: TextStyle(color: Ls.textMuted))),
@@ -199,7 +200,7 @@ class _BenchState extends State<_Bench> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-                for (final (slot, label) in <(String?, String)>[(null, 'Wszystko'), ('dive', 'Zjazdowe'), ('combat', 'Bojowe'), for (final s in slotOrder) (s, slotNames[s] ?? s)])
+                for (final (slot, label) in <(String?, String)>[(null, 'Wszystko'), ('dive', 'Zjazdowe'), ('combat', 'Bojowe'), ('runes', 'Runy'), for (final s in slotOrder) (s, slotNames[s] ?? s)])
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: ChoiceChip(
@@ -216,8 +217,9 @@ class _BenchState extends State<_Bench> {
               ]),
             ),
             const SizedBox(height: 4),
-            for (final r in shown) _RecipeRow(r: r, state: widget.state, reload: widget.reload),
-            if (shown.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Brak receptur w tym filtrze.', style: TextStyle(color: Ls.textMuted))),
+            if (_filter == 'runes') _RunesPanel(d: d, state: widget.state, reload: widget.reload),
+            if (_filter != 'runes') for (final r in shown) _RecipeRow(r: r, state: widget.state, reload: widget.reload),
+            if (_filter != 'runes' && shown.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Brak receptur w tym filtrze.', style: TextStyle(color: Ls.textMuted))),
           ]),
         ),
       ],
@@ -337,8 +339,10 @@ class _SlotTile extends StatelessWidget {
 
 /// Karta wybranego przedmiotu: jakość, bonus, wzmocnienie, wytrzymałość i akcje (jak dotąd: założenie, naprawa, wzmocnienie).
 class _ItemCard extends StatelessWidget {
-  const _ItemCard({required this.it, required this.state, required this.reload, required this.active, required this.editing});
+  const _ItemCard({required this.it, required this.d, required this.state, required this.reload, required this.active, required this.editing});
   final Map<String, dynamic> it;
+  /// cała odpowiedź /items (portfel i katalog run do osadzania)
+  final Map<String, dynamic> d;
   final AppState state;
   final Future<void> Function() reload;
   final int active;
@@ -433,6 +437,10 @@ class _ItemCard extends StatelessWidget {
         ]),
         const SizedBox(height: 4),
         ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: frac.clamp(0.0, 1.0).toDouble(), minHeight: 6, color: dc, backgroundColor: Ls.border)),
+        if (asNum(it['sockets'] ?? 0) > 0) ...[
+          const SizedBox(height: 10),
+          _Sockets(it: it, d: d, state: state, reload: reload),
+        ],
         if (next != null && next['techDone'] == false) ...[
           const SizedBox(height: 8),
           Text('Wymaga badania: ${next['techName'] ?? next['tech']}', style: const TextStyle(fontSize: 12, color: Ls.warnText)),
@@ -614,6 +622,273 @@ class _RecipeRow extends StatelessWidget {
             ]);
           }
           return Row(children: [icon, const SizedBox(width: 10), Expanded(child: info), const SizedBox(width: 8), button]);
+        }),
+      ),
+    );
+  }
+}
+
+
+/// Kolor rodzaju runy (obok nazwy i efektu słowem, nie zamiast).
+const _runeColors = {'zyly': Ls.amber, 'ostrza': Ls.warn, 'bastionu': Ls.teal, 'trwalosci': Ls.violet};
+
+/// Znak runy: poziom (I/II/III) w ramce w kolorze rodzaju; dekoracja (opis daje rodzic).
+class _RuneMark extends StatelessWidget {
+  const _RuneMark({required this.kind, required this.level});
+  final String? kind;
+  final Object? level;
+  @override
+  Widget build(BuildContext context) {
+    final c = _runeColors[kind] ?? Ls.textMuted;
+    return ExcludeSemantics(
+      // minimalny (nie sztywny) rozmiar: „III” przy dużej czcionce poszerza znak zamiast się łamać
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: c, width: 1.5)),
+        child: Text(romanLevel(level), softWrap: false, style: _display.copyWith(fontSize: 13, color: c)),
+      ),
+    );
+  }
+}
+
+/// Gniazda przedmiotu: zajęte (runa słowem) i puste (osadzanie z magazynu); wyjmowanie z potwierdzeniem opłaty.
+class _Sockets extends StatelessWidget {
+  const _Sockets({required this.it, required this.d, required this.state, required this.reload});
+  final Map<String, dynamic> it;
+  final Map<String, dynamic> d;
+  final AppState state;
+  final Future<void> Function() reload;
+
+  Map? _rune(int socket) => (it['runes'] as List? ?? const []).cast<Map>().where((r) => r['socket'] == socket).firstOrNull;
+  Map? _catalog(String id) => (d['runeCatalog'] as List? ?? const []).cast<Map>().where((r) => r['id'] == id).firstOrNull;
+
+  Future<void> _pick(BuildContext context, int socket) async {
+    final wallet = (d['runes'] as Map?) ?? const {};
+    final owned = [for (final e in wallet.entries) if (asNum(e.value) > 0 && _catalog(e.key as String) != null) (_catalog(e.key as String)!, asNum(e.value).toInt())];
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF141925),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            Text('Osadź w gnieździe ${socket + 1}', style: _display.copyWith(fontSize: 15)),
+            const SizedBox(height: 4),
+            const Text('Runa schodzi z magazynu. Wyjęcie później kosztuje rudę.', style: TextStyle(fontSize: 12, color: Ls.textMuted)),
+            const SizedBox(height: 8),
+            if (owned.isEmpty) const Text('Brak run w magazynie. Wytwórz je w sekcji Runy.', style: TextStyle(fontSize: 13, color: Ls.text)),
+            for (final (r, n) in owned)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Material(
+                  color: Ls.card,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF2B3546))),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.pop(ctx, r['id'] as String),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(children: [
+                          _RuneMark(kind: r['kind'] as String?, level: r['level']),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(runeLabel(r), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+                              Text(runeEffectText(r['effect'], r['value']), style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+                            ]),
+                          ),
+                          Text('× $n', style: const TextStyle(fontSize: 12, color: Color(0xFFC9D0DC))),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (picked != null && context.mounted) {
+      await act(state, () => state.api.post('/items/${it['id']}/runes', body: {'socket': socket, 'rune': picked}, idempotent: true), reload, ctx: context, okText: 'Osadzono: ${runeLabelFromId(picked)}');
+    }
+  }
+
+  Future<void> _remove(BuildContext context, Map r) async {
+    final ok = await confirm(context, 'Wyjąć runę ${runeLabel(r)}?', 'Opłata: ${fmtInt(asNum(r['fee']))} rudy. Runa wróci do magazynu.', ok: 'Wyjmij');
+    if (ok && context.mounted) {
+      await act(state, () => state.api.post('/items/${it['id']}/runes/${r['socket']}/remove', idempotent: true), reload, ctx: context, okText: 'Runa w magazynie');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = asNum(it['sockets']).toInt();
+    final used = (it['runes'] as List? ?? const []).length;
+    Widget tile(int socket) {
+      final r = _rune(socket);
+      final label = r == null ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę' : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}';
+      return Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Material(
+          color: r == null ? Colors.transparent : const Color(0xFF141925),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: r == null ? Ls.locked : const Color(0xFF2B3546))),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: state.busy ? null : () => r == null ? _pick(context, socket) : _remove(context, r),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(children: [
+                  if (r == null)
+                    ExcludeSemantics(
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: Ls.locked, width: 1.5)),
+                        child: const Text('+', softWrap: false, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Ls.textMuted)),
+                      ),
+                    )
+                  else
+                    _RuneMark(kind: r['runeId'] is String ? RegExp(r'^runa_([a-z]+)_').firstMatch(r['runeId'] as String)?.group(1) : null, level: r['level']),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(r == null ? 'Puste' : runeLabel(r), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Ls.text)),
+                      Text(r == null ? 'stuknij, aby osadzić' : runeEffectText(r['effect'], r['value']), style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+                    ]),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Gniazda na runy: $used z $n zajęte', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
+      const SizedBox(height: 6),
+      // dwie kolumny; na wąskim ekranie albo przy dużej czcionce jedna pod drugą
+      LayoutBuilder(builder: (context, box) {
+        final cols = box.maxWidth < 280 || MediaQuery.textScalerOf(context).scale(1) > 1.3 ? 1 : 2;
+        return Wrap(spacing: 8, runSpacing: 8, children: [
+          for (var i = 0; i < n; i++) SizedBox(width: cols == 1 ? box.maxWidth : (box.maxWidth - 8) / 2, child: tile(i)),
+        ]);
+      }),
+      for (final r in (it['runes'] as List? ?? const []).cast<Map>())
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: OutlinedButton(
+            onPressed: state.busy ? null : () => _remove(context, r),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Ls.text,
+              side: const BorderSide(color: Ls.locked),
+              minimumSize: const Size(0, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            child: Text('Wyjmij ${runeLabel(r)} · ${fmtInt(asNum(r['fee']))} rudy'),
+          ),
+        ),
+    ]);
+  }
+}
+
+/// Sekcja „Runy” zamiast listy receptur: magazyn run, wytwarzanie I–II, informacja o łupie III.
+class _RunesPanel extends StatelessWidget {
+  const _RunesPanel({required this.d, required this.state, required this.reload});
+  final Map<String, dynamic> d;
+  final AppState state;
+  final Future<void> Function() reload;
+
+  @override
+  Widget build(BuildContext context) {
+    final wallet = (d['runes'] as Map?) ?? const {};
+    final catalog = (d['runeCatalog'] as List? ?? const []).cast<Map>();
+    final recipes = (d['runeRecipes'] as List? ?? const []).cast<Map>();
+    final money = (state.silo?['wallet'] as Map?) ?? const {};
+    bool have(String res, num need) => need <= 0 || asNum(money[res]) >= need;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const SizedBox(height: 8),
+      Text('W magazynie: ${wallet.values.fold<num>(0, (a, b) => a + asNum(b))}', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        for (final e in wallet.entries)
+          if (asNum(e.value) > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xFF1A2230), borderRadius: BorderRadius.circular(10)),
+              child: Text('${catalog.where((c) => c['id'] == e.key).map(runeLabel).firstOrNull ?? runeLabelFromId(e.key as String)} × ${e.value}', style: const TextStyle(fontSize: 12, color: Color(0xFFC9D0DC))),
+            ),
+      ]),
+      for (final r in recipes) _runeRow(context, r, have),
+      Container(
+        margin: const EdgeInsets.only(top: 8, bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: Ls.locked)),
+        child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Runy III tylko z łupu zjazdów', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Ls.text)),
+          SizedBox(height: 2),
+          Text('Dłuższe i głębsze trasy dają większą szansę.', style: TextStyle(fontSize: 12, color: Ls.textMuted)),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _runeRow(BuildContext context, Map r, bool Function(String, num) have) {
+    final locked = r['locked'] == true;
+    final chips = <(String?, String, bool)>[
+      if (asNum(r['ore']) > 0) ('ore', '${fmtInt(asNum(r['ore']))} rudy', have('ore', asNum(r['ore']))),
+      if (asNum(r['tokens']) > 0) ('tokens', '${fmtInt(asNum(r['tokens']))} żet.', have('tokens', asNum(r['tokens']))),
+      for (final e in ((r['materials'] as Map?) ?? const {}).entries) (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
+    ];
+    final ok = !locked && chips.every((c) => c.$3);
+    final label = locked ? 'Zablokowane' : (ok ? 'Wytwórz' : 'Brak');
+    final button = ok
+        ? FilledButton(
+            onPressed: state.busy ? null : () => act(state, () => state.api.post('/runes/${r['id']}/craft', idempotent: true), reload, ctx: context, okText: 'Wytworzono: ${runeLabel(r)}'),
+            style: FilledButton.styleFrom(backgroundColor: Ls.copper, foregroundColor: Ls.bg, minimumSize: const Size(78, 44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            child: Text(label),
+          )
+        : OutlinedButton(
+            onPressed: null,
+            style: OutlinedButton.styleFrom(minimumSize: const Size(78, 44), disabledForegroundColor: Ls.textMuted, side: const BorderSide(color: Ls.locked), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            child: Text(label),
+          );
+    return Opacity(
+      opacity: locked ? 0.6 : 1,
+      child: Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: Ls.card, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(12)),
+        child: LayoutBuilder(builder: (context, box) {
+          final stacked = box.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.3;
+          final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(runeLabel(r), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+            Text('${runeEffectText(r['effect'], r['value'])} · Warsztat ${r['workshop']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+            const SizedBox(height: 4),
+            Wrap(spacing: 4, runSpacing: 4, children: [for (final (res, t, okc) in chips) LsResChip(res, t, ok: okc)]),
+          ]);
+          final mark = _RuneMark(kind: r['kind'] as String?, level: r['level']);
+          if (stacked) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [mark, const SizedBox(width: 10), Expanded(child: info)]),
+              const SizedBox(height: 8),
+              button,
+            ]);
+          }
+          return Row(children: [mark, const SizedBox(width: 10), Expanded(child: info), const SizedBox(width: 8), button]);
         }),
       ),
     );

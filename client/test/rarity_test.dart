@@ -48,6 +48,8 @@ Future<FakeApi> pump(WidgetTester tester, {Size size = const Size(411, 860), dou
 Future<void> selectNapiersnik(WidgetTester tester) async {
   final row = find.bySemanticsLabel(RegExp(r'^Napierśnik, '));
   await tester.scrollUntilVisible(row, 200, scrollable: find.byType(Scrollable).first);
+  await tester.ensureVisible(row);
+  await tester.pump();
   await tester.tap(row);
   await tester.pump();
   await tester.drag(find.byType(Scrollable).first, const Offset(0, 4000)); // z powrotem do karty na górze

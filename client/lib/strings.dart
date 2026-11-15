@@ -95,12 +95,45 @@ const _errors = {
   'invalid_loadout': 'Nie ma takiego zestawu.',
   'not_equipped': 'Tego przedmiotu nie ma w tym zestawie.',
   'tech_required': 'Najpierw ukończ wymagane badanie.',
+  'no_socket': 'Ten przedmiot nie ma takiego gniazda.',
+  'socket_taken': 'To gniazdo jest już zajęte.',
+  'socket_empty': 'To gniazdo jest puste.',
+  'unknown_rune': 'Nie ma takiej runy.',
+  'rune_not_craftable': 'Runy III zdobywa się tylko z łupu zjazdów.',
 };
 
 String errorText(String code) {
   if (_errors.containsKey(code)) return _errors[code]!;
   if (code.startsWith('insufficient_')) return 'Za mało zasobu: ${resName(code.substring(13))}.';
   return 'Coś poszło nie tak ($code).';
+}
+
+/// Rodzaje run (klucze jak `kind` z API) — nazwy do run znanych tylko z id (np. łup w historii zjazdów).
+const runeKindNames = {'zyly': 'Żyły', 'ostrza': 'Ostrza', 'bastionu': 'Bastionu', 'trwalosci': 'Trwałości'};
+const _roman = ['I', 'II', 'III'];
+String romanLevel(Object? level) => _roman[((level as num?)?.toInt() ?? 1).clamp(1, 3) - 1];
+
+/// Runa z API (`{name, level}`) jako „Ostrza III”.
+String runeLabel(Map r) => '${r['name']} ${romanLevel(r['level'])}';
+
+/// Runa z samego id (`runa_ostrza_3`) jako „Ostrza III”.
+String runeLabelFromId(String id) {
+  final m = RegExp(r'^runa_([a-z]+)_([123])$').firstMatch(id);
+  return m == null ? id : '${runeKindNames[m.group(1)] ?? m.group(1)} ${romanLevel(int.parse(m.group(2)!))}';
+}
+
+String _num(num v) => v == v.roundToDouble() ? '${v.toInt()}' : '$v';
+
+/// Efekt runy słowem: „zjazd +0.2”, „atak +0.6”, „obrona +1”, „naprawy −10%”.
+String runeEffectText(Object? effect, Object? value) {
+  final v = (value as num?) ?? 0;
+  return switch (effect) {
+    'dive' => 'zjazd +${_num(v)}',
+    'attack' => 'atak +${_num(v)}',
+    'defense' => 'obrona +${_num(v)}',
+    'repair_pct' => 'naprawy −${_num(v.abs())}%',
+    _ => '',
+  };
 }
 
 /// Znaki rzadkości (klucze jak `rarity.id` z API): rzadkość widać znakiem i nazwą, nie tylko kolorem.

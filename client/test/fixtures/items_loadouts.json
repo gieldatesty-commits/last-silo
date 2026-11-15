@@ -1,12 +1,12 @@
 {
   "items": [
     {
-      "id": "23",
+      "id": "27",
       "recipeId": "kilof",
       "name": "Kilof",
       "slot": "narzedzie",
-      "quality": 1.13,
-      "bonus": 0.73,
+      "quality": 0.92,
+      "bonus": 0.59,
       "attack": 0,
       "defense": 0,
       "rarity": {
@@ -14,6 +14,8 @@
         "name": "Solidny",
         "sockets": 1
       },
+      "sockets": 1,
+      "runes": [],
       "tier": 0,
       "maxTier": 10,
       "nextUpgrade": {
@@ -40,19 +42,21 @@
       "repairCost": 0
     },
     {
-      "id": "24",
+      "id": "28",
       "recipeId": "lom_bojowy",
       "name": "Łom bojowy",
       "slot": "narzedzie",
-      "quality": 1.1,
+      "quality": 0.98,
       "bonus": 0,
-      "attack": 0.72,
+      "attack": 0.63,
       "defense": 0,
       "rarity": {
         "id": "solidny",
         "name": "Solidny",
         "sockets": 1
       },
+      "sockets": 1,
+      "runes": [],
       "tier": 0,
       "maxTier": 10,
       "nextUpgrade": {
@@ -79,19 +83,21 @@
       "repairCost": 0
     },
     {
-      "id": "25",
+      "id": "29",
       "recipeId": "napiersnik",
       "name": "Napierśnik",
       "slot": "ochrona",
-      "quality": 0.95,
+      "quality": 1.09,
       "bonus": 0,
       "attack": 0,
-      "defense": 1.71,
+      "defense": 1.96,
       "rarity": {
         "id": "zwykly",
         "name": "Zwykły",
         "sockets": 0
       },
+      "sockets": 0,
+      "runes": [],
       "tier": 5,
       "maxTier": 10,
       "nextUpgrade": {
@@ -118,11 +124,11 @@
       "repairCost": 0
     },
     {
-      "id": "26",
+      "id": "30",
       "recipeId": "detektor_zylowy",
       "name": "Detektor żył",
       "slot": "sprzet",
-      "quality": 0.99,
+      "quality": 1,
       "bonus": 0.75,
       "attack": 0,
       "defense": 0,
@@ -131,6 +137,8 @@
         "name": "Solidny",
         "sockets": 1
       },
+      "sockets": 1,
+      "runes": [],
       "tier": 0,
       "maxTier": 10,
       "nextUpgrade": {
@@ -159,35 +167,292 @@
     }
   ],
   "activeLoadout": 1,
+  "runes": {},
+  "runeRecipes": [
+    {
+      "id": "runa_zyly_1",
+      "kind": "zyly",
+      "level": 1,
+      "name": "Żyły",
+      "effect": "dive",
+      "value": 0.2,
+      "ore": 300,
+      "tokens": 0,
+      "materials": {
+        "miedz": 8
+      },
+      "workshop": 3,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_zyly_2",
+      "kind": "zyly",
+      "level": 2,
+      "name": "Żyły",
+      "effect": "dive",
+      "value": 0.4,
+      "ore": 1200,
+      "tokens": 10,
+      "materials": {
+        "miedz": 25
+      },
+      "workshop": 6,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_ostrza_1",
+      "kind": "ostrza",
+      "level": 1,
+      "name": "Ostrza",
+      "effect": "attack",
+      "value": 0.3,
+      "ore": 300,
+      "tokens": 0,
+      "materials": {
+        "siarka": 8
+      },
+      "workshop": 3,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_ostrza_2",
+      "kind": "ostrza",
+      "level": 2,
+      "name": "Ostrza",
+      "effect": "attack",
+      "value": 0.6,
+      "ore": 1200,
+      "tokens": 10,
+      "materials": {
+        "siarka": 25
+      },
+      "workshop": 6,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_bastionu_1",
+      "kind": "bastionu",
+      "level": 1,
+      "name": "Bastionu",
+      "effect": "defense",
+      "value": 0.3,
+      "ore": 300,
+      "tokens": 0,
+      "materials": {
+        "krysztal": 8
+      },
+      "workshop": 3,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_bastionu_2",
+      "kind": "bastionu",
+      "level": 2,
+      "name": "Bastionu",
+      "effect": "defense",
+      "value": 0.6,
+      "ore": 1200,
+      "tokens": 10,
+      "materials": {
+        "krysztal": 25
+      },
+      "workshop": 6,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_trwalosci_1",
+      "kind": "trwalosci",
+      "level": 1,
+      "name": "Trwałości",
+      "effect": "repair_pct",
+      "value": -5,
+      "ore": 300,
+      "tokens": 0,
+      "materials": {
+        "miedz": 3,
+        "krysztal": 3,
+        "siarka": 3
+      },
+      "workshop": 3,
+      "radio": 5,
+      "locked": true
+    },
+    {
+      "id": "runa_trwalosci_2",
+      "kind": "trwalosci",
+      "level": 2,
+      "name": "Trwałości",
+      "effect": "repair_pct",
+      "value": -10,
+      "ore": 1200,
+      "tokens": 10,
+      "materials": {
+        "miedz": 9,
+        "krysztal": 9,
+        "siarka": 9
+      },
+      "workshop": 6,
+      "radio": 5,
+      "locked": true
+    }
+  ],
+  "runeCatalog": [
+    {
+      "id": "runa_zyly_1",
+      "kind": "zyly",
+      "level": 1,
+      "name": "Żyły",
+      "effect": "dive",
+      "value": 0.2,
+      "fee": 100,
+      "craftable": true
+    },
+    {
+      "id": "runa_zyly_2",
+      "kind": "zyly",
+      "level": 2,
+      "name": "Żyły",
+      "effect": "dive",
+      "value": 0.4,
+      "fee": 400,
+      "craftable": true
+    },
+    {
+      "id": "runa_zyly_3",
+      "kind": "zyly",
+      "level": 3,
+      "name": "Żyły",
+      "effect": "dive",
+      "value": 0.7,
+      "fee": 1000,
+      "craftable": false
+    },
+    {
+      "id": "runa_ostrza_1",
+      "kind": "ostrza",
+      "level": 1,
+      "name": "Ostrza",
+      "effect": "attack",
+      "value": 0.3,
+      "fee": 100,
+      "craftable": true
+    },
+    {
+      "id": "runa_ostrza_2",
+      "kind": "ostrza",
+      "level": 2,
+      "name": "Ostrza",
+      "effect": "attack",
+      "value": 0.6,
+      "fee": 400,
+      "craftable": true
+    },
+    {
+      "id": "runa_ostrza_3",
+      "kind": "ostrza",
+      "level": 3,
+      "name": "Ostrza",
+      "effect": "attack",
+      "value": 1,
+      "fee": 1000,
+      "craftable": false
+    },
+    {
+      "id": "runa_bastionu_1",
+      "kind": "bastionu",
+      "level": 1,
+      "name": "Bastionu",
+      "effect": "defense",
+      "value": 0.3,
+      "fee": 100,
+      "craftable": true
+    },
+    {
+      "id": "runa_bastionu_2",
+      "kind": "bastionu",
+      "level": 2,
+      "name": "Bastionu",
+      "effect": "defense",
+      "value": 0.6,
+      "fee": 400,
+      "craftable": true
+    },
+    {
+      "id": "runa_bastionu_3",
+      "kind": "bastionu",
+      "level": 3,
+      "name": "Bastionu",
+      "effect": "defense",
+      "value": 1,
+      "fee": 1000,
+      "craftable": false
+    },
+    {
+      "id": "runa_trwalosci_1",
+      "kind": "trwalosci",
+      "level": 1,
+      "name": "Trwałości",
+      "effect": "repair_pct",
+      "value": -5,
+      "fee": 100,
+      "craftable": true
+    },
+    {
+      "id": "runa_trwalosci_2",
+      "kind": "trwalosci",
+      "level": 2,
+      "name": "Trwałości",
+      "effect": "repair_pct",
+      "value": -10,
+      "fee": 400,
+      "craftable": true
+    },
+    {
+      "id": "runa_trwalosci_3",
+      "kind": "trwalosci",
+      "level": 3,
+      "name": "Trwałości",
+      "effect": "repair_pct",
+      "value": -18,
+      "fee": 1000,
+      "craftable": false
+    }
+  ],
   "loadouts": {
     "1": {
-      "narzedzie": "23",
+      "narzedzie": "27",
       "ochrona": null,
       "lampa": null,
-      "sprzet": "26"
+      "sprzet": "30"
     },
     "2": {
-      "narzedzie": "24",
-      "ochrona": "25",
+      "narzedzie": "28",
+      "ochrona": "29",
       "lampa": null,
-      "sprzet": "26"
+      "sprzet": "30"
     }
   },
   "loadoutStats": {
     "1": {
-      "dive": 1.48,
+      "dive": 1.35,
       "attack": 0,
       "defense": 0
     },
     "2": {
       "dive": 0.75,
-      "attack": 0.72,
-      "defense": 1.71
+      "attack": 0.63,
+      "defense": 1.96
     }
   },
   "siloDefense": {
-    "1": 1.28,
-    "2": 1.71
+    "1": 1.47,
+    "2": 1.96
   },
   "inventoryMax": 24,
   "workshopLevel": 4,

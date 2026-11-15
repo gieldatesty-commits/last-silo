@@ -103,6 +103,8 @@ void main() {
       await tester.pump();
       expect(find.text('Atak +${itemOf(api, 'lom_bojowy')['attack']}'), findsOneWidget);
       expect(find.text('✓ w zestawie II'), findsOneWidget);
+      await tester.ensureVisible(find.text('Zdejmij z II'));
+      await tester.pump();
       await tester.tap(find.text('Zdejmij z II'));
       await tester.pump();
       expect(api.posts.last.$1, '/items/${idOf(api, 'lom_bojowy')}/unequip');
@@ -127,6 +129,8 @@ void main() {
     testWidgets('receptury: profil słowem (atak / obrona / zjazd) i filtr „Bojowe”', (tester) async {
       await pump(tester, WorkshopScreen(state: appState(FakeApi())));
       await tester.scrollUntilVisible(find.widgetWithText(ChoiceChip, 'Bojowe'), 300, scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Bojowe'));
+      await tester.pump();
       await tester.tap(find.widgetWithText(ChoiceChip, 'Bojowe'));
       await tester.pump();
       await tester.scrollUntilVisible(find.text('Łom bojowy').last, 300, scrollable: find.byType(Scrollable).first);

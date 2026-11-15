@@ -445,6 +445,7 @@ class _HistoryLine extends StatelessWidget {
       if ((res['samples'] as num) > 0) '${res['samples']} prób.',
       for (final e in mats.entries) '${e.value} ${resourceNames[e.key] ?? e.key}',
       '${res['xp']} XP',
+      if (res['rune'] is String) 'runa ${runeLabelFromId(res['rune'] as String)}',
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
