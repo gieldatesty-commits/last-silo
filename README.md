@@ -25,10 +25,10 @@ docker compose up -d --build
 | POST | `/players` | tworzy postać: `{nickname, archetype}`, losuje pozycję silosu i ukryte złoże |
 | GET | `/silo` | stan silosu; rozlicza produkcję, parę i ukończone ulepszenia; `player.activeLoadout`, w `queue` numer zestawu zjazdu (`loadout`) |
 | POST | `/buildings/:type/upgrade` | ulepszenie budynku; wymaga nagłówka `Idempotency-Key` |
-| GET | `/dives/routes` | trasy zjazdów: koszt, czas, Twoja szansa, zakres nagród, bogactwo strefy (opis, bez liczb) |
+| GET | `/dives/routes` | trasy zjazdów: koszt, czas, Twoja szansa, zakres nagród (z premią kompletu aktywnego zestawu), bogactwo strefy (opis, bez liczb) |
 | POST | `/dives` | start zjazdu `{routeId}`; moc zestawu zapisana przy dodaniu (`loadout` w odpowiedzi); wymaga `Idempotency-Key` |
 | GET | `/dives/history` | ostatnie rozstrzygnięte zjazdy |
-| GET | `/items` | ekwipunek (profil `bonus`/`attack`/`defense` z mnożnikiem rzadkości, `rarity {id, name, sockets}`, `nextUpgrade` z `tech`/`techName`/`techDone`, `inLoadouts`, `equipped` = w aktywnym), receptury z profilem, zakres jakości; `activeLoadout`, `loadouts` (slot → przedmiot), `loadoutStats`, `siloDefense` (obrona silosu, gdyby aktywny był dany zestaw) |
+| GET | `/items` | ekwipunek (profil `bonus`/`attack`/`defense` z mnożnikiem rzadkości, `rarity {id, name, sockets}`, `nextUpgrade` z `tech`/`techName`/`techDone`, `inLoadouts`, `equipped` = w aktywnym), receptury z profilem, zakres jakości; `activeLoadout`, `loadouts` (slot → przedmiot), `loadoutStats` (z bonusami kompletów), `siloDefense` (obrona silosu, gdyby aktywny był dany zestaw), `sets` (postęp kompletów w obu zestawach, progi), `setsActive` (aktywne komplety każdego zestawu) |
 | POST | `/items/craft` | wytworzenie `{recipeId}`; ruda + żetony; jakość i rzadkość losowane z zapisanego ziarna; `Idempotency-Key` |
 | POST | `/items/:id/equip` · `/unequip` · `/repair` | założenie (1 na slot w zestawie) / zdjęcie `{loadout?: 1\|2}` (domyślnie aktywny; zdjęcie spoza zestawu: 409 `not_equipped`), naprawa za rudę; `Idempotency-Key` |
 | POST | `/loadouts/:n/activate` | przełączenie aktywnego zestawu (1 albo 2; `already_active`, `invalid_loadout`); `Idempotency-Key` |

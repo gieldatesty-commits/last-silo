@@ -116,9 +116,10 @@ export async function listItems(ctx: Ctx, userId: string) {
     runeCatalog: runeCatalog(cfg),
     loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
     loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
-    // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)
+    // komplety: postęp w obu zestawach i aktywne progi (docs/ekwipunek-v1.0.md §6)
     sets: setProgress(cfg, { '1': await loadoutRecipes(ctx.db, userId, 1), '2': await loadoutRecipes(ctx.db, userId, 2) }),
     setsActive: { '1': setBonuses(cfg, await loadoutRecipes(ctx.db, userId, 1)).active, '2': setBonuses(cfg, await loadoutRecipes(ctx.db, userId, 2)).active },
+    // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)
     siloDefense: { '1': Math.round((await siloDefense(ctx.db, cfg, userId, 1)) * 100) / 100, '2': Math.round((await siloDefense(ctx.db, cfg, userId, 2)) * 100) / 100 },
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,

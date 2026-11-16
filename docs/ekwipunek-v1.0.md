@@ -143,7 +143,7 @@ Dozwolone efekty (te same mechanizmy, co badania i zestaw): `dive_power` (stała
 | rdzen | Komplet Rdzenia | wiertlo_rdzeniowe, kombinezon_izolowany, lampa_rezonansowa, skaner_sejsmiczny | dive_ore_pct 6 | repair_pct −25, dive_power 1,2 |
 | wartownik | Komplet Wartownika | karabin_pneumatyczny, plyta_wartownika, noktowizor, celownik | defense 1,5 | attack 0,5, defense 1,0 (po symulacji §10.4; start: attack 2,0) |
 
-Progi nie sumują się z samymi sobą: 4 części dają bonus2 **i** bonus4. `dive_ore_pct` z kompletu mnoży się z mnożnikiem archetypu i badań tak jak `fx.diveOre`. `GET /items` zwraca `sets: [{id, name, pieces, have: {"1": n, "2": n}, bonus2, bonus4}]`.
+Część zepsuta wypada z progu: gdy komplet spada np. z 4/4 do 3/4, znikają bonusy 4 części (także zniżka napraw Rdzenia) aż do naprawy — naprawa tej części idzie bez zniżki. Progi nie sumują się z samymi sobą: 4 części dają bonus2 **i** bonus4. `dive_ore_pct` z kompletu mnoży się z mnożnikiem archetypu i badań tak jak `fx.diveOre`. `GET /items` zwraca `sets: [{id, name, pieces, have: {"1": n, "2": n}, bonus2, bonus4}]`.
 
 ## 7. Klient
 Przed kodem: makieta nowego Warsztatu w artefakcie Design (jak Zjazdy i Warsztat w warstwie wizualnej), z:
@@ -162,7 +162,7 @@ Każdy etap: migracja, config (`version`), `src/game` + testy jednostkowe, serwi
 | 1 | Zestawy, profil atak/obrona, bronie, zrzuty stanu, zużycie w najazdach, moc ligowa | 016: `loadouts`, `players.active_loadout`, `dives.loadout`, `dives.item_bonus`, `raids.attack_power`, `raids.attacker_loadout`, przeniesienie `equipped` | 1.6.0 |
 | 2 | Rzadkość, tiery 6–10, badania `kuznia_glebi`, `kuznia_rdzenia` | 017: `items.rarity`, `items.seed` | 1.7.0 |
 | 3 | Runy: wytwarzanie, łup III, osadzanie, wyjmowanie | 018: `item_runes` | 1.8.0 |
-| 4 | Komplety | – | 1.9.0 |
+| 4 | Komplety | 019: `dives.set_ore_pct` (zrzut premii kompletu do rudy) | 1.9.0 |
 
 **Wdrożenie etapu 1:** migracja 016 usuwa `items.equipped` (przenosi do `loadouts`), więc powrót do serwera sprzed 1.6.0 wymaga odtworzenia bazy z kopii. Przed wdrożeniem: kopia bazy.
 
