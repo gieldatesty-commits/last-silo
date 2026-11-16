@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { BUILDING_TYPES, parseGameConfig, type BuildingType } from '../config.js';
 import { initialLevels, maxLevelOf, upgradeCost, upgradeSeconds } from '../game/formulas.js';
 import { advance, type PendingUpgrade, type SiloState } from '../game/silo.js';
+import { setBonuses } from '../game/sets.js';
 import { rollRuneDrop, runeCraftCost, runesProfile, unsocketFee } from '../game/runes.js';
 import { addProfiles, itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
 import { dayIndex, genOffers } from '../game/contracts.js';
@@ -32,6 +33,8 @@ const NOGEAR = arg('nogear', 0) === 1;
 const NOMATS = arg('nomats', 0) === 1; // wyłącza materiały (punkt odniesienia)
 const TRADERS = arg('traders', 0); // liczba graczy-handlarzy: po poz. 5 i Radiostacji 5 przestają zjeżdżać i żyją z arbitrażu
 const NOMARKET = arg('nomarket', 0) === 1; // bez rynku graczy i bota podłogi (tylko NPC)
+/** wariant: runa Bastionu w ochronie zestawu I (obronnego) zamiast Żył */
+const BASTION = arg('bastion', 0) === 1;
 const NORAIDS = arg('noraids', 0) === 1; // wyłącza najazdy (punkt odniesienia) // bez sprzętu i badań (punkt odniesienia)
 
 type Style = 'hardcore' | 'regularny' | 'okazjonalny';
@@ -166,7 +169,13 @@ const pools = new Map(Object.keys(cfg.dives.zones).map((z) => [z, { remaining: p
 let seedCounter = 1000;
 
 /** Profil zestawu (niezepsute przedmioty). */
-const setProfile = (set: Map<string, Gear>): Profile => [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier, g.rm)), runesProfile(cfg, g.runes)) : sum), ZERO_PROFILE);
+/** Komplety zestawu (niezepsute części), jak w serwerze. */
+const setOf = (set: Map<string, Gear>) => setBonuses(cfg, [...set.values()].filter((g) => g.dur > 0).map((g) => g.recipe));
+const setProfile = (set: Map<string, Gear>): Profile => {
+  const items = [...set.values()].reduce((sum, g) => (g.dur > 0 ? addProfiles(addProfiles(sum, itemProfile(cfg, cfg.items.recipes.find((r) => r.id === g.recipe)!, g.quality, g.tier, g.rm)), runesProfile(cfg, g.runes)) : sum), ZERO_PROFILE);
+  const b = setOf(set).total;
+  return addProfiles(items, { dive: b.dive_power, attack: b.attack, defense: b.defense });
+};
 /** Obrona silosu: zestaw aktywny (I) w pełni + część zestawu II. */
 const siloDef = (q: P) => setProfile(q.gear).defense + cfg.items.loadouts.passive_defense_share * setProfile(q.gear2).defense;
 /** Zestaw, którym gracz atakuje (bojowy, jeśli go ma). */
@@ -260,7 +269,7 @@ function act(p: P, nowMs: number) {
     pool.remaining = regenPool(cfg, route.zone, pool.remaining, pool.total, nowMs - pool.at);
     pool.at = Math.max(pool.at, nowMs);
     const fx = fxOf(p);
-    const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier * fx.diveOre, d.seed, pool, bonusOf(p), fx.samples, NOMATS ? {} : p.profile);
+    const out = resolveDive(cfg, route, p.stats, p.arch.dive_ore_multiplier * fx.diveOre * (1 + setOf(p.gear).total.dive_ore_pct / 100), d.seed, pool, bonusOf(p), fx.samples, NOMATS ? {} : p.profile);
     for (const [m, n] of Object.entries(out.materials)) p.mats[m] = (p.mats[m] ?? 0) + n;
     for (const g of p.gear.values()) if (g.dur > 0) g.dur--;
     p.samples += out.samples;
@@ -420,10 +429,12 @@ function spendGear(p: P, nowMs: number) {
   // zakończ badanie
   if (p.research && p.research.endsAt <= nowMs) { p.done.add(p.research.id); p.research = null; }
   // naprawy (oba zestawy)
-  for (const g of [...p.gear.values(), ...p.gear2.values()]) {
+  const setRep = (set: Map<string, Gear>) => 1 + Math.min(0, setOf(set).total.repair_pct) / 100;
+  const rep1 = setRep(p.gear), rep2 = setRep(p.gear2);
+  for (const [g, sr] of [...[...p.gear.values()].map((x) => [x, rep1] as const), ...[...p.gear2.values()].map((x) => [x, rep2] as const)]) {
     const rc = cfg.items.recipes.find((r) => r.id === g.recipe)!;
     if (g.dur <= g.max * 0.2) {
-      const c = Math.ceil(rc.ore * cfg.items.repair_cost_fraction * fx.repair * tierRepairMult(cfg, g.tier) * ((g.max - g.dur) / g.max));
+      const c = Math.ceil(rc.ore * cfg.items.repair_cost_fraction * fx.repair * sr * tierRepairMult(cfg, g.tier) * ((g.max - g.dur) / g.max));
       if (ore() >= c * 2) { pay('repair', c); g.dur = g.max; }
     }
   }
@@ -440,14 +451,23 @@ function spendGear(p: P, nowMs: number) {
       p.research = { id: t.id, endsAt: nowMs + researchSeconds(cfg, t.seconds, lab) * 1000 };
     }
   }
-  // sprzęt: najlepsza receptura na slot (po bonusie), jeśli lepsza od obecnej i stać z zapasem
+  // sprzęt: najlepsza receptura na slot (po bonusie), jeśli lepsza od obecnej i stać z zapasem;
+  // część kompletu wygrywa, gdy ustępuje najlepszej najwyżej o 10% (gracz zbiera komplety)
   const wl = p.silo.levels.warsztat;
+  type Rc = (typeof cfg.items.recipes)[number];
+  const inSet = (r: Rc) => cfg.items.sets.some((st) => st.pieces.includes(r.id));
+  const preferSetPiece = (cands: Rc[], score: (r: Rc) => number): Rc | undefined => {
+    const top = cands[0];
+    if (!top) return undefined;
+    return cands.find((r) => inSet(r) && score(r) >= 0.9 * score(top)) ?? top;
+  };
   for (const slot of cfg.items.slots) {
     const cur = p.gear.get(slot);
     const curBonus = cur ? cfg.items.recipes.find((r) => r.id === cur.recipe)!.bonus : 0;
-    const best = cfg.items.recipes
+    const cands = cfg.items.recipes
       .filter((r) => { const pl = matPlan(r.radio, r.materials); return r.slot === slot && r.workshop <= wl && (!r.tech || fx.unlocked.has(r.id)) && r.bonus > curBonus && pl !== null && ore() >= (r.ore + pl.exch) * 2 && p.tokens >= r.tokens; })
-      .sort((a, b) => b.bonus - a.bonus)[0];
+      .sort((a, b) => b.bonus - a.bonus);
+    const best = preferSetPiece(cands, (r) => r.bonus);
     if (best) {
       takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
       pay('craft', best.ore); p.tokens -= best.tokens;
@@ -463,9 +483,10 @@ function spendGear(p: P, nowMs: number) {
     for (const slot of cfg.items.slots) {
       const cur = p.gear2.get(slot);
       const curC = cur ? combat(cfg.items.recipes.find((r) => r.id === cur.recipe)!) : 0;
-      const best = cfg.items.recipes
+      const cands = cfg.items.recipes
         .filter((r) => { const pl = matPlan(r.radio, r.materials); return r.slot === slot && combat(r) > curC && r.workshop <= wl && (!r.tech || fx.unlocked.has(r.id)) && pl !== null && ore() >= (r.ore + pl.exch) * reserve && p.tokens >= r.tokens; })
-        .sort((a, b) => combat(b) - combat(a))[0];
+        .sort((a, b) => combat(b) - combat(a));
+      const best = preferSetPiece(cands, combat);
       if (best) {
         takeMats(best.materials, matPlan(best.radio, best.materials)!.exch);
         pay('craft', best.ore); p.tokens -= best.tokens;
@@ -501,7 +522,7 @@ function spendGear(p: P, nowMs: number) {
         }
       }
     };
-    fill(p.gear, () => 'zyly');
+    fill(p.gear, (slot) => (BASTION && slot === 'ochrona' ? 'bastionu' : 'zyly'));
     if (p.gear2.size) fill(p.gear2, (slot) => (slot === 'ochrona' ? 'bastionu' : 'ostrza'));
   }
   // wzmacnianie przedmiotów (tier): najtańsze możliwe, gdy stać z zapasem
@@ -626,6 +647,13 @@ console.log(`Sprzęt: śr. założonych ${avgAll((p) => p.gear.size).toFixed(1)}
     const g = players.filter((p) => p.style === st);
     const avg = (f: (p: P) => number) => g.reduce((a, p) => a + f(p), 0) / Math.max(1, g.length);
     console.log(`Runy ${st}: wytworzone ${avg((p) => p.runeStats.crafted).toFixed(1)} | z łupu ${avg((p) => p.runeStats.dropped).toFixed(1)} | osadzone ${avg((p) => p.runeStats.socketed).toFixed(1)} | w przedmiotach teraz ${avg((p) => [...p.gear.values(), ...p.gear2.values()].reduce((a, x) => a + x.runes.length, 0)).toFixed(1)} | ruda na runy ${avg((p) => p.spent.runes).toFixed(0)}`);
+  }
+}
+{
+  for (const st of cfg.items.sets) {
+    const pct = (f: (p: P) => boolean) => ((players.filter(f).length / Math.max(1, players.length)) * 100).toFixed(0);
+    const has = (p: P, set: Map<string, Gear>, k: 'bonus2' | 'bonus4') => setOf(set).active.some((a) => a.id === st.id && a[k]);
+    console.log(`Komplet ${st.id}: 2+ części ${pct((p) => has(p, p.gear, 'bonus2') || has(p, p.gear2, 'bonus2'))}% graczy | 4 części ${pct((p) => has(p, p.gear, 'bonus4') || has(p, p.gear2, 'bonus4'))}%`);
   }
 }
 {

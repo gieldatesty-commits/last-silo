@@ -229,3 +229,19 @@ Model w symulacji: łup runy III z `rollRuneDrop` (osobny strumień ziarna, jak 
 | 3 | 10,9% → 12,2% | dzień 154 | 16,2 tys. | 4,3 / 6,7 / 3,7 | 6,5 tys. | 62/68% |
 
 Kryteria §8 spełnione: zjazdy głównym źródłem, ruda nie zalega, pierwszy tier 10 po dniu 120. Łupy rosną o 1–1,3 pkt względem 1.7.0 (runy Ostrzy w zestawach bojowych), nadal poniżej 1.6.1 (12–13,5%). **Względem punktu odniesienia kryterium 2 (1.5.0: 10,4 / 9,4 / 10,8%) to +1,7 / +1,9 / +1,4 pkt — mieści się w limicie +3 pkt, ale zapas na etap 4 (komplet Wartownika: atak) to tylko ok. 1,1–1,6 pkt.** Uwaga do modelu: boty osadzają Ostrza w całym zestawie bojowym, a Bastionu tylko w slocie ochrony zestawu II (liczonym ×0,75 w obronie); w zestawie I, którym się bronią, są same Żyły — symulacja może więc przeszacowywać przewagę ataku. Przed etapem 4: wariant z Bastionu w zestawie obronnym albo słabsze Ostrza (decyzja Damiana). Runy to małe ujście (ok. 2% dochodu hardcore); łup III to ok. 6 run na sezon u hardcore i 3–4 u okazjonalnych.
+
+### 10.4 Etap 4: komplety (config 1.9.0) — kryterium łupów niespełnione przy liczbach z §6
+Model: komplety z `setBonuses` (moc, atak, obrona, ruda, naprawy) jak w serwerze; bot wybiera część kompletu, gdy ustępuje najlepszej recepturze najwyżej o 10%; wariant `--bastion=1`: runa Bastionu w ochronie zestawu obronnego (I) zamiast Żył. Punkt odniesienia kryterium 2: 1.5.0 ≈ 10,2% (limit ok. 13,2%).
+
+| Wariant (3 ziarna) | Łupy w dochodzie | Uwagi |
+|---|---|---|
+| §6: Wartownik 2: obrona 1,5 / 4: atak 2,0 | 14,4–15,8% | Wartownik 4/4 u 70% graczy, Rdzeń 4/4 u ok. 58% |
+| §6 + `--bastion=1` | 14,2–15,0% | Bastion w obronie pomaga mało |
+| Wartownik 4: atak 1,0 | 13,2–14,2% | |
+| Wartownik 4: atak 0,5 | 12,2–13,6% | |
+| Wartownik 2: atak 0,5 / 4: obrona 2,0 | 12,6–13,6% | |
+| **Wartownik 2: obrona 1,5 / 4: atak 0,5 + obrona 1,0** | **10,5–12,6%** | w limicie, komplet nadal „bojowy” |
+| **Wartownik 2: obrona 1,0 / 4: obrona 1,0** | **10,6–12,3%** | w limicie, czysto obronny |
+| Wartownik 2: obrona 1,5 / 4: obrona 2,0 | 7,0–8,6% | poniżej 1.5.0 (najazdy słabną) |
+
+Pozostałe kryteria przy liczbach z §6: pierwszy tier 10 u hardcore w dniu 150–164, ruda w magazynie 17–18 tys., udział zjazdów u hardcore 61–63%. Komplet Sztygara prawie nieużywany przez boty (zastępowany Rdzeniem). **Balansu nie zmieniono; decyzja u Damiana.**
