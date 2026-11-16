@@ -5,7 +5,7 @@ import type { GameConfig } from '../config.js';
 import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
-import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, loadoutRecipes, loadoutSetBonus, siloDefense, type LoadoutNo } from './gear.js';
+import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, type LoadoutNo } from './gear.js';
 import { setBonuses, setProgress } from '../game/sets.js';
 import { runeCatalog, runeRecipes, runeWallet } from './runes.js';
 import { parseRune, runesProfile, runesRepairMult, unsocketFee } from '../game/runes.js';
@@ -44,18 +44,36 @@ const withTechName = (cfg: GameConfig, c: ReturnType<typeof upgradeTierCost>, do
 });
 
 /** Zestawy, w których jest przedmiot, i aktywny zestaw gracza (do pól `inLoadouts` i `equipped`). */
-type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]>; done: Set<string>; runesOf: Map<string, { socket: number; rune_id: string }[]>; setRepair: Record<LoadoutNo, number> };
+type Membership = {
+  active: LoadoutNo;
+  of: Map<string, LoadoutNo[]>;
+  done: Set<string>;
+  runesOf: Map<string, { socket: number; rune_id: string }[]>;
+  /** receptury niezepsutych przedmiotów każdego zestawu (komplety) */
+  recipesBy: Record<LoadoutNo, string[]>;
+  setRepair: Record<LoadoutNo, number>;
+};
 
 async function membership(db: Trx | Ctx['db'], cfg: GameConfig, userId: string): Promise<Membership> {
-  const rows = await db.selectFrom('loadouts').select(['item_id', 'loadout']).where('user_id', '=', userId).orderBy('loadout').execute();
+  const rows = await db
+    .selectFrom('loadouts')
+    .innerJoin('items', 'items.id', 'loadouts.item_id')
+    .select(['loadouts.item_id', 'loadouts.loadout', 'items.recipe_id', 'items.durability'])
+    .where('loadouts.user_id', '=', userId)
+    .orderBy('loadouts.loadout')
+    .execute();
   const of = new Map<string, LoadoutNo[]>();
-  for (const r of rows) of.set(String(r.item_id), [...(of.get(String(r.item_id)) ?? []), r.loadout as LoadoutNo]);
+  const recipesBy: Record<LoadoutNo, string[]> = { 1: [], 2: [] };
+  for (const r of rows) {
+    of.set(String(r.item_id), [...(of.get(String(r.item_id)) ?? []), r.loadout as LoadoutNo]);
+    if (r.durability > 0) recipesBy[r.loadout as LoadoutNo].push(r.recipe_id);
+  }
   const runeRows = await db.selectFrom('item_runes').innerJoin('items', 'items.id', 'item_runes.item_id').select(['item_runes.item_id', 'item_runes.socket', 'item_runes.rune_id']).where('items.user_id', '=', userId).orderBy('item_runes.socket').execute();
   const runesOf = new Map<string, { socket: number; rune_id: string }[]>();
   for (const r of runeRows) runesOf.set(String(r.item_id), [...(runesOf.get(String(r.item_id)) ?? []), { socket: r.socket, rune_id: r.rune_id }]);
-  // zniżka napraw z kompletów każdego zestawu (repair_pct ≤ 0)
-  const setRepair = { 1: (await loadoutSetBonus(db as never, cfg, userId, 1)).repair_pct, 2: (await loadoutSetBonus(db as never, cfg, userId, 2)).repair_pct } as Record<LoadoutNo, number>;
-  return { active: await activeLoadout(db, userId), of, done: (await loadEffects(db, cfg, userId)).done, runesOf, setRepair };
+  // zniżka napraw z kompletów każdego zestawu (repair_pct ≤ 0), z tych samych wierszy — bez dodatkowych zapytań
+  const setRepair = { 1: setBonuses(cfg, recipesBy[1]).total.repair_pct, 2: setBonuses(cfg, recipesBy[2]).total.repair_pct } as Record<LoadoutNo, number>;
+  return { active: await activeLoadout(db, userId), of, done: (await loadEffects(db, cfg, userId)).done, runesOf, recipesBy, setRepair };
 }
 
 const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership, repairMult = 1) => {
@@ -102,6 +120,10 @@ export async function listItems(ctx: Ctx, userId: string) {
   const fx = await loadEffects(ctx.db, cfg, userId);
   const qr = qualityRange(cfg, wl, fx.quality);
   const m = await membership(ctx.db, cfg, userId);
+  // profile obu zestawów raz: statystyki i obrona silosu (pełna z aktywnego + passive_defense_share z drugiego, jak gear.siloDefense)
+  const p1 = await loadoutProfile(ctx.db, cfg, userId, 1);
+  const p2 = await loadoutProfile(ctx.db, cfg, userId, 2);
+  const share = cfg.items.loadouts.passive_defense_share;
   const slotsOf = (lo: LoadoutNo) => {
     const out: Record<string, string | null> = Object.fromEntries(cfg.items.slots.map((s) => [s, null]));
     for (const [itemId, los] of m.of) if (los.includes(lo)) out[items.find((i) => String(i.id) === itemId)!.slot] = itemId;
@@ -115,12 +137,12 @@ export async function listItems(ctx: Ctx, userId: string) {
     runeRecipes: await runeRecipes(ctx.db, cfg, userId),
     runeCatalog: runeCatalog(cfg),
     loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
-    loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
+    loadoutStats: { '1': round(p1), '2': round(p2) },
     // komplety: postęp w obu zestawach i aktywne progi (docs/ekwipunek-v1.0.md §6)
-    sets: setProgress(cfg, { '1': await loadoutRecipes(ctx.db, userId, 1), '2': await loadoutRecipes(ctx.db, userId, 2) }),
-    setsActive: { '1': setBonuses(cfg, await loadoutRecipes(ctx.db, userId, 1)).active, '2': setBonuses(cfg, await loadoutRecipes(ctx.db, userId, 2)).active },
+    sets: setProgress(cfg, { '1': m.recipesBy[1], '2': m.recipesBy[2] }),
+    setsActive: { '1': setBonuses(cfg, m.recipesBy[1]).active, '2': setBonuses(cfg, m.recipesBy[2]).active },
     // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)
-    siloDefense: { '1': Math.round((await siloDefense(ctx.db, cfg, userId, 1)) * 100) / 100, '2': Math.round((await siloDefense(ctx.db, cfg, userId, 2)) * 100) / 100 },
+    siloDefense: { '1': Math.round((p1.defense + share * p2.defense) * 100) / 100, '2': Math.round((p2.defense + share * p1.defense) * 100) / 100 },
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
     quality: { min: Math.round(qr.min * 100) / 100, max: Math.round(qr.max * 100) / 100 },

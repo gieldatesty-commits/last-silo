@@ -7,6 +7,8 @@ abstract final class Ls {
   static const steel = Color(0xFF3A4558);
   static const steelLight = Color(0xFF55637A);
   static const copper = Color(0xFFC8794A);
+  /// jasna miedź: tekst kompletów (dopisek receptury, aktywne komplety na kafelkach zestawów)
+  static const copperLight = Color(0xFFF0C79A);
   static const copperDark = Color(0xFF8E4F2E);
   static const amber = Color(0xFFF0B45A);
   static const teal = Color(0xFF62C9C0);

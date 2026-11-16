@@ -13,6 +13,16 @@ export const BUILDING_TYPES = ['szyb_glowny', 'generator_pary', 'magazyn', 'wars
 export type BuildingType = (typeof BUILDING_TYPES)[number];
 
 const pos = z.number().positive();
+// bonus kompletu: naprawy tylko jako zniżka (−100 < x ≤ 0), ruda > −100%, moc/atak/obrona nieujemne
+const setBonus = z
+  .object({
+    dive_power: z.number().min(0).optional(),
+    dive_ore_pct: z.number().gt(-100).optional(),
+    attack: z.number().min(0).optional(),
+    defense: z.number().min(0).optional(),
+    repair_pct: z.number().gt(-100).max(0).optional(),
+  })
+  .strict();
 
 export const GameConfigSchema = z
   .object({
@@ -87,8 +97,8 @@ export const GameConfigSchema = z
             id: z.string(),
             name: z.string(),
             pieces: z.array(z.string()).length(4),
-            bonus2: z.object({ dive_power: z.number().optional(), dive_ore_pct: z.number().optional(), attack: z.number().optional(), defense: z.number().optional(), repair_pct: z.number().optional() }).strict(),
-            bonus4: z.object({ dive_power: z.number().optional(), dive_ore_pct: z.number().optional(), attack: z.number().optional(), defense: z.number().optional(), repair_pct: z.number().optional() }).strict(),
+            bonus2: setBonus,
+            bonus4: setBonus,
           }),
         )
         .default([]),
@@ -284,6 +294,13 @@ export const GameConfigSchema = z
         if (inSet.has(pc)) ctx.addIssue({ code: 'custom', message: `komplet ${st.id}: ${pc} jest już w komplecie ${inSet.get(pc)}` });
         inSet.set(pc, st.id);
       }
+    const setIds = new Set<string>();
+    for (const st of cfg.items.sets) {
+      if (setIds.has(st.id)) ctx.addIssue({ code: 'custom', message: `komplet ${st.id}: powtórzony id` });
+      setIds.add(st.id);
+      const slots = st.pieces.map((pc) => cfg.items.recipes.find((r) => r.id === pc)?.slot);
+      if (new Set(slots).size !== slots.length) ctx.addIssue({ code: 'custom', message: `komplet ${st.id}: części muszą być z różnych slotów` });
+    }
     for (const m of cfg.geology.materials) if (!cfg.exchange.buy_ore[m]) ctx.addIssue({ code: 'custom', message: `wymiana: brak ceny ${m}` });
     for (const x of [...cfg.items.recipes, ...cfg.research.techs]) for (const m of Object.keys(x.materials)) if (!cfg.geology.materials.includes(m)) ctx.addIssue({ code: 'custom', message: `${x.id}: nieznany materiał ${m}` });
     const tids = new Set(cfg.research.techs.map((t) => t.id));

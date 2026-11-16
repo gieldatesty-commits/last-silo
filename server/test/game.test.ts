@@ -261,5 +261,14 @@ describe('komplety (czyste funkcje)', () => {
     const yaml = readFileSync('../config/game.yaml', 'utf8');
     expect(() => parseGameConfig(yaml.replace('pieces: [karabin_pneumatyczny,', 'pieces: [mlot_pneumatyczny,'))).toThrow();
     expect(() => parseGameConfig(yaml.replace('pieces: [karabin_pneumatyczny,', 'pieces: [nie_ma_takiej,'))).toThrow();
+    // ten sam id kompletu dwa razy
+    expect(() => parseGameConfig(yaml.replace('- { id: rdzen,     name: Komplet Rdzenia,', '- { id: sztygar,   name: Komplet Rdzenia,'))).toThrow();
+    // dwie części z tego samego slotu (4 części nie dałoby się założyć naraz)
+    expect(() => parseGameConfig(yaml.replace('pieces: [mlot_pneumatyczny, helm_wzmocniony, lampa_wibracyjna, detektor_zylowy]', 'pieces: [mlot_pneumatyczny, kilof, lampa_wibracyjna, detektor_zylowy]'))).toThrow();
+    // zakresy: naprawy tylko zniżka (≤ 0, > −100), ruda > −100, atak/obrona/moc ≥ 0
+    expect(() => parseGameConfig(yaml.replace('bonus4: { repair_pct: -25,', 'bonus4: { repair_pct: 10,'))).toThrow();
+    expect(() => parseGameConfig(yaml.replace('bonus4: { repair_pct: -25,', 'bonus4: { repair_pct: -100,'))).toThrow();
+    expect(() => parseGameConfig(yaml.replace('bonus2: { dive_ore_pct: 5 }', 'bonus2: { dive_ore_pct: -100 }'))).toThrow();
+    expect(() => parseGameConfig(yaml.replace('bonus2: { defense: 1.5 }', 'bonus2: { defense: -1 }'))).toThrow();
   });
 });

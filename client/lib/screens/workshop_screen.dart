@@ -276,7 +276,7 @@ class _LoadoutTiles extends StatelessWidget {
                   ]),
                   const SizedBox(height: 6),
                   for (final line in activeSetLines(sets, n))
-                    Padding(padding: const EdgeInsets.only(top: 2), child: Text(line, style: const TextStyle(fontSize: 11, height: 1.35, color: Color(0xFFF0C79A)))),
+                    Padding(padding: const EdgeInsets.only(top: 2), child: Text(line, style: const TextStyle(fontSize: 11, height: 1.35, color: Ls.copperLight))),
                   Wrap(spacing: 8, runSpacing: 2, children: [
                     for (final (name, v) in parts)
                       Text('$name +${fmtDec(asNum(v ?? 0))}', style: TextStyle(fontSize: 12, color: asNum(v ?? 0) > 0 ? Ls.text : Ls.textFaint, fontWeight: asNum(v ?? 0) > 0 ? FontWeight.w600 : FontWeight.w400)),
@@ -603,7 +603,7 @@ class _RecipeRow extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 3),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(border: Border.all(color: Ls.copper.withValues(alpha: 0.6)), borderRadius: BorderRadius.circular(9)),
-                child: Text(setName!, style: const TextStyle(fontSize: 11, color: Color(0xFFF0C79A))),
+                child: Text(setName!, style: const TextStyle(fontSize: 11, color: Ls.copperLight)),
               ),
             const SizedBox(height: 4),
             Wrap(spacing: 4, runSpacing: 4, children: [
