@@ -213,7 +213,8 @@ export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
   if (it.durability >= it.max_durability) throw new GameError(409, 'nothing_to_repair');
   const fx = await loadEffects(trx, cfg, userId);
   const itemRunes = (await trx.selectFrom('item_runes').select('rune_id').where('item_id', '=', String(it.id)).execute()).map((r) => r.rune_id);
-  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair * runesRepairMult(cfg, itemRunes) * setRepairMult(await membership(trx, cfg, userId), (await membership(trx, cfg, userId)).of.get(String(it.id)) ?? []), it.tier);
+  const mem = await membership(trx, cfg, userId);
+  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair * runesRepairMult(cfg, itemRunes) * setRepairMult(mem, mem.of.get(String(it.id)) ?? []), it.tier);
   try {
     await applyLedger(trx, userId, [{ resource: 'ore', delta: -cost, reason: 'repair_cost', ref: `repair:${it.id}:${it.durability}` }], cfg.version);
   } catch (e) {

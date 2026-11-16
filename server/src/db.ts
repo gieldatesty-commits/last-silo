@@ -88,6 +88,7 @@ export interface Database {
     result: unknown | null;
     loadout: number | null;
     item_bonus: number | null;
+    set_ore_pct: number | null;
   };
   items: {
     id: Generated<string>;

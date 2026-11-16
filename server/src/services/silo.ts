@@ -12,7 +12,7 @@ import { resolveDueRaids } from './raids.js';
 import { resolveDueShipments } from './caravans.js';
 import { resolveDueContracts } from './contracts.js';
 import { rollRuneDrop } from '../game/runes.js';
-import { activeLoadout, equippedBonus, loadEffects, loadoutProfile, wearLoadout, type LoadoutNo } from './gear.js';
+import { activeLoadout, equippedBonus, loadEffects, loadoutProfile, loadoutSetBonus, wearLoadout, type LoadoutNo } from './gear.js';
 import { randomInt } from 'node:crypto';
 
 export class GameError extends Error {
@@ -205,9 +205,12 @@ async function resolveDueDives(trx: Trx, cfg: GameConfig, userId: string, now: D
     const lo: LoadoutNo = d.loadout === 2 ? 2 : 1;
     const nowDive = (await loadoutProfile(trx, cfg, userId, lo)).dive;
     const bonus = Math.min(d.item_bonus ?? nowDive, nowDive) + fx.divePower;
+    // premia kompletu do rudy: zrzut z dodania, ale nie więcej niż teraz (jak moc); sprzed migracji 019 = teraz
+    const nowOre = (await loadoutSetBonus(trx, cfg, userId, lo)).dive_ore_pct;
+    const setOre = 1 + Math.min(d.set_ore_pct ?? nowOre, nowOre) / 100;
     const sRow = await trx.selectFrom('silos').select('seed').where('user_id', '=', userId).executeTakeFirstOrThrow();
     const profile = geologyProfile(cfg, { lat: p.silo_lat!, lon: p.silo_lon! }, Number(sRow.seed));
-    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
+    const out = resolveDive(cfg, route, stats, arch.dive_ore_multiplier * fx.diveOre * setOre, Number(d.seed), { remaining: pool.remaining, total: pool.total }, bonus, fx.samples, profile);
     await wearLoadout(trx, userId, lo);
 
     const rune = out.success ? rollRuneDrop(cfg, route, Number(d.seed)) : null;
@@ -381,9 +384,10 @@ export async function startDiveTx(trx: Trx, ctx: Ctx, userId: string, routeId: s
   // zrzut zestawu: przełączenie po dodaniu do kolejki nie zmienia mocy tego zjazdu (docs/ekwipunek-v1.0.md §3.2)
   const loadout = await activeLoadout(trx, userId);
   const itemBonus = (await loadoutProfile(trx, cfg, userId, loadout)).dive;
+  const setOrePct = (await loadoutSetBonus(trx, cfg, userId, loadout)).dive_ore_pct;
   const d = await trx
     .insertInto('dives')
-    .values({ user_id: userId, route_id: route.id, started_at: startsAt, ends_at: endsAt, seed, steam_cost: cost, result: null, loadout, item_bonus: itemBonus })
+    .values({ user_id: userId, route_id: route.id, started_at: startsAt, ends_at: endsAt, seed, steam_cost: cost, result: null, loadout, item_bonus: itemBonus, set_ore_pct: setOrePct })
     .returning('id')
     .executeTakeFirstOrThrow();
   await trx.insertInto('events_log').values({ user_id: userId, name: 'dive_started', props: JSON.stringify({ routeId: route.id, steam: cost }) }).execute();
@@ -400,6 +404,7 @@ export async function listRoutes(ctx: Ctx, userId: string) {
   const pools = await ctx.db.selectFrom('world_pools').selectAll().execute();
   const fx = await loadEffects(ctx.db, cfg, userId);
   const bonus = (await equippedBonus(ctx.db, cfg, userId)) + fx.divePower;
+  const setOre = 1 + (await loadoutSetBonus(ctx.db, cfg, userId, await activeLoadout(ctx.db, userId))).dive_ore_pct / 100;
   return cfg.dives.routes.map((r) => {
     const pool = pools.find((x) => x.zone === r.zone);
     return {
@@ -411,7 +416,7 @@ export async function listRoutes(ctx: Ctx, userId: string) {
       seconds: r.seconds,
       steam: steamCost(r, arch.dive_steam_multiplier * fx.diveSteam),
       chancePct: Math.round(diveChance(stats, r.difficulty, bonus) * 100),
-      ore: [Math.round(routeRewards(cfg, r).oreMin * arch.dive_ore_multiplier * fx.diveOre), Math.round(routeRewards(cfg, r).oreMax * arch.dive_ore_multiplier * fx.diveOre)],
+      ore: [Math.round(routeRewards(cfg, r).oreMin * arch.dive_ore_multiplier * fx.diveOre * setOre), Math.round(routeRewards(cfg, r).oreMax * arch.dive_ore_multiplier * fx.diveOre * setOre)],
       tokens: r.tokens,
       samples: r.samples,
       xp: routeRewards(cfg, r).xp,

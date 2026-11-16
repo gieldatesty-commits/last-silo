@@ -5,6 +5,7 @@ import { parseGameConfig } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { applyLedger, auditLedger, walletBalance } from '../src/ledger.js';
+import { rng } from '../src/game/rng.js';
 
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
 const { db, pool } = createDb(url);
@@ -101,5 +102,73 @@ describe('Komplety w zestawach', () => {
     expect(paid).toBe(w4);
     expect(await db.transaction().execute((trx) => walletBalance(trx, id, 'ore'))).toBe(ore0 - w4);
     expect(await auditLedger(db)).toEqual([]);
+  });
+});
+
+describe('Komplety: ruda w zjazdach (zrzut)', () => {
+  const gleboki = config.dives.routes.find((r) => r.id === 'gleboki')!;
+  /** Gracz poziomu 10 z 2 częściami Sztygara w zestawie `lo` (I aktywny). */
+  async function diver(lo: 1 | 2) {
+    const p = await newPlayer();
+    await pool.query('UPDATE players SET level = 10 WHERE user_id = $1', [p.id]);
+    const a = await give(p.id, 'mlot_pneumatyczny', [lo]);
+    const b = await give(p.id, 'helm_wzmocniony', [lo]);
+    return { ...p, a, b };
+  }
+  async function dive(p: { h: Record<string, string> }, key: string) {
+    // ziarno z pierwszą liczbą < 0,3: udany zjazd dla obu graczy (szansa na Głębokim ok. 0,5)
+    let seed = 1;
+    while (rng(seed)() >= 0.3) seed++;
+    nextSeed = seed;
+    return (await post(p.h, '/dives', key, { routeId: 'gleboki' })).json();
+  }
+  const resolved = async (diveId: string) => (await pool.query('SELECT set_ore_pct, result FROM dives WHERE id = $1', [diveId])).rows[0];
+
+  it('2 części Sztygara: set_ore_pct = 5 przy dodaniu, ruda ≈ ×1,05 względem gracza bez kompletu w aktywnym zestawie', async () => {
+    const withSet = await diver(1);
+    const noSet = await diver(2);
+    const d1 = await dive(withSet, 'sg-ore-0001');
+    const d2 = await dive(noSet, 'sg-ore-0002');
+    expect((await resolved(d1.diveId)).set_ore_pct).toBe(5);
+    expect((await resolved(d2.diveId)).set_ore_pct).toBe(0);
+    tick(gleboki.seconds + 1);
+    await items(withSet.h);
+    await items(noSet.h);
+    const r1 = (await resolved(d1.diveId)).result;
+    const r2 = (await resolved(d2.diveId)).result;
+    expect(r1.success && r2.success).toBe(true);
+    expect(Math.abs(r1.ore - r2.ore * 1.05)).toBeLessThanOrEqual(1.5);
+    expect(r1.ore).toBeGreaterThan(r2.ore);
+  });
+
+  it('zdjęcie części przed rozliczeniem obniża premię do 0 (min ze zrzutu i stanu teraz); zjazd sprzed migracji liczy się z zestawu teraz', async () => {
+    const a = await diver(1);
+    const ref = await diver(2);
+    const d1 = await dive(a, 'sg-min-0001');
+    const d2 = await dive(ref, 'sg-min-0002');
+    await post(a.h, `/items/${a.b}/unequip`, 'sg-min-0003', { loadout: 1 });
+    tick(gleboki.seconds + 1);
+    await items(a.h);
+    await items(ref.h);
+    expect((await resolved(d1.diveId)).result.ore).toBe((await resolved(d2.diveId)).result.ore);
+    // NULL (sprzed 019): bez zrzutu, liczone z zestawu w chwili rozliczenia — ta sama ruda co zjazd ze zrzutem 5%
+    const b = await diver(1);
+    const c = await diver(1);
+    const d3 = await dive(b, 'sg-min-0004');
+    const d4 = await dive(c, 'sg-min-0005');
+    await pool.query('UPDATE dives SET set_ore_pct = NULL WHERE id = $1', [d3.diveId]);
+    tick(gleboki.seconds + 1);
+    await items(b.h);
+    await items(c.h);
+    expect(Math.abs((await resolved(d3.diveId)).result.ore - (await resolved(d4.diveId)).result.ore)).toBeLessThanOrEqual(1);
+  });
+
+  it('/dives/routes: zakres rudy z premią kompletu aktywnego zestawu', async () => {
+    const a = await diver(1);
+    const ref = await diver(2);
+    const r1 = (await app.inject({ url: '/dives/routes', headers: a.h })).json().find((r: { id: string }) => r.id === 'gleboki');
+    const r2 = (await app.inject({ url: '/dives/routes', headers: ref.h })).json().find((r: { id: string }) => r.id === 'gleboki');
+    expect(Math.abs(r1.ore[1] - r2.ore[1] * 1.05)).toBeLessThanOrEqual(1);
+    expect(r1.ore[1]).toBeGreaterThan(r2.ore[1]);
   });
 });
