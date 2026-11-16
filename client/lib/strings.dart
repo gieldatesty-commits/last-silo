@@ -137,6 +137,22 @@ String runeEffectText(Object? effect, Object? value) {
   };
 }
 
+/// Krótkie nazwy kompletów do kafelków zestawów (klucze jak `id` z API); pełna nazwa przychodzi z serwera.
+const setShortNames = {'sztygar': 'Sztygar', 'rdzen': 'Rdzeń', 'wartownik': 'Wartownik'};
+
+/// Efekty kompletu słowem, w kolejności z configu: „ruda ze zjazdów +5%, zjazd +0,8”.
+String setEffectText(Map bonus) => [
+      for (final e in bonus.entries)
+        switch (e.key) {
+          'dive_ore_pct' => 'ruda ze zjazdów +${fmtDec(e.value as num)}%',
+          'dive_power' => 'zjazd +${fmtDec(e.value as num)}',
+          'attack' => 'atak +${fmtDec(e.value as num)}',
+          'defense' => 'obrona +${fmtDec(e.value as num)}',
+          'repair_pct' => 'naprawy −${fmtDec((e.value as num).abs())}%',
+          _ => '${e.key} ${e.value}',
+        },
+    ].join(', ');
+
 /// Znaki rzadkości (klucze jak `rarity.id` z API): rzadkość widać znakiem i nazwą, nie tylko kolorem.
 const rarityMarks = {'zwykly': '●', 'solidny': '◆', 'mistrzowski': '★', 'unikatowy': '✦'};
 

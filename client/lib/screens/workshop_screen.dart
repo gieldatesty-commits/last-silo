@@ -128,6 +128,7 @@ class _BenchState extends State<_Bench> {
             active: active,
             editing: editing,
             stats: stats,
+            sets: d,
             onTap: (n) => setState(() {
               _editing = n;
               _selected = null;
@@ -218,7 +219,9 @@ class _BenchState extends State<_Bench> {
             ),
             const SizedBox(height: 4),
             if (_filter == 'runes') _RunesPanel(d: d, state: widget.state, reload: widget.reload),
-            if (_filter != 'runes') for (final r in shown) _RecipeRow(r: r, state: widget.state, reload: widget.reload),
+            if (_filter != 'runes')
+              for (final r in shown)
+                _RecipeRow(r: r, state: widget.state, reload: widget.reload, setName: setOfRecipe(d, r['id']) == null ? null : lowerFirst('${setOfRecipe(d, r['id'])!['name']}')),
             if (_filter != 'runes' && shown.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Brak receptur w tym filtrze.', style: TextStyle(color: Ls.textMuted))),
           ]),
         ),
@@ -229,10 +232,12 @@ class _BenchState extends State<_Bench> {
 
 /// Dwa kafelki zestawów: stuknięcie pokazuje zestaw (podgląd), aktywny opisany słowem i znakiem, nie tylko kolorem.
 class _LoadoutTiles extends StatelessWidget {
-  const _LoadoutTiles({required this.active, required this.editing, required this.stats, required this.onTap});
+  const _LoadoutTiles({required this.active, required this.editing, required this.stats, required this.sets, required this.onTap});
   final int active;
   final int editing;
   final Map<String, dynamic> stats;
+  /// odpowiedź /items (komplety: `sets`, `setsActive`)
+  final Map<String, dynamic> sets;
   final void Function(int) onTap;
 
   @override
@@ -270,6 +275,8 @@ class _LoadoutTiles extends StatelessWidget {
                     ),
                   ]),
                   const SizedBox(height: 6),
+                  for (final line in activeSetLines(sets, n))
+                    Padding(padding: const EdgeInsets.only(top: 2), child: Text(line, style: const TextStyle(fontSize: 11, height: 1.35, color: Color(0xFFF0C79A)))),
                   Wrap(spacing: 8, runSpacing: 2, children: [
                     for (final (name, v) in parts)
                       Text('$name +${fmtDec(asNum(v ?? 0))}', style: TextStyle(fontSize: 12, color: asNum(v ?? 0) > 0 ? Ls.text : Ls.textFaint, fontWeight: asNum(v ?? 0) > 0 ? FontWeight.w600 : FontWeight.w400)),
@@ -437,6 +444,10 @@ class _ItemCard extends StatelessWidget {
         ]),
         const SizedBox(height: 4),
         ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: frac.clamp(0.0, 1.0).toDouble(), minHeight: 6, color: dc, backgroundColor: Ls.border)),
+        if (setOfRecipe(d, it['recipeId']) != null) ...[
+          const SizedBox(height: 10),
+          _SetProgress(set: setOfRecipe(d, it['recipeId'])!, d: d, loadout: editing),
+        ],
         if (asNum(it['sockets'] ?? 0) > 0) ...[
           const SizedBox(height: 10),
           _Sockets(it: it, d: d, state: state, reload: reload),
@@ -549,8 +560,10 @@ class _InventoryRow extends StatelessWidget {
 
 /// Receptura: koszt (brakujące na czerwono), wymagania przy blokadzie, „Wytwórz” tylko gdy wolno i stać.
 class _RecipeRow extends StatelessWidget {
-  const _RecipeRow({required this.r, required this.state, required this.reload});
+  const _RecipeRow({required this.r, required this.state, required this.reload, this.setName});
   final Map<String, dynamic> r;
+  /// „komplet Sztygara”, gdy receptura jest częścią kompletu
+  final String? setName;
   final AppState state;
   final Future<void> Function() reload;
 
@@ -585,6 +598,13 @@ class _RecipeRow extends StatelessWidget {
           final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${r['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
             Text('${profileText(r)} · ${r['durability']} wytrz. · ${slotNames[r['slot']] ?? r['slot']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+            if (setName != null)
+              Container(
+                margin: const EdgeInsets.only(top: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(border: Border.all(color: Ls.copper.withValues(alpha: 0.6)), borderRadius: BorderRadius.circular(9)),
+                child: Text(setName!, style: const TextStyle(fontSize: 11, color: Color(0xFFF0C79A))),
+              ),
             const SizedBox(height: 4),
             Wrap(spacing: 4, runSpacing: 4, children: [
               for (final (res, t, ok) in chips) LsResChip(res, t, ok: ok),
@@ -893,6 +913,72 @@ class _RunesPanel extends StatelessWidget {
           return Row(children: [mark, const SizedBox(width: 10), Expanded(child: info), const SizedBox(width: 8), button]);
         }),
       ),
+    );
+  }
+}
+
+
+/// Komplet, do którego należy receptura (z `sets` w /items), albo null.
+Map? setOfRecipe(Map d, Object? recipeId) => (d['sets'] as List? ?? const []).cast<Map>().where((s) => (s['pieces'] as List).contains(recipeId)).firstOrNull;
+
+String lowerFirst(String s) => s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
+
+/// Linie aktywnych kompletów zestawu `n` do kafelka: „✓ Sztygar 4/4: ruda ze zjazdów +5%, zjazd +0,8”.
+List<String> activeSetLines(Map d, int n) {
+  final active = ((d['setsActive'] as Map?)?['$n'] as List? ?? const []).cast<Map>();
+  return [
+    for (final a in active)
+      () {
+        final def = (d['sets'] as List? ?? const []).cast<Map>().where((s) => s['id'] == a['id']).firstOrNull;
+        final b2 = def == null ? '' : setEffectText(def['bonus2'] as Map);
+        final b4 = a['bonus4'] == true && def != null ? setEffectText(def['bonus4'] as Map) : '';
+        return '✓ ${setShortNames[a['id']] ?? a['name']} ${a['have']}/4: ${[b2, b4].where((x) => x.isNotEmpty).join(', ')}';
+      }(),
+  ];
+}
+
+/// Postęp kompletu na karcie przedmiotu: części w podglądanym zestawie, progi znakiem i słowem, brakujące części.
+class _SetProgress extends StatelessWidget {
+  const _SetProgress({required this.set, required this.d, required this.loadout});
+  final Map set;
+  final Map<String, dynamic> d;
+  final int loadout;
+
+  @override
+  Widget build(BuildContext context) {
+    final pieces = (set['pieces'] as List).cast<String>();
+    final have = asNum((set['have'] as Map?)?['$loadout'] ?? 0).toInt();
+    // części założone (i niezepsute) w tym zestawie — jak liczy serwer
+    final slots = ((d['loadouts'] as Map?)?['$loadout'] as Map?) ?? const {};
+    final items = asList(d['items']);
+    final inSet = {
+      for (final id in slots.values)
+        if (id != null) ...items.where((i) => i['id'] == id && i['broken'] != true).map((i) => i['recipeId'] as String),
+    };
+    String nameOf(String id) => (asList(d['recipes'])).where((r) => r['id'] == id).map((r) => r['name'] as String).firstOrNull ?? id;
+    Widget tier(int need, Map bonus) {
+      final ok = have >= need;
+      return Text('${ok ? '✓' : '○'} $need części: ${setEffectText(bonus)}', style: TextStyle(fontSize: 12, color: ok ? Ls.text : Ls.textMuted, fontWeight: ok ? FontWeight.w600 : FontWeight.w400));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: const Color(0xFF141925), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3546))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 2, children: [
+          Text('${set['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+          Text('$have z ${pieces.length} w zestawie ${loadoutName(loadout)}', style: const TextStyle(fontSize: 12, color: Color(0xFFC9D0DC))),
+        ]),
+        const SizedBox(height: 6),
+        tier(2, set['bonus2'] as Map),
+        const SizedBox(height: 2),
+        tier(4, set['bonus4'] as Map),
+        const SizedBox(height: 6),
+        const Text('CZĘŚCI', style: TextStyle(fontSize: 11, letterSpacing: 0.6, color: Ls.textFaint)),
+        const SizedBox(height: 2),
+        for (final p in pieces)
+          Text(inSet.contains(p) ? '✓ ${nameOf(p)}' : '○ brakuje: ${nameOf(p)}', style: TextStyle(fontSize: 12, color: inSet.contains(p) ? const Color(0xFFC9D0DC) : Ls.textMuted)),
+      ]),
     );
   }
 }

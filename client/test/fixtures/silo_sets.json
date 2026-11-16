@@ -1,0 +1,134 @@
+{
+  "player": {
+    "nickname": "Kompletowy2093",
+    "archetype": "gornik",
+    "level": 1,
+    "xp": 0,
+    "xpToNext": 12,
+    "stats": {
+      "sila": 5,
+      "technika": 3,
+      "percepcja": 2,
+      "wytrwalosc": 4
+    },
+    "freePoints": 0,
+    "activeLoadout": 1
+  },
+  "silo": {
+    "lat": 20.444933758188082,
+    "lon": 70.75069081038237,
+    "depth": 0,
+    "deposit": "bogate"
+  },
+  "wallet": {
+    "ore": 300,
+    "steam": 100,
+    "tokens": 0,
+    "samples": 0,
+    "miedz": 0,
+    "krysztal": 0,
+    "siarka": 0
+  },
+  "caps": {
+    "ore": 1000,
+    "steam": 100
+  },
+  "rates": {
+    "orePerHour": 40,
+    "steamPerMin": 1
+  },
+  "protectedShare": 0.1,
+  "buildings": [
+    {
+      "type": "szyb_glowny",
+      "name": "Szyb główny",
+      "level": 1,
+      "maxLevel": 8,
+      "next": {
+        "level": 2,
+        "cost": 80,
+        "seconds": 180
+      }
+    },
+    {
+      "type": "generator_pary",
+      "name": "Generator pary",
+      "level": 1,
+      "maxLevel": 8,
+      "next": {
+        "level": 2,
+        "cost": 96,
+        "seconds": 180
+      }
+    },
+    {
+      "type": "magazyn",
+      "name": "Magazyn",
+      "level": 1,
+      "maxLevel": 8,
+      "next": {
+        "level": 2,
+        "cost": 64,
+        "seconds": 180
+      }
+    },
+    {
+      "type": "warsztat",
+      "name": "Warsztat",
+      "level": 6,
+      "maxLevel": 10,
+      "next": {
+        "level": 7,
+        "cost": 1343,
+        "seconds": 5760
+      }
+    },
+    {
+      "type": "wartownia",
+      "name": "Wartownia",
+      "level": 1,
+      "maxLevel": 10,
+      "next": {
+        "level": 2,
+        "cost": 112,
+        "seconds": 180
+      }
+    },
+    {
+      "type": "laboratorium",
+      "name": "Laboratorium",
+      "level": 1,
+      "maxLevel": 10,
+      "next": {
+        "level": 2,
+        "cost": 144,
+        "seconds": 180
+      }
+    },
+    {
+      "type": "radiostacja",
+      "name": "Radiostacja",
+      "level": 1,
+      "maxLevel": 10,
+      "next": {
+        "level": 2,
+        "cost": 176,
+        "seconds": 180
+      }
+    }
+  ],
+  "queue": [],
+  "queueSlots": 2,
+  "queueExtraMaxSeconds": 1800,
+  "radio": {
+    "level": 1,
+    "receiver": false,
+    "transmitter": false,
+    "on": true
+  },
+  "protectedUntil": null,
+  "windedUntil": null,
+  "job": null,
+  "serverTime": "2026-11-16T19:27:52.237Z",
+  "configVersion": "1.9.0"
+}
