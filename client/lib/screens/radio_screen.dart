@@ -31,7 +31,9 @@ class RadioScreen extends StatelessWidget {
           builder: (context, _) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             children: [
-              LsHeader('Radiostacja', subtitle: 'poz. $level · ${receiver ? 'zasięg ${fmtInt(range)} km' : 'bez odbiornika'}', leading: BuildingArt.fromApi('radiostacja', level, width: 96)),
+              LsHeader('Radiostacja',
+                  subtitle: 'poz. $level · ${receiver ? 'zasięg ${fmtInt(range)} km' : 'bez odbiornika'}',
+                  leading: BuildingArt.fromApi('radiostacja', level, width: 96)),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 _Cap('Odbiornik', receiver),
                 _Cap('Nadajnik', transmitter),
@@ -46,7 +48,11 @@ class RadioScreen extends StatelessWidget {
                   activeThumbColor: Ls.teal,
                   title: Text('Nadawanie', style: lsDisplay.copyWith(fontSize: 16)),
                   subtitle: Text(
-                    transmitter ? (d['on'] == true ? 'Włączone: inni Cię słyszą i mogą namierzyć. Tylko nadający widzą ranking i mogą atakować.' : 'Wyłączone: jesteś niewidoczny, ale nie widzisz rankingu i nie atakujesz.') : 'Rozbuduj Radiostację, żeby nadawać.',
+                    transmitter
+                        ? (d['on'] == true
+                            ? 'Włączone: inni Cię słyszą i mogą namierzyć. Tylko nadający widzą ranking i mogą atakować.'
+                            : 'Wyłączone: jesteś niewidoczny, ale nie widzisz rankingu i nie atakujesz.')
+                        : 'Rozbuduj Radiostację, żeby nadawać.',
                     style: lsMuted,
                   ),
                   value: d['on'] == true,
@@ -142,7 +148,8 @@ class _SignalCard extends StatelessWidget {
       child: LsActionRow(
         leading: Icon(known ? Icons.person_outline : Icons.settings_input_antenna, color: known ? Ls.teal : Ls.amber),
         body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(known ? '${s['nickname']} · poz. ${s['level']}' : 'Nieznany sygnał', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+          Text(known ? '${s['nickname']} · poz. ${s['level']}' : 'Nieznany sygnał',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
           Text('kierunek ${s['sector']} · ok. ${fmtInt(asNum(s['distanceKm']))} km', style: lsMuted),
         ]),
         action: known
@@ -151,7 +158,10 @@ class _SignalCard extends StatelessWidget {
                 'Namierz · $cost pary',
                 color: Ls.amber,
                 expand: false,
-                onPressed: state.busy ? null : () => act(state, () => state.api.post('/radio/contact', body: {'signalId': s['id']}, idempotent: true), reload, ctx: context, okText: 'Namierzono sygnał'),
+                onPressed: state.busy
+                    ? null
+                    : () => act(state, () => state.api.post('/radio/contact', body: {'signalId': s['id']}, idempotent: true), reload,
+                        ctx: context, okText: 'Namierzono sygnał'),
               ),
       ),
     );
@@ -212,7 +222,13 @@ class RadarPainter extends CustomPainter {
 
   static final _labels = {
     for (final (i, s) in ['N', 'E', 'S', 'W'].indexed)
-      s: (TextPainter(text: TextSpan(text: s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Ls.textFaint, fontFamily: Ls.display)), textDirection: TextDirection.ltr)..layout(), i * math.pi / 2),
+      s: (
+        TextPainter(
+            text: TextSpan(text: s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Ls.textFaint, fontFamily: Ls.display)),
+            textDirection: TextDirection.ltr)
+          ..layout(),
+        i * math.pi / 2
+      ),
   };
 
   @override

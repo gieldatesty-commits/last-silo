@@ -1,4 +1,5 @@
 import 'format.dart';
+
 /// Teksty interfejsu (PL). Dane z serwera mają własne polskie nazwy (budynki, trasy);
 /// tu są etykiety klienta i komunikaty błędów. Do przeniesienia do l10n przy drugim języku.
 const resourceNames = {
@@ -123,7 +124,6 @@ String runeLabelFromId(String id) {
   final m = RegExp(r'^runa_([a-z]+)_([123])$').firstMatch(id);
   return m == null ? id : '${runeKindNames[m.group(1)] ?? m.group(1)} ${romanLevel(int.parse(m.group(2)!))}';
 }
-
 
 /// Efekt runy słowem: „zjazd +0.2”, „atak +0.6”, „obrona +1”, „naprawy −10%”.
 String runeEffectText(Object? effect, Object? value) {

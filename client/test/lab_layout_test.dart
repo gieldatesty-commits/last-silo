@@ -18,8 +18,23 @@ void main() {
   test('nowe badanie z configu dostaje zapasową pozycję w mapie, bez wyjątku i bez kolizji ze sobą', () {
     final techs = [
       ...fixtureTechs(),
-      for (var i = 0; i < 5; i++) {'id': 'nowe_$i', 'name': 'Nowe $i', 'branch': 'rdzeniowcy', 'state': 'locked', 'labRequired': 7, 'requires': ['izolacja_rdzenia']},
-      {'id': 'obca_galaz', 'name': 'Obca', 'branch': 'kosmos', 'state': 'locked', 'labRequired': 1, 'requires': ['nie_istnieje']},
+      for (var i = 0; i < 5; i++)
+        {
+          'id': 'nowe_$i',
+          'name': 'Nowe $i',
+          'branch': 'rdzeniowcy',
+          'state': 'locked',
+          'labRequired': 7,
+          'requires': ['izolacja_rdzenia']
+        },
+      {
+        'id': 'obca_galaz',
+        'name': 'Obca',
+        'branch': 'kosmos',
+        'state': 'locked',
+        'labRequired': 1,
+        'requires': ['nie_istnieje']
+      },
     ];
     final built = buildConstellation(techs);
     final fresh = built.nodes.where((n) => !techPos.containsKey(n.id)).toList();
@@ -67,14 +82,18 @@ void main() {
   test('podpis zaznaczonego węzła mieści się w mapie i nie zakrywa swojego węzła', () {
     final nodes = buildConstellation(fixtureTechs()).nodes;
     for (final n in nodes) {
-      final r = captionRect(n.pos, [for (final o in nodes) if (o.id != n.id) o.pos]);
+      final r = captionRect(n.pos, [
+        for (final o in nodes)
+          if (o.id != n.id) o.pos
+      ]);
       expect(r.left >= 0 && r.top >= 0 && r.right <= labMapSize.width && r.bottom <= labMapSize.height, isTrue, reason: n.id);
       expect(r.contains(n.pos), isFalse, reason: n.id);
     }
   });
 
   test('stany z API', () {
-    expect(['done', 'active', 'available', 'locked', 'cos'].map(TechState.fromApi), [TechState.done, TechState.active, TechState.available, TechState.locked, TechState.locked]);
+    expect(['done', 'active', 'available', 'locked', 'cos'].map(TechState.fromApi),
+        [TechState.done, TechState.active, TechState.available, TechState.locked, TechState.locked]);
     expect(distanceToSegment(const Offset(0, 5), Offset.zero, const Offset(10, 0)), 5);
   });
 }

@@ -22,7 +22,10 @@ class FakeApi extends Api {
 
   @override
   Future<dynamic> get(String path) async => switch (path) {
-        '/me' => {'id': 'u1', 'player': {'nickname': 'Sztygar', 'archetype': 'zwiadowca'}},
+        '/me' => {
+            'id': 'u1',
+            'player': {'nickname': 'Sztygar', 'archetype': 'zwiadowca'}
+          },
         '/silo' => fixture('silo'),
         '/dives/routes' => fixture('routes'),
         '/dives/history' => fixture('history'),

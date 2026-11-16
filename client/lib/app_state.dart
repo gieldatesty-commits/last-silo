@@ -104,6 +104,5 @@ class AppState extends ChangeNotifier {
   }
 
   static Map<String, dynamic> _map(dynamic v) => Map<String, dynamic>.from(v as Map);
-  static List<Map<String, dynamic>> _list(dynamic v) =>
-      (v as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  static List<Map<String, dynamic>> _list(dynamic v) => (v as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
 }

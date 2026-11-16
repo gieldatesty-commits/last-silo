@@ -83,7 +83,8 @@ class _Row extends StatelessWidget {
             width: 36,
             height: 36,
             alignment: Alignment.center,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: rank <= 3 ? medal.withValues(alpha: 0.14) : null, border: Border.all(color: medal, width: 2)),
+            decoration:
+                BoxDecoration(shape: BoxShape.circle, color: rank <= 3 ? medal.withValues(alpha: 0.14) : null, border: Border.all(color: medal, width: 2)),
             child: Text('$rank', style: lsDisplay.copyWith(fontSize: 13, color: rank <= 3 ? medal : Ls.textMuted)),
           ),
           const SizedBox(width: 12),

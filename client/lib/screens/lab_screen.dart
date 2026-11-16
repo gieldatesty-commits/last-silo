@@ -64,7 +64,8 @@ class _Research extends StatelessWidget {
 }
 
 class _Constellation extends StatefulWidget {
-  const _Constellation({required this.state, required this.techs, required this.labLevel, required this.active, required this.recipeNames, required this.reload});
+  const _Constellation(
+      {required this.state, required this.techs, required this.labLevel, required this.active, required this.recipeNames, required this.reload});
   final AppState state;
   final List<Map<String, dynamic>> techs;
   final int labLevel;
@@ -114,7 +115,13 @@ class _ConstellationState extends State<_Constellation> with SingleTickerProvide
     final done = nodes.where((n) => n.state == TechState.done).length;
 
     return Column(children: [
-      _Header(labLevel: widget.labLevel, done: done, total: nodes.length, active: widget.active, activeNode: activeId == null ? null : byId[activeId], reload: widget.reload),
+      _Header(
+          labLevel: widget.labLevel,
+          done: done,
+          total: nodes.length,
+          active: widget.active,
+          activeNode: activeId == null ? null : byId[activeId],
+          reload: widget.reload),
       Expanded(
         child: LayoutBuilder(builder: (context, c) {
           // dopasuj mapę do szerokości przy pierwszym układzie (i po obrocie), w granicach min/max powiększenia
@@ -244,7 +251,9 @@ class _Header extends StatelessWidget {
             Container(
               width: 8,
               height: 8,
-              decoration: active != null ? BoxDecoration(color: c, shape: BoxShape.circle) : BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Ls.textFaint, width: 2)),
+              decoration: active != null
+                  ? BoxDecoration(color: c, shape: BoxShape.circle)
+                  : BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Ls.textFaint, width: 2)),
             ),
             const SizedBox(width: 8),
             if (active != null) ...[
@@ -252,7 +261,8 @@ class _Header extends StatelessWidget {
               _ClockCountdown(
                 endsAt: parseTime(active!['endsAt']),
                 onDone: reload,
-                builder: (left) => Text(left, style: TextStyle(fontSize: 13, color: c, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+                builder: (left) =>
+                    Text(left, style: TextStyle(fontSize: 13, color: c, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
               ),
             ] else
               const Expanded(child: Text('Laboratorium wolne. Wybierz badanie.', style: TextStyle(fontSize: 13, color: Ls.textMuted))),
@@ -337,7 +347,9 @@ class _NodeButton extends StatelessWidget {
                 child: SizedBox(
                   width: labNodeRadius * 2,
                   height: labNodeRadius * 2,
-                  child: Center(child: Text(glyph, textScaler: TextScaler.noScaling, style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 12, color: fg))),
+                  child: Center(
+                      child: Text(glyph,
+                          textScaler: TextScaler.noScaling, style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 12, color: fg))),
                 ),
               ),
             ),
@@ -429,7 +441,8 @@ class _Caption extends StatelessWidget {
         child: ExcludeSemantics(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-            decoration: BoxDecoration(color: Ls.bg.withValues(alpha: 0.8), border: Border.all(color: node.color.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                color: Ls.bg.withValues(alpha: 0.8), border: Border.all(color: node.color.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(8)),
             child: Text(node.name, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Ls.text)),
           ),
         ),
@@ -482,7 +495,8 @@ class _Panel extends StatelessWidget {
       if (asNum(tech['ore']) > 0) ('ore', '${fmtInt(asNum(tech['ore']))} rudy', have('ore', asNum(tech['ore']))),
       if (asNum(tech['tokens']) > 0) ('tokens', '${fmtInt(asNum(tech['tokens']))} żet.', have('tokens', asNum(tech['tokens']))),
       if (asNum(tech['samples']) > 0) ('samples', '${fmtInt(asNum(tech['samples']))} prób.', have('samples', asNum(tech['samples']))),
-      for (final e in ((tech['materials'] as Map?) ?? const {}).entries) (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
+      for (final e in ((tech['materials'] as Map?) ?? const {}).entries)
+        (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
       (null, fmtDuration(asNum(tech['seconds']).toInt()), true),
       (null, node.labRequired > labLevel ? 'Wymaga Lab ${node.labRequired}' : 'Lab ${node.labRequired}', node.labRequired <= labLevel),
       if (radioReq != null) (null, (radioLevel ?? 0) < radioReq ? 'Wymaga Radio $radioReq' : 'Radio $radioReq', (radioLevel ?? 0) >= radioReq),
@@ -518,8 +532,8 @@ class _Panel extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(
-                  child:
-                      Text((branchNames[node.branch] ?? node.branch).toUpperCase(), style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: c))),
+                  child: Text((branchNames[node.branch] ?? node.branch).toUpperCase(),
+                      style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: c))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
@@ -527,7 +541,8 @@ class _Panel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: tagFill ? null : Border.all(color: st == TechState.locked ? Ls.locked : c),
                 ),
-                child: Text(tag, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tagFill ? Ls.bg : (st == TechState.locked ? Ls.textMuted : c))),
+                child: Text(tag,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tagFill ? Ls.bg : (st == TechState.locked ? Ls.textMuted : c))),
               ),
             ]),
             const SizedBox(height: 6),
@@ -548,7 +563,9 @@ class _Panel extends StatelessWidget {
               constraints: const BoxConstraints(minHeight: 46, minWidth: double.infinity),
               child: FilledButton(
                 key: const ValueKey('lab-action'),
-                onPressed: idle ? () => act(state, () => state.api.post('/research/${node.id}/start', idempotent: true), reload, ctx: context, okText: 'Badanie rozpoczęte') : null,
+                onPressed: idle
+                    ? () => act(state, () => state.api.post('/research/${node.id}/start', idempotent: true), reload, ctx: context, okText: 'Badanie rozpoczęte')
+                    : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: c,
                   foregroundColor: Ls.bg,

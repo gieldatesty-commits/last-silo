@@ -19,7 +19,12 @@ class _StatsScreenState extends State<StatsScreen> {
   int get _spent => _add.values.fold(0, (a, b) => a + b);
 
   static const _accent = {'sila': Ls.warn, 'technika': Ls.amber, 'percepcja': Ls.teal, 'wytrwalosc': Ls.violet};
-  static const _icon = {'sila': Icons.fitness_center, 'technika': Icons.handyman_outlined, 'percepcja': Icons.visibility_outlined, 'wytrwalosc': Icons.shield_outlined};
+  static const _icon = {
+    'sila': Icons.fitness_center,
+    'technika': Icons.handyman_outlined,
+    'percepcja': Icons.visibility_outlined,
+    'wytrwalosc': Icons.shield_outlined
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +48,9 @@ class _StatsScreenState extends State<StatsScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
           children: [
-            LsHeader('${p['nickname']}', subtitle: '${arch?.$1 ?? ''} · poziom ${p['level']}${arch == null ? '' : '\n${arch.$2}'}', trailing: LsStat('WOLNE PKT', '$left', alignEnd: true)),
+            LsHeader('${p['nickname']}',
+                subtitle: '${arch?.$1 ?? ''} · poziom ${p['level']}${arch == null ? '' : '\n${arch.$2}'}',
+                trailing: LsStat('WOLNE PKT', '$left', alignEnd: true)),
             if (next != null) ...[
               LsMeter(next > 0 ? xp / next : 0),
               const SizedBox(height: 4),
@@ -122,7 +129,8 @@ class _Stepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      IconButton(tooltip: 'Odejmij punkt: $name', onPressed: added > 0 ? onMinus : null, icon: const Icon(Icons.remove), color: Ls.text, disabledColor: Ls.locked),
+      IconButton(
+          tooltip: 'Odejmij punkt: $name', onPressed: added > 0 ? onMinus : null, icon: const Icon(Icons.remove), color: Ls.text, disabledColor: Ls.locked),
       Column(mainAxisSize: MainAxisSize.min, children: [
         Text('${value + added}', style: lsDisplay.copyWith(fontSize: 18)),
         if (added > 0) Text('+$added', style: const TextStyle(fontSize: 11, color: Ls.amber, fontWeight: FontWeight.w600)),

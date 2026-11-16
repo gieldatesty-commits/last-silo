@@ -31,7 +31,9 @@ class RaidsScreen extends StatelessWidget {
           builder: (context, _) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             children: [
-              LsHeader(null, subtitle: 'Cele pojawiają się po namierzeniu sygnału w Radiu. Najazd kosztuje parę i trwa tyle, ile droga do celu.', trailing: LsStat('CELE', '${targets.length}', alignEnd: true)),
+              LsHeader(null,
+                  subtitle: 'Cele pojawiają się po namierzeniu sygnału w Radiu. Najazd kosztuje parę i trwa tyle, ile droga do celu.',
+                  trailing: LsStat('CELE', '${targets.length}', alignEnd: true)),
               if (d['items'] is Map) _LoadoutPanel(items: asMap(d['items']), state: state, reload: reload),
               if (active.isNotEmpty) ...[
                 const SectionTitle('W drodze'),
@@ -73,14 +75,20 @@ class _LoadoutPanel extends StatelessWidget {
         Text('Aktywny: zestaw ${loadoutName(active)}', style: lsDisplay.copyWith(fontSize: 16)),
         const SizedBox(height: 6),
         Text('atak sprzętu +${fmtDec(asNum(mine['attack'] ?? 0))} · obrona silosu +${fmtDec(asNum(silo['$active'] ?? mine['defense'] ?? 0))}', style: lsBody),
-        Text('z zestawem ${loadoutName(other)}: atak +${fmtDec(asNum(theirs['attack'] ?? 0))}, obrona silosu +${fmtDec(asNum(silo['$other'] ?? theirs['defense'] ?? 0))}', style: lsMuted),
+        Text(
+            'z zestawem ${loadoutName(other)}: atak +${fmtDec(asNum(theirs['attack'] ?? 0))}, obrona silosu +${fmtDec(asNum(silo['$other'] ?? theirs['defense'] ?? 0))}',
+            style: lsMuted),
         const SizedBox(height: 6),
-        const Text('Atakujesz zestawem z chwili wysłania. Obrona silosu liczy też część pancerza z drugiego zestawu.', style: TextStyle(fontSize: 11, height: 1.4, color: Ls.textMuted)),
+        const Text('Atakujesz zestawem z chwili wysłania. Obrona silosu liczy też część pancerza z drugiego zestawu.',
+            style: TextStyle(fontSize: 11, height: 1.4, color: Ls.textMuted)),
         const SizedBox(height: 8),
         LsButton(
           'Przełącz na zestaw ${loadoutName(other)}',
           color: Ls.amber,
-          onPressed: state.busy ? null : () => act(state, () => state.api.post('/loadouts/$other/activate', idempotent: true), reload, ctx: context, okText: 'Aktywny zestaw ${loadoutName(other)}'),
+          onPressed: state.busy
+              ? null
+              : () => act(state, () => state.api.post('/loadouts/$other/activate', idempotent: true), reload,
+                  ctx: context, okText: 'Aktywny zestaw ${loadoutName(other)}'),
         ),
       ]),
     );
@@ -129,9 +137,11 @@ class _TargetCard extends StatelessWidget {
           onPressed: (!can || state.busy)
               ? null
               : () async {
-                  final ok = await confirm(context, 'Najazd na ${t['nickname']}?', 'Koszt w parze zobaczysz po wysłaniu. Silniejszy cel to ryzyko porażki.', ok: 'Atakuj');
+                  final ok = await confirm(context, 'Najazd na ${t['nickname']}?', 'Koszt w parze zobaczysz po wysłaniu. Silniejszy cel to ryzyko porażki.',
+                      ok: 'Atakuj');
                   if (ok && context.mounted) {
-                    await act(state, () => state.api.post('/raids', body: {'targetId': t['id']}, idempotent: true), reload, ctx: context, okText: 'Najazd wyruszył');
+                    await act(state, () => state.api.post('/raids', body: {'targetId': t['id']}, idempotent: true), reload,
+                        ctx: context, okText: 'Najazd wyruszył');
                   }
                 },
         ),
@@ -154,10 +164,14 @@ class _ActiveRaid extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(attacker ? 'Najazd na ${r['opponent']}' : 'Nadchodzi najazd: ${r['opponent']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+            Text(attacker ? 'Najazd na ${r['opponent']}' : 'Nadchodzi najazd: ${r['opponent']}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
             Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
               const Text('dotrze za ', style: lsMuted),
-              Countdown(endsAt: parseTime(r['endsAt']), onDone: reload, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: attacker ? Ls.amber : Ls.warn)),
+              Countdown(
+                  endsAt: parseTime(r['endsAt']),
+                  onDone: reload,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: attacker ? Ls.amber : Ls.warn)),
             ]),
           ]),
         ),
@@ -184,8 +198,10 @@ class _RaidResult extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${attacker ? 'Najazd na' : 'Obrona przed'} ${r['opponent']}: ${won ? 'wygrana' : 'porażka'}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-            Text('${ore >= 0 ? '+' : ''}${fmtInt(ore)} rudy${tokens != 0 ? ' · ${tokens > 0 ? '+' : ''}$tokens żet.' : ''}', style: TextStyle(fontSize: 12, color: ore > 0 ? const Color(0xFF9CE0B5) : (ore < 0 ? Ls.warnText : Ls.textMuted))),
+            Text('${attacker ? 'Najazd na' : 'Obrona przed'} ${r['opponent']}: ${won ? 'wygrana' : 'porażka'}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+            Text('${ore >= 0 ? '+' : ''}${fmtInt(ore)} rudy${tokens != 0 ? ' · ${tokens > 0 ? '+' : ''}$tokens żet.' : ''}',
+                style: TextStyle(fontSize: 12, color: ore > 0 ? const Color(0xFF9CE0B5) : (ore < 0 ? Ls.warnText : Ls.textMuted))),
           ]),
         ),
       ]),

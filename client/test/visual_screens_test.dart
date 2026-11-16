@@ -48,7 +48,8 @@ Map<String, dynamic> research({bool withActive = true}) {
   return r;
 }
 
-Future<FakeApi> pumpLab(WidgetTester tester, {bool withActive = true, bool disableAnimations = false, Size size = const Size(411, 860), double textScale = 1, bool emptyWallet = false}) async {
+Future<FakeApi> pumpLab(WidgetTester tester,
+    {bool withActive = true, bool disableAnimations = false, Size size = const Size(411, 860), double textScale = 1, bool emptyWallet = false}) async {
   final api = FakeApi(research(withActive: withActive));
   final silo = fixture('silo');
   if (emptyWallet) silo['wallet'] = <String, dynamic>{};

@@ -194,7 +194,9 @@ class _ListingCard extends StatelessWidget {
                       summary: (n) => 'Do zapłaty ok. ${fmtInt((n * (unit + ship)).ceil())} rudy (bez ubezpieczenia).',
                     );
                     if (r == null || !context.mounted) return;
-                    await act(state, () => state.api.post('/market/listings/${l['id']}/buy', body: {'qty': r.qty, 'insure': r.insure}, idempotent: true), reload, ctx: context, okText: 'Karawana wyruszyła');
+                    await act(
+                        state, () => state.api.post('/market/listings/${l['id']}/buy', body: {'qty': r.qty, 'insure': r.insure}, idempotent: true), reload,
+                        ctx: context, okText: 'Karawana wyruszyła');
                   },
           ),
         ],
@@ -234,10 +236,17 @@ class _Mine extends StatelessWidget {
                 LsCard(
                   child: LsActionRow(
                     body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${resName(l['material'] as String)} × ${l['qty']} · ${l['unitPrice']} rudy/szt.', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+                      Text('${resName(l['material'] as String)} × ${l['qty']} · ${l['unitPrice']} rudy/szt.',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
                       Text('wygasa za ${fmtDuration(parseTime(l['expiresAt']).difference(DateTime.now()).inSeconds)}', style: lsMuted),
                     ]),
-                    action: LsButton('Wycofaj', secondary: true, expand: false, color: Ls.locked, onPressed: state.busy ? null : () => act(state, () => state.api.delete('/market/listings/${l['id']}'), reload, ctx: context, okText: 'Wycofano ofertę')),
+                    action: LsButton('Wycofaj',
+                        secondary: true,
+                        expand: false,
+                        color: Ls.locked,
+                        onPressed: state.busy
+                            ? null
+                            : () => act(state, () => state.api.delete('/market/listings/${l['id']}'), reload, ctx: context, okText: 'Wycofano ofertę')),
                   ),
                 ),
               const SectionTitle('Ostatnie transakcje'),
@@ -250,8 +259,11 @@ class _Mine extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${t['side'] == 'sold' ? 'Sprzedano' : 'Kupiono'} ${t['qty']} × ${resName(t['material'] as String)} po ${t['unitPrice']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-                        Text('${t['counterparty'] == 'bot' ? 'bot' : 'gracz'} · ${fmtInt(asNum(t['gross']))} rudy${asNum(t['fee']) > 0 ? ' (prowizja ${fmtInt(asNum(t['fee']))})' : ''}', style: lsMuted),
+                        Text('${t['side'] == 'sold' ? 'Sprzedano' : 'Kupiono'} ${t['qty']} × ${resName(t['material'] as String)} po ${t['unitPrice']}',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
+                        Text(
+                            '${t['counterparty'] == 'bot' ? 'bot' : 'gracz'} · ${fmtInt(asNum(t['gross']))} rudy${asNum(t['fee']) > 0 ? ' (prowizja ${fmtInt(asNum(t['fee']))})' : ''}',
+                            style: lsMuted),
                       ]),
                     ),
                   ]),
@@ -326,9 +338,17 @@ class _CreateListingDialogState extends State<_CreateListingDialog> {
           }),
         ),
         const SizedBox(height: 8),
-        TextField(controller: _qty, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ilość (1–${widget.maxQty})', border: const OutlineInputBorder()), onChanged: (_) => setState(() {})),
+        TextField(
+            controller: _qty,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: 'Ilość (1–${widget.maxQty})', border: const OutlineInputBorder()),
+            onChanged: (_) => setState(() {})),
         const SizedBox(height: 8),
-        TextField(controller: _price, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Cena za sztukę (${c['min']}–${c['max']})', border: const OutlineInputBorder()), onChanged: (_) => setState(() {})),
+        TextField(
+            controller: _price,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: 'Cena za sztukę (${c['min']}–${c['max']})', border: const OutlineInputBorder()),
+            onChanged: (_) => setState(() {})),
         const SizedBox(height: 8),
         const Text('Materiał zostaje zablokowany w ofercie do sprzedaży lub wycofania.'),
       ]),
@@ -387,9 +407,14 @@ class _Npc extends StatelessWidget {
                               ? null
                               : () async {
                                   final price = asNum(m['npcPrice']).toInt();
-                                  final r = await askQty(context, title: 'Kup od Handlarza: ${m['name']}', max: 500, initial: 10, summary: (n) => 'Koszt: ${fmtInt(n * price)} rudy ($price/szt.).');
+                                  final r = await askQty(context,
+                                      title: 'Kup od Handlarza: ${m['name']}',
+                                      max: 500,
+                                      initial: 10,
+                                      summary: (n) => 'Koszt: ${fmtInt(n * price)} rudy ($price/szt.).');
                                   if (r == null || !context.mounted) return;
-                                  await act(state, () => state.api.post('/exchange/buy', body: {'material': m['id'], 'qty': r.qty}, idempotent: true), reload, ctx: context, okText: 'Kupiono');
+                                  await act(state, () => state.api.post('/exchange/buy', body: {'material': m['id'], 'qty': r.qty}, idempotent: true), reload,
+                                      ctx: context, okText: 'Kupiono');
                                 },
                         ),
                       ),
@@ -402,9 +427,15 @@ class _Npc extends StatelessWidget {
                               ? null
                               : () async {
                                   final bid = asNum(m['botBid']).toInt();
-                                  final r = await askQty(context, title: 'Sprzedaj botom: ${m['name']}', max: left, initial: 1, summary: (n) => 'Dostaniesz ${fmtInt(n * bid)} rudy ($bid/szt.).');
+                                  final r = await askQty(context,
+                                      title: 'Sprzedaj botom: ${m['name']}',
+                                      max: left,
+                                      initial: 1,
+                                      summary: (n) => 'Dostaniesz ${fmtInt(n * bid)} rudy ($bid/szt.).');
                                   if (r == null || !context.mounted) return;
-                                  await act(state, () => state.api.post('/market/sell-npc', body: {'material': m['id'], 'qty': r.qty}, idempotent: true), reload, ctx: context, okText: 'Sprzedano');
+                                  await act(
+                                      state, () => state.api.post('/market/sell-npc', body: {'material': m['id'], 'qty': r.qty}, idempotent: true), reload,
+                                      ctx: context, okText: 'Sprzedano');
                                 },
                         ),
                       ),
@@ -433,7 +464,9 @@ class _Caravans extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           children: [
-            LsHeader('Karawany', subtitle: 'Towar kupiony od graczy jedzie do Twojego silosu.', trailing: LsStat('W DRODZE', '${list.where((s) => s['state'] == 'transit').length} / ${d['maxActive']}', alignEnd: true)),
+            LsHeader('Karawany',
+                subtitle: 'Towar kupiony od graczy jedzie do Twojego silosu.',
+                trailing: LsStat('W DRODZE', '${list.where((s) => s['state'] == 'transit').length} / ${d['maxActive']}', alignEnd: true)),
             if (list.isEmpty) const EmptyNote('Nic nie jedzie. Kup coś w zakładce Oferty.'),
             for (final s in list) _ShipmentTile(s: s, reload: reload),
           ],

@@ -12,7 +12,11 @@ const buildingArtSize = Size(160, 120);
 const buildingArtTier2From = 4;
 const buildingArtTier3From = 8;
 
-int buildingArtTier(int level) => level >= buildingArtTier3From ? 3 : level >= buildingArtTier2From ? 2 : 1;
+int buildingArtTier(int level) => level >= buildingArtTier3From
+    ? 3
+    : level >= buildingArtTier2From
+        ? 2
+        : 1;
 
 enum BuildingKind {
   szybGlowny('szyb_glowny'),
@@ -152,7 +156,9 @@ class BuildingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = (size.width / buildingArtSize.width) < (size.height / buildingArtSize.height) ? size.width / buildingArtSize.width : size.height / buildingArtSize.height;
+    final scale = (size.width / buildingArtSize.width) < (size.height / buildingArtSize.height)
+        ? size.width / buildingArtSize.width
+        : size.height / buildingArtSize.height;
     final dx = (size.width - buildingArtSize.width * scale) / 2;
     final dy = (size.height - buildingArtSize.height * scale) / 2;
     canvas.save();

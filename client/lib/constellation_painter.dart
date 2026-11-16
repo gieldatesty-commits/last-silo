@@ -29,7 +29,8 @@ class ConstellationPainter extends CustomPainter {
   static final List<(Shader, Rect)> _glows = [
     for (final (b, r, a) in [('gornictwo', 130.0, 0.10), ('inzynieria', 130.0, 0.10), ('rdzeniowcy', 160.0, 0.12)])
       (
-        RadialGradient(colors: [branchColor[b]!.withValues(alpha: a), branchColor[b]!.withValues(alpha: 0)]).createShader(Rect.fromCircle(center: branchAnchor[b]!, radius: r)),
+        RadialGradient(colors: [branchColor[b]!.withValues(alpha: a), branchColor[b]!.withValues(alpha: 0)])
+            .createShader(Rect.fromCircle(center: branchAnchor[b]!, radius: r)),
         Rect.fromCircle(center: branchAnchor[b]!, radius: r),
       ),
   ];

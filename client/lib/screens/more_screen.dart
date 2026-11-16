@@ -55,14 +55,19 @@ class _MoreScreenState extends State<MoreScreen> {
                     ? 'poz. ${radio['level']} · nadajesz'
                     : 'poz. ${radio['level']} · tylko nasłuch';
             final tiles = <_Tile>[
-              _Tile(Icons.person_outline, 'Postać', free > 0 ? 'poziom ${player['level']} · $free wolne pkt' : 'poziom ${player['level'] ?? 1}', Ls.amber, () => StatsScreen(state: state), highlight: free > 0),
+              _Tile(Icons.person_outline, 'Postać', free > 0 ? 'poziom ${player['level']} · $free wolne pkt' : 'poziom ${player['level'] ?? 1}', Ls.amber,
+                  () => StatsScreen(state: state),
+                  highlight: free > 0),
               _Tile(Icons.settings_input_antenna, 'Radio', radioDetail, Ls.teal, () => RadioScreen(state: state)),
-              _Tile(Icons.flag_outlined, 'Najazdy', s?['protectedUntil'] != null ? 'ochrona przed najazdami' : 'cele z namierzonych sygnałów', Ls.warn, () => RaidsScreen(state: state)),
+              _Tile(Icons.flag_outlined, 'Najazdy', s?['protectedUntil'] != null ? 'ochrona przed najazdami' : 'cele z namierzonych sygnałów', Ls.warn,
+                  () => RaidsScreen(state: state)),
               _Tile(Icons.leaderboard_outlined, 'Ranking', 'siła i łup nadających', Ls.violet, () => RankingScreen(state: state)),
-              _Tile(Icons.storefront_outlined, 'Rynek', mats > 0 ? 'masz $mats z 3 materiałów' : 'materiały i karawany', Ls.copper, () => MarketScreen(state: state)),
+              _Tile(Icons.storefront_outlined, 'Rynek', mats > 0 ? 'masz $mats z 3 materiałów' : 'materiały i karawany', Ls.copper,
+                  () => MarketScreen(state: state)),
               _Tile(Icons.assignment_outlined, 'Zlecenia', 'dzienna tablica NPC', Ls.amber, () => ContractsScreen(state: state)),
               _Tile(Icons.event_outlined, 'Sezon', null, Ls.teal, () => SeasonScreen(state: state), future: _season),
-              _Tile(Icons.terrain_outlined, 'Geologia', deposit != null ? 'Twoje złoże: ${richnessNames[deposit] ?? deposit}' : 'czym obfituje okolica', Ls.copper, () => _Geology(state: state)),
+              _Tile(Icons.terrain_outlined, 'Geologia', deposit != null ? 'Twoje złoże: ${richnessNames[deposit] ?? deposit}' : 'czym obfituje okolica',
+                  Ls.copper, () => _Geology(state: state)),
               if (kDebugMode) _Tile(Icons.grid_view, 'Grafiki budynków', 'podgląd 7 x 3 (debug)', Ls.textMuted, () => const ArtPreviewScreen()),
             ];
             return ListView(
@@ -77,7 +82,10 @@ class _MoreScreenState extends State<MoreScreen> {
                         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                           Expanded(child: _TileView(tile: tiles[i], onTap: () => _open(context, tiles[i].title, tiles[i].build()))),
                           const SizedBox(width: 8),
-                          Expanded(child: i + 1 < tiles.length ? _TileView(tile: tiles[i + 1], onTap: () => _open(context, tiles[i + 1].title, tiles[i + 1].build())) : const SizedBox()),
+                          Expanded(
+                              child: i + 1 < tiles.length
+                                  ? _TileView(tile: tiles[i + 1], onTap: () => _open(context, tiles[i + 1].title, tiles[i + 1].build()))
+                                  : const SizedBox()),
                         ]),
                       ),
                   ]),

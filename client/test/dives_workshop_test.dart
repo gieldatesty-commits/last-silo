@@ -96,8 +96,20 @@ void main() {
     testWidgets('pełna kolejka: sloty pokazują zjazd w drodze i czekający, trasy mówią „Kolejka pełna”', (tester) async {
       final now = DateTime.now().toUtc();
       final q = [
-        {'id': '1', 'routeId': 'plytki', 'startsAt': now.subtract(const Duration(seconds: 60)).toIso8601String(), 'endsAt': now.add(const Duration(seconds: 120)).toIso8601String(), 'running': true},
-        {'id': '2', 'routeId': 'sredni', 'startsAt': now.add(const Duration(seconds: 120)).toIso8601String(), 'endsAt': now.add(const Duration(seconds: 1020)).toIso8601String(), 'running': false},
+        {
+          'id': '1',
+          'routeId': 'plytki',
+          'startsAt': now.subtract(const Duration(seconds: 60)).toIso8601String(),
+          'endsAt': now.add(const Duration(seconds: 120)).toIso8601String(),
+          'running': true
+        },
+        {
+          'id': '2',
+          'routeId': 'sredni',
+          'startsAt': now.add(const Duration(seconds: 120)).toIso8601String(),
+          'endsAt': now.add(const Duration(seconds: 1020)).toIso8601String(),
+          'running': false
+        },
       ];
       await pump(tester, DivesScreen(state: appState(FakeApi(), queue: q)));
       expect(find.text('KOLEJKA 2 / 2'), findsOneWidget);

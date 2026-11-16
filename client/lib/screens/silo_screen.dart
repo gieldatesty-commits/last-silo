@@ -56,8 +56,10 @@ class _SiloScreenState extends State<SiloScreen> {
                 children: [
                   _Hud(wallet: wallet, caps: caps, rates: rates),
                   _PlayerStrip(player: player),
-                  if (s['windedUntil'] != null) _Banner(icon: Icons.air, text: 'Wyczerpany, odpoczywasz jeszcze ', endsAt: parseTime(s['windedUntil']), onDone: state.refresh),
-                  if (s['protectedUntil'] != null) _Banner(icon: Icons.shield_outlined, text: 'Ochrona przed najazdami: ', endsAt: parseTime(s['protectedUntil']), onDone: state.refresh),
+                  if (s['windedUntil'] != null)
+                    _Banner(icon: Icons.air, text: 'Wyczerpany, odpoczywasz jeszcze ', endsAt: parseTime(s['windedUntil']), onDone: state.refresh),
+                  if (s['protectedUntil'] != null)
+                    _Banner(icon: Icons.shield_outlined, text: 'Ochrona przed najazdami: ', endsAt: parseTime(s['protectedUntil']), onDone: state.refresh),
                   const _Sky(),
                   const _Ground(),
                   _Underground(scroll: _scroll, buildings: buildings, ctl: ctl),
@@ -203,7 +205,8 @@ class _SkyPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _bg.shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1B2433), Color(0xFF10141D)]).createShader(Offset.zero & size);
+    _bg.shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1B2433), Color(0xFF10141D)])
+        .createShader(Offset.zero & size);
     canvas.drawRect(Offset.zero & size, _bg);
     for (final (x, y, r) in const [(0.15, 0.25, 1.0), (0.38, 0.12, 1.2), (0.66, 0.3, 1.0), (0.87, 0.15, 1.2), (0.52, 0.45, 0.8)]) {
       canvas.drawCircle(Offset(x * size.width, y * size.height), r, _star);
@@ -240,7 +243,8 @@ class _Underground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF171B26), Color(0xFF0E1118)])),
+      decoration: const BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF171B26), Color(0xFF0E1118)])),
       padding: const EdgeInsets.only(bottom: 16),
       child: Stack(children: [
         Positioned(left: 8, top: 0, bottom: 0, width: 22, child: ExcludeSemantics(child: _Elevator(scroll: scroll))),

@@ -37,7 +37,10 @@ void main() {
   testWidgets('wszystkie 7 x 3 wariantów rysuje się bez błędu i jest wykluczonych z Semantics', (tester) async {
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
-      child: Wrap(children: [for (final k in BuildingKind.values) for (final l in [1, 4, 8]) BuildingArt(kind: k, level: l, width: 80)]),
+      child: Wrap(children: [
+        for (final k in BuildingKind.values)
+          for (final l in [1, 4, 8]) BuildingArt(kind: k, level: l, width: 80)
+      ]),
     ));
     expect(tester.takeException(), isNull);
     expect(find.byType(CustomPaint), findsAtLeastNWidgets(21));

@@ -131,7 +131,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 /// Karta archetypu: radio + ikona + nazwa + opis. Wybór widać po radiu, ramce i znaczniku (nie tylko kolorze).
 class _ArchetypeCard extends StatelessWidget {
-  const _ArchetypeCard({required this.id, required this.name, required this.desc, required this.color, required this.selected, required this.enabled, required this.onTap});
+  const _ArchetypeCard(
+      {required this.id, required this.name, required this.desc, required this.color, required this.selected, required this.enabled, required this.onTap});
   final String id;
   final String name;
   final String desc;

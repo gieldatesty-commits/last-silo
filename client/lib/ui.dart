@@ -12,7 +12,14 @@ const lsBody = TextStyle(fontSize: 14, color: Ls.text);
 
 /// Karta: ciemne tło, cienka ramka, zaokrąglenie 14. Z `onTap` staje się przyciskiem (InkWell + Semantics).
 class LsCard extends StatelessWidget {
-  const LsCard({super.key, required this.child, this.padding = const EdgeInsets.all(12), this.margin = const EdgeInsets.only(bottom: 8), this.border, this.color = Ls.card, this.onTap});
+  const LsCard(
+      {super.key,
+      required this.child,
+      this.padding = const EdgeInsets.all(12),
+      this.margin = const EdgeInsets.only(bottom: 8),
+      this.border,
+      this.color = Ls.card,
+      this.onTap});
   final Widget child;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
@@ -74,14 +81,22 @@ class LsButton extends StatelessWidget {
     if (onPressed == null) {
       return OutlinedButton(
         onPressed: null,
-        style: OutlinedButton.styleFrom(minimumSize: min, padding: pad, shape: shape, textStyle: text, disabledForegroundColor: Ls.textMuted, side: const BorderSide(color: Ls.locked)),
+        style: OutlinedButton.styleFrom(
+            minimumSize: min, padding: pad, shape: shape, textStyle: text, disabledForegroundColor: Ls.textMuted, side: const BorderSide(color: Ls.locked)),
         child: child,
       );
     }
     if (secondary) {
       return OutlinedButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(minimumSize: min, padding: pad, shape: shape, textStyle: text, foregroundColor: Ls.text, backgroundColor: const Color(0xFF1A1410), side: BorderSide(color: color)),
+        style: OutlinedButton.styleFrom(
+            minimumSize: min,
+            padding: pad,
+            shape: shape,
+            textStyle: text,
+            foregroundColor: Ls.text,
+            backgroundColor: const Color(0xFF1A1410),
+            side: BorderSide(color: color)),
         child: child,
       );
     }
@@ -138,7 +153,8 @@ class LsStat extends StatelessWidget {
   final String? sub;
   final bool alignEnd;
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 1.2, color: Ls.textFaint)),
         Text(value, style: lsDisplay.copyWith(fontSize: 17, fontFeatures: const [FontFeature.tabularFigures()])),
         if (sub != null) Text(sub!, style: const TextStyle(fontSize: 10, color: Ls.textFaint)),

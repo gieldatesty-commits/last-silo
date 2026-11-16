@@ -84,7 +84,8 @@ enum TechState {
 /// Węzeł po rozmieszczeniu.
 @immutable
 class LabNode {
-  const LabNode({required this.id, required this.name, required this.branch, required this.pos, required this.state, required this.labRequired, required this.requires});
+  const LabNode(
+      {required this.id, required this.name, required this.branch, required this.pos, required this.state, required this.labRequired, required this.requires});
   final String id;
   final String name;
   final String branch;
@@ -110,7 +111,8 @@ class LabEdge {
   final bool dashed;
 
   @override
-  bool operator ==(Object other) => other is LabEdge && other.a == a && other.b == b && other.color == color && other.weight == weight && other.dashed == dashed;
+  bool operator ==(Object other) =>
+      other is LabEdge && other.a == a && other.b == b && other.color == color && other.weight == weight && other.dashed == dashed;
   @override
   int get hashCode => Object.hash(a, b, color, weight, dashed);
 }
@@ -176,7 +178,11 @@ class ConstellationScene {
     for (final rid in n.requires) {
       final r = byId[rid];
       if (r == null) continue; // wymóg spoza listy: bez krawędzi, bez wyjątku
-      final w = done(r) && done(n) ? EdgeWeight.full : done(r) ? EdgeWeight.half : EdgeWeight.faint;
+      final w = done(r) && done(n)
+          ? EdgeWeight.full
+          : done(r)
+              ? EdgeWeight.half
+              : EdgeWeight.faint;
       edges.add(LabEdge(r.pos, n.pos, n.color, w, r.branch != n.branch));
     }
   }

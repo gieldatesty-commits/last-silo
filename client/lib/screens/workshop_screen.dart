@@ -116,7 +116,8 @@ class _BenchState extends State<_Bench> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Warsztat', style: _display.copyWith(fontSize: 24)),
                 const SizedBox(height: 4),
-                Text('poz. ${d['workshopLevel']} · ekwipunek ${items.length} / ${d['inventoryMax']}', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
+                Text('poz. ${d['workshopLevel']} · ekwipunek ${items.length} / ${d['inventoryMax']}',
+                    style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
                 Text('jakość nowych: ${q['min']}–${q['max']}', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
               ]),
             ),
@@ -148,7 +149,8 @@ class _BenchState extends State<_Bench> {
             child: FilledButton(
               onPressed: widget.state.busy
                   ? null
-                  : () => act(widget.state, () => widget.state.api.post('/loadouts/$editing/activate', idempotent: true), widget.reload, ctx: context, okText: 'Aktywny zestaw ${loadoutName(editing)}'),
+                  : () => act(widget.state, () => widget.state.api.post('/loadouts/$editing/activate', idempotent: true), widget.reload,
+                      ctx: context, okText: 'Aktywny zestaw ${loadoutName(editing)}'),
               style: FilledButton.styleFrom(
                 backgroundColor: Ls.copper,
                 foregroundColor: Ls.bg,
@@ -159,7 +161,9 @@ class _BenchState extends State<_Bench> {
               child: Text('Włącz zestaw ${loadoutName(editing)}'),
             ),
           ),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 8), child: Text('ZESTAW ${loadoutName(editing)}${editing == active ? ' · AKTYWNY' : ' · PODGLĄD'}', style: _section)),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Text('ZESTAW ${loadoutName(editing)}${editing == active ? ' · AKTYWNY' : ' · PODGLĄD'}', style: _section)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: IntrinsicHeight(
@@ -189,19 +193,29 @@ class _BenchState extends State<_Bench> {
         if (sel != null) _ItemCard(it: sel, d: d, state: widget.state, reload: widget.reload, active: active, editing: editing),
         const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('EKWIPUNEK', style: _section)),
         if (items.isEmpty)
-          const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Nic jeszcze nie wytworzyłeś. Zacznij od receptury poniżej.', style: TextStyle(color: Ls.textMuted))),
-        for (final it in items) _InventoryRow(it: it, active: active, selected: it['id'] == _selected, onTap: () => setState(() => _selected = it['id'] as String)),
+          const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Nic jeszcze nie wytworzyłeś. Zacznij od receptury poniżej.', style: TextStyle(color: Ls.textMuted))),
+        for (final it in items)
+          _InventoryRow(it: it, active: active, selected: it['id'] == _selected, onTap: () => setState(() => _selected = it['id'] as String)),
         Container(
           margin: const EdgeInsets.only(top: 16),
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-          decoration: const BoxDecoration(color: Ls.panel, border: Border(top: BorderSide(color: Ls.border)), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          decoration: const BoxDecoration(
+              color: Ls.panel, border: Border(top: BorderSide(color: Ls.border)), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Receptury', style: _display.copyWith(fontSize: 16)),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-                for (final (slot, label) in <(String?, String)>[(null, 'Wszystko'), ('dive', 'Zjazdowe'), ('combat', 'Bojowe'), ('runes', 'Runy'), for (final s in slotOrder) (s, slotNames[s] ?? s)])
+                for (final (slot, label) in <(String?, String)>[
+                  (null, 'Wszystko'),
+                  ('dive', 'Zjazdowe'),
+                  ('combat', 'Bojowe'),
+                  ('runes', 'Runy'),
+                  for (final s in slotOrder) (s, slotNames[s] ?? s)
+                ])
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: ChoiceChip(
@@ -221,8 +235,13 @@ class _BenchState extends State<_Bench> {
             if (_filter == 'runes') _RunesPanel(d: d, state: widget.state, reload: widget.reload),
             if (_filter != 'runes')
               for (final r in shown)
-                _RecipeRow(r: r, state: widget.state, reload: widget.reload, setName: setOfRecipe(d, r['id']) == null ? null : lowerFirst('${setOfRecipe(d, r['id'])!['name']}')),
-            if (_filter != 'runes' && shown.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Brak receptur w tym filtrze.', style: TextStyle(color: Ls.textMuted))),
+                _RecipeRow(
+                    r: r,
+                    state: widget.state,
+                    reload: widget.reload,
+                    setName: setOfRecipe(d, r['id']) == null ? null : lowerFirst('${setOfRecipe(d, r['id'])!['name']}')),
+            if (_filter != 'runes' && shown.isEmpty)
+              const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Brak receptur w tym filtrze.', style: TextStyle(color: Ls.textMuted))),
           ]),
         ),
       ],
@@ -236,6 +255,7 @@ class _LoadoutTiles extends StatelessWidget {
   final int active;
   final int editing;
   final Map<String, dynamic> stats;
+
   /// odpowiedź /items (komplety: `sets`, `setsActive`)
   final Map<String, dynamic> sets;
   final void Function(int) onTap;
@@ -271,15 +291,21 @@ class _LoadoutTiles extends StatelessWidget {
                       decoration: isActive
                           ? BoxDecoration(color: Ls.copper, borderRadius: BorderRadius.circular(9))
                           : BoxDecoration(border: Border.all(color: Ls.locked), borderRadius: BorderRadius.circular(9)),
-                      child: Text(isActive ? '● aktywny' : '○ nieaktywny', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isActive ? Ls.bg : const Color(0xFFC9D0DC))),
+                      child: Text(isActive ? '● aktywny' : '○ nieaktywny',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isActive ? Ls.bg : const Color(0xFFC9D0DC))),
                     ),
                   ]),
                   const SizedBox(height: 6),
                   for (final line in activeSetLines(sets, n))
-                    Padding(padding: const EdgeInsets.only(top: 2), child: Text(line, style: const TextStyle(fontSize: 11, height: 1.35, color: Ls.copperLight))),
+                    Padding(
+                        padding: const EdgeInsets.only(top: 2), child: Text(line, style: const TextStyle(fontSize: 11, height: 1.35, color: Ls.copperLight))),
                   Wrap(spacing: 8, runSpacing: 2, children: [
                     for (final (name, v) in parts)
-                      Text('$name +${fmtDec(asNum(v ?? 0))}', style: TextStyle(fontSize: 12, color: asNum(v ?? 0) > 0 ? Ls.text : Ls.textFaint, fontWeight: asNum(v ?? 0) > 0 ? FontWeight.w600 : FontWeight.w400)),
+                      Text('$name +${fmtDec(asNum(v ?? 0))}',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: asNum(v ?? 0) > 0 ? Ls.text : Ls.textFaint,
+                              fontWeight: asNum(v ?? 0) > 0 ? FontWeight.w600 : FontWeight.w400)),
                   ]),
                 ]),
               ),
@@ -335,7 +361,8 @@ class _SlotTile extends StatelessWidget {
                       textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: it == null ? Ls.textMuted : Ls.text))),
               if (inBoth) const Text('⇄ w obu', style: TextStyle(fontSize: 10, color: Ls.teal)),
               const SizedBox(height: 4),
-              ClipRRect(borderRadius: BorderRadius.circular(2), child: LinearProgressIndicator(value: frac, minHeight: 4, color: dc, backgroundColor: Ls.border)),
+              ClipRRect(
+                  borderRadius: BorderRadius.circular(2), child: LinearProgressIndicator(value: frac, minHeight: 4, color: dc, backgroundColor: Ls.border)),
             ]),
           ),
         ),
@@ -348,6 +375,7 @@ class _SlotTile extends StatelessWidget {
 class _ItemCard extends StatelessWidget {
   const _ItemCard({required this.it, required this.d, required this.state, required this.reload, required this.active, required this.editing});
   final Map<String, dynamic> it;
+
   /// cała odpowiedź /items (portfel i katalog run do osadzania)
   final Map<String, dynamic> d;
   final AppState state;
@@ -387,7 +415,9 @@ class _ItemCard extends StatelessWidget {
       decoration: BoxDecoration(color: Ls.card, border: Border.all(color: Ls.copper.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(14)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('${(slotNames[it['slot']] ?? '${it['slot']}').toUpperCase()}${equipped ? ' · W ZESTAWIE ${loadoutName(editing)}' : ''}', style: _section)),
+          Expanded(
+              child: Text('${(slotNames[it['slot']] ?? '${it['slot']}').toUpperCase()}${equipped ? ' · W ZESTAWIE ${loadoutName(editing)}' : ''}',
+                  style: _section)),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(border: Border.all(color: Ls.teal), borderRadius: BorderRadius.circular(10)),
@@ -414,7 +444,8 @@ class _ItemCard extends StatelessWidget {
               decoration: inLo.contains(n)
                   ? BoxDecoration(color: const Color(0xFF1A2230), borderRadius: BorderRadius.circular(9))
                   : BoxDecoration(border: Border.all(color: Ls.locked), borderRadius: BorderRadius.circular(9)),
-              child: Text(inLo.contains(n) ? '✓ w zestawie ${loadoutName(n)}' : '○ nie ma w zestawie ${loadoutName(n)}', style: TextStyle(fontSize: 11, color: inLo.contains(n) ? const Color(0xFFC9D0DC) : Ls.textMuted)),
+              child: Text(inLo.contains(n) ? '✓ w zestawie ${loadoutName(n)}' : '○ nie ma w zestawie ${loadoutName(n)}',
+                  style: TextStyle(fontSize: 11, color: inLo.contains(n) ? const Color(0xFFC9D0DC) : Ls.textMuted)),
             ),
         ]),
         const SizedBox(height: 8),
@@ -431,7 +462,9 @@ class _ItemCard extends StatelessWidget {
                   width: 10,
                   height: 10,
                   margin: const EdgeInsets.only(right: 4),
-                  decoration: k < tier ? const BoxDecoration(color: Ls.copper, shape: BoxShape.circle) : BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Ls.locked, width: 1.5)),
+                  decoration: k < tier
+                      ? const BoxDecoration(color: Ls.copper, shape: BoxShape.circle)
+                      : BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Ls.locked, width: 1.5)),
                 ),
             ]),
             Text('$tier / $maxTier', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
@@ -440,10 +473,13 @@ class _ItemCard extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, children: [
           Text('wytrzymałość ($dw)', style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
-          Text(broken ? 'zepsuty' : '$dur / $maxDur', style: TextStyle(fontSize: 12, color: broken ? Ls.warnText : Ls.textMuted, fontFeatures: const [FontFeature.tabularFigures()])),
+          Text(broken ? 'zepsuty' : '$dur / $maxDur',
+              style: TextStyle(fontSize: 12, color: broken ? Ls.warnText : Ls.textMuted, fontFeatures: const [FontFeature.tabularFigures()])),
         ]),
         const SizedBox(height: 4),
-        ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: frac.clamp(0.0, 1.0).toDouble(), minHeight: 6, color: dc, backgroundColor: Ls.border)),
+        ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(value: frac.clamp(0.0, 1.0).toDouble(), minHeight: 6, color: dc, backgroundColor: Ls.border)),
         if (setOfRecipe(d, it['recipeId']) != null) ...[
           const SizedBox(height: 10),
           _SetProgress(set: setOfRecipe(d, it['recipeId'])!, d: d, loadout: editing),
@@ -459,7 +495,9 @@ class _ItemCard extends StatelessWidget {
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 6, children: [
           OutlinedButton(
-            onPressed: busy || (broken && !equipped) ? null : () => act(state, () => state.api.post('/items/$id/${equipped ? 'unequip' : 'equip'}', body: {'loadout': editing}, idempotent: true), reload),
+            onPressed: busy || (broken && !equipped)
+                ? null
+                : () => act(state, () => state.api.post('/items/$id/${equipped ? 'unequip' : 'equip'}', body: {'loadout': editing}, idempotent: true), reload),
             style: outlined(Ls.locked),
             child: Text('${equipped ? 'Zdejmij z' : 'Załóż w'} ${loadoutName(editing)}'),
           ),
@@ -471,7 +509,8 @@ class _ItemCard extends StatelessWidget {
             ),
           if (repair > 0)
             OutlinedButton(
-              onPressed: busy ? null : () => act(state, () => state.api.post('/items/$id/repair', idempotent: true), reload, ctx: context, okText: 'Naprawiono'),
+              onPressed:
+                  busy ? null : () => act(state, () => state.api.post('/items/$id/repair', idempotent: true), reload, ctx: context, okText: 'Naprawiono'),
               style: outlined(Ls.copper),
               child: Text('Napraw · ${fmtInt(repair)} rudy'),
             ),
@@ -480,8 +519,9 @@ class _ItemCard extends StatelessWidget {
               onPressed: busy || next['techDone'] == false
                   ? null
                   : () async {
-                      final ok =
-                          await confirm(context, 'Wzmocnić przedmiot?', 'Koszt: ${costText(next)}.\nWymaga Warsztatu poz. ${next['workshop']} i Radiostacji poz. ${next['radio']}.', ok: 'Wzmocnij');
+                      final ok = await confirm(context, 'Wzmocnić przedmiot?',
+                          'Koszt: ${costText(next)}.\nWymaga Warsztatu poz. ${next['workshop']} i Radiostacji poz. ${next['radio']}.',
+                          ok: 'Wzmocnij');
                       if (ok && context.mounted) {
                         await act(state, () => state.api.post('/items/$id/upgrade', idempotent: true), reload, ctx: context, okText: 'Wzmocniono');
                       }
@@ -517,7 +557,8 @@ class _InventoryRow extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${it['name']}, ${it['rarity'] is Map ? '${(it['rarity'] as Map)['name']}, ' : ''}${slotNames[it['slot']] ?? it['slot']}${inLo.isEmpty ? '' : ', w zestawie ${membershipText(inLo)}'}, wytrzymałość $dw',
+      label:
+          '${it['name']}, ${it['rarity'] is Map ? '${(it['rarity'] as Map)['name']}, ' : ''}${slotNames[it['slot']] ?? it['slot']}${inLo.isEmpty ? '' : ', w zestawie ${membershipText(inLo)}'}, wytrzymałość $dw',
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
@@ -537,7 +578,8 @@ class _InventoryRow extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${it['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-                      Text('${it['rarity'] is Map ? '${rarityText(it['rarity'])} · ' : ''}${profileText(it)} · wzmocnienie ${it['tier']}/${it['maxTier']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+                      Text('${it['rarity'] is Map ? '${rarityText(it['rarity'])} · ' : ''}${profileText(it)} · wzmocnienie ${it['tier']}/${it['maxTier']}',
+                          style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
                     ]),
                   ),
                   if (inLo.isNotEmpty)
@@ -547,7 +589,11 @@ class _InventoryRow extends StatelessWidget {
                       decoration: BoxDecoration(color: Ls.copper.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
                       child: Text(membershipText(inLo), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Ls.copper)),
                     ),
-                  SizedBox(width: 44, child: ClipRRect(borderRadius: BorderRadius.circular(2), child: LinearProgressIndicator(value: frac, minHeight: 4, color: dc, backgroundColor: Ls.border))),
+                  SizedBox(
+                      width: 44,
+                      child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(value: frac, minHeight: 4, color: dc, backgroundColor: Ls.border))),
                 ]),
               ),
             ),
@@ -562,6 +608,7 @@ class _InventoryRow extends StatelessWidget {
 class _RecipeRow extends StatelessWidget {
   const _RecipeRow({required this.r, required this.state, required this.reload, this.setName});
   final Map<String, dynamic> r;
+
   /// „komplet Sztygara”, gdy receptura jest częścią kompletu
   final String? setName;
   final AppState state;
@@ -580,7 +627,8 @@ class _RecipeRow extends StatelessWidget {
       ] else ...[
         if (asNum(r['ore']) > 0) ('ore', '${fmtInt(asNum(r['ore']))} rudy', have('ore', asNum(r['ore']))),
         if (asNum(r['tokens']) > 0) ('tokens', '${fmtInt(asNum(r['tokens']))} żet.', have('tokens', asNum(r['tokens']))),
-        for (final e in ((r['materials'] as Map?) ?? const {}).entries) (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
+        for (final e in ((r['materials'] as Map?) ?? const {}).entries)
+          (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
       ],
     ];
     final affordable = chips.every((c) => c.$3);
@@ -597,7 +645,8 @@ class _RecipeRow extends StatelessWidget {
           final stacked = box.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.3;
           final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${r['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-            Text('${profileText(r)} · ${r['durability']} wytrz. · ${slotNames[r['slot']] ?? r['slot']}', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+            Text('${profileText(r)} · ${r['durability']} wytrz. · ${slotNames[r['slot']] ?? r['slot']}',
+                style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
             if (setName != null)
               Container(
                 margin: const EdgeInsets.only(top: 3),
@@ -612,7 +661,8 @@ class _RecipeRow extends StatelessWidget {
           ]);
           final button = canCraft
               ? FilledButton(
-                  onPressed: () => act(state, () => state.api.post('/items/craft', body: {'recipeId': r['id']}, idempotent: true), reload, ctx: context, okText: 'Wytworzono: ${r['name']}'),
+                  onPressed: () => act(state, () => state.api.post('/items/craft', body: {'recipeId': r['id']}, idempotent: true), reload,
+                      ctx: context, okText: 'Wytworzono: ${r['name']}'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Ls.copper,
                     foregroundColor: Ls.bg,
@@ -647,7 +697,6 @@ class _RecipeRow extends StatelessWidget {
     );
   }
 }
-
 
 /// Kolor rodzaju runy (obok nazwy i efektu słowem, nie zamiast).
 const _runeColors = {'zyly': Ls.amber, 'ostrza': Ls.warn, 'bastionu': Ls.teal, 'trwalosci': Ls.violet};
@@ -686,7 +735,10 @@ class _Sockets extends StatelessWidget {
 
   Future<void> _pick(BuildContext context, int socket) async {
     final wallet = (d['runes'] as Map?) ?? const {};
-    final owned = [for (final e in wallet.entries) if (asNum(e.value) > 0 && _catalog(e.key as String) != null) (_catalog(e.key as String)!, asNum(e.value).toInt())];
+    final owned = [
+      for (final e in wallet.entries)
+        if (asNum(e.value) > 0 && _catalog(e.key as String) != null) (_catalog(e.key as String)!, asNum(e.value).toInt())
+    ];
     final picked = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: const Color(0xFF141925),
@@ -735,14 +787,16 @@ class _Sockets extends StatelessWidget {
       ),
     );
     if (picked != null && context.mounted) {
-      await act(state, () => state.api.post('/items/${it['id']}/runes', body: {'socket': socket, 'rune': picked}, idempotent: true), reload, ctx: context, okText: 'Osadzono: ${runeLabelFromId(picked)}');
+      await act(state, () => state.api.post('/items/${it['id']}/runes', body: {'socket': socket, 'rune': picked}, idempotent: true), reload,
+          ctx: context, okText: 'Osadzono: ${runeLabelFromId(picked)}');
     }
   }
 
   Future<void> _remove(BuildContext context, Map r) async {
     final ok = await confirm(context, 'Wyjąć runę ${runeLabel(r)}?', 'Opłata: ${fmtInt(asNum(r['fee']))} rudy. Runa wróci do magazynu.', ok: 'Wyjmij');
     if (ok && context.mounted) {
-      await act(state, () => state.api.post('/items/${it['id']}/runes/${r['socket']}/remove', idempotent: true), reload, ctx: context, okText: 'Runa w magazynie');
+      await act(state, () => state.api.post('/items/${it['id']}/runes/${r['socket']}/remove', idempotent: true), reload,
+          ctx: context, okText: 'Runa w magazynie');
     }
   }
 
@@ -752,7 +806,9 @@ class _Sockets extends StatelessWidget {
     final used = (it['runes'] as List? ?? const []).length;
     Widget tile(int socket) {
       final r = _rune(socket);
-      final label = r == null ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę' : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}';
+      final label = r == null
+          ? 'gniazdo ${socket + 1}: puste, stuknij, aby osadzić runę'
+          : 'gniazdo ${socket + 1}: ${runeLabel(r)}, ${runeEffectText(r['effect'], r['value'])}';
       // zajęte gniazdo to informacja; wyjmuje jeden przycisk „Wyjmij …” pod gniazdami
       return Semantics(
         container: true,
@@ -786,7 +842,8 @@ class _Sockets extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(r == null ? 'Puste' : runeLabel(r), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Ls.text)),
-                      Text(r == null ? 'stuknij, aby osadzić' : runeEffectText(r['effect'], r['value']), style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
+                      Text(r == null ? 'stuknij, aby osadzić' : runeEffectText(r['effect'], r['value']),
+                          style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
                     ]),
                   ),
                 ]),
@@ -851,7 +908,8 @@ class _RunesPanel extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(color: const Color(0xFF1A2230), borderRadius: BorderRadius.circular(10)),
-              child: Text('${catalog.where((c) => c['id'] == e.key).map(runeLabel).firstOrNull ?? runeLabelFromId(e.key as String)} × ${e.value}', style: const TextStyle(fontSize: 12, color: Color(0xFFC9D0DC))),
+              child: Text('${catalog.where((c) => c['id'] == e.key).map(runeLabel).firstOrNull ?? runeLabelFromId(e.key as String)} × ${e.value}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFC9D0DC))),
             ),
       ]),
       for (final r in recipes) _runeRow(context, r, have),
@@ -873,19 +931,33 @@ class _RunesPanel extends StatelessWidget {
     final chips = <(String?, String, bool)>[
       if (asNum(r['ore']) > 0) ('ore', '${fmtInt(asNum(r['ore']))} rudy', have('ore', asNum(r['ore']))),
       if (asNum(r['tokens']) > 0) ('tokens', '${fmtInt(asNum(r['tokens']))} żet.', have('tokens', asNum(r['tokens']))),
-      for (final e in ((r['materials'] as Map?) ?? const {}).entries) (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
+      for (final e in ((r['materials'] as Map?) ?? const {}).entries)
+        (e.key as String, '${e.value} ${resName(e.key as String)}', have(e.key as String, e.value as num)),
     ];
     final ok = !locked && chips.every((c) => c.$3);
     final label = locked ? 'Zablokowane' : (ok ? 'Wytwórz' : 'Brak');
     final button = ok
         ? FilledButton(
-            onPressed: state.busy ? null : () => act(state, () => state.api.post('/runes/${r['id']}/craft', idempotent: true), reload, ctx: context, okText: 'Wytworzono: ${runeLabel(r)}'),
-            style: FilledButton.styleFrom(backgroundColor: Ls.copper, foregroundColor: Ls.bg, minimumSize: const Size(78, 44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            onPressed: state.busy
+                ? null
+                : () =>
+                    act(state, () => state.api.post('/runes/${r['id']}/craft', idempotent: true), reload, ctx: context, okText: 'Wytworzono: ${runeLabel(r)}'),
+            style: FilledButton.styleFrom(
+                backgroundColor: Ls.copper,
+                foregroundColor: Ls.bg,
+                minimumSize: const Size(78, 44),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             child: Text(label),
           )
         : OutlinedButton(
             onPressed: null,
-            style: OutlinedButton.styleFrom(minimumSize: const Size(78, 44), disabledForegroundColor: Ls.textMuted, side: const BorderSide(color: Ls.locked), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size(78, 44),
+                disabledForegroundColor: Ls.textMuted,
+                side: const BorderSide(color: Ls.locked),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             child: Text(label),
           );
     return Opacity(
@@ -916,7 +988,6 @@ class _RunesPanel extends StatelessWidget {
     );
   }
 }
-
 
 /// Komplet, do którego należy receptura (z `sets` w /items), albo null.
 Map? setOfRecipe(Map d, Object? recipeId) => (d['sets'] as List? ?? const []).cast<Map>().where((s) => (s['pieces'] as List).contains(recipeId)).firstOrNull;
@@ -958,7 +1029,8 @@ class _SetProgress extends StatelessWidget {
     String nameOf(String id) => (asList(d['recipes'])).where((r) => r['id'] == id).map((r) => r['name'] as String).firstOrNull ?? id;
     Widget tier(int need, Map bonus) {
       final ok = have >= need;
-      return Text('${ok ? '✓' : '○'} $need części: ${setEffectText(bonus)}', style: TextStyle(fontSize: 12, color: ok ? Ls.text : Ls.textMuted, fontWeight: ok ? FontWeight.w600 : FontWeight.w400));
+      return Text('${ok ? '✓' : '○'} $need części: ${setEffectText(bonus)}',
+          style: TextStyle(fontSize: 12, color: ok ? Ls.text : Ls.textMuted, fontWeight: ok ? FontWeight.w600 : FontWeight.w400));
     }
 
     return Container(
@@ -978,7 +1050,8 @@ class _SetProgress extends StatelessWidget {
         const Text('CZĘŚCI', style: TextStyle(fontSize: 11, letterSpacing: 0.6, color: Ls.textFaint)),
         const SizedBox(height: 2),
         for (final p in pieces)
-          Text(inSet.contains(p) ? '✓ ${nameOf(p)}' : '○ brakuje: ${nameOf(p)}', style: TextStyle(fontSize: 12, color: inSet.contains(p) ? const Color(0xFFC9D0DC) : Ls.textMuted)),
+          Text(inSet.contains(p) ? '✓ ${nameOf(p)}' : '○ brakuje: ${nameOf(p)}',
+              style: TextStyle(fontSize: 12, color: inSet.contains(p) ? const Color(0xFFC9D0DC) : Ls.textMuted)),
       ]),
     );
   }

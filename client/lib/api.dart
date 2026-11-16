@@ -56,8 +56,7 @@ class Api {
   }
 
   Future<dynamic> get(String path) => _call('GET', path);
-  Future<dynamic> post(String path, {Object? body, bool idempotent = false}) =>
-      _call('POST', path, body: body, key: idempotent ? newKey() : null);
+  Future<dynamic> post(String path, {Object? body, bool idempotent = false}) => _call('POST', path, body: body, key: idempotent ? newKey() : null);
   Future<dynamic> delete(String path) => _call('DELETE', path);
 
   Future<dynamic> _call(String method, String path, {Object? body, String? key}) async {

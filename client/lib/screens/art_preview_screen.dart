@@ -38,7 +38,9 @@ class ArtPreviewScreen extends StatelessWidget {
                 child: Column(children: [
                   ResourceIcon(r, size: 48),
                   const SizedBox(height: 4),
-                  Row(mainAxisSize: MainAxisSize.min, children: [ResourceIcon(r), const SizedBox(width: 3), Text(resName(r), style: const TextStyle(color: Ls.text, fontSize: 10))]),
+                  Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [ResourceIcon(r), const SizedBox(width: 3), Text(resName(r), style: const TextStyle(color: Ls.text, fontSize: 10))]),
                 ]),
               ),
           ]),
@@ -46,7 +48,8 @@ class ArtPreviewScreen extends StatelessWidget {
           Row(children: [
             const SizedBox(width: 92),
             for (final l in levels)
-              Expanded(child: Text('od poz. $l', textAlign: TextAlign.center, style: const TextStyle(color: Ls.copper, fontSize: 11, fontWeight: FontWeight.w700))),
+              Expanded(
+                  child: Text('od poz. $l', textAlign: TextAlign.center, style: const TextStyle(color: Ls.copper, fontSize: 11, fontWeight: FontWeight.w700))),
           ]),
           for (final k in BuildingKind.values)
             Padding(

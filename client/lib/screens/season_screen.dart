@@ -29,7 +29,9 @@ class SeasonScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
           children: [
-            LsHeader('Sezon ${s['season']}', subtitle: inter ? 'Przerwa między sezonami' : 'Trwa · ${s['daysLeft']} dni do końca', trailing: LsChip(inter ? 'przerwa' : 'aktywny', color: inter ? Ls.amber : Ls.teal)),
+            LsHeader('Sezon ${s['season']}',
+                subtitle: inter ? 'Przerwa między sezonami' : 'Trwa · ${s['daysLeft']} dni do końca',
+                trailing: LsChip(inter ? 'przerwa' : 'aktywny', color: inter ? Ls.amber : Ls.teal)),
             LsCard(
               padding: const EdgeInsets.all(14),
               child: inter
@@ -55,7 +57,8 @@ class SeasonScreen extends StatelessWidget {
                       const SizedBox(height: 10),
                       Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
                         const Text('Koniec za ', style: lsMuted),
-                        Countdown(endsAt: parseTime(s['endsAt']), onDone: reload, style: const TextStyle(fontSize: 13, color: Ls.text, fontWeight: FontWeight.w600)),
+                        Countdown(
+                            endsAt: parseTime(s['endsAt']), onDone: reload, style: const TextStyle(fontSize: 13, color: Ls.text, fontWeight: FontWeight.w600)),
                       ]),
                       const SizedBox(height: 4),
                       const Text('Po końcu: ranking siły, tytuły i premia startowa na kolejny sezon.', style: lsMuted),
@@ -77,7 +80,8 @@ class SeasonScreen extends StatelessWidget {
                 for (final t in titles)
                   Container(
                     padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-                    decoration: BoxDecoration(color: Ls.card, border: Border.all(color: Ls.amber.withValues(alpha: 0.5)), borderRadius: BorderRadius.circular(12)),
+                    decoration:
+                        BoxDecoration(color: Ls.card, border: Border.all(color: Ls.amber.withValues(alpha: 0.5)), borderRadius: BorderRadius.circular(12)),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.military_tech_outlined, color: Ls.amber, size: 22),
                       const SizedBox(width: 8),
@@ -95,7 +99,8 @@ class SeasonScreen extends StatelessWidget {
               const SizedBox(height: 8),
               for (final r in top) _ResultRow(r: r, mine: me != null && me['rank'] == r['rank']),
               if (me != null && !top.any((r) => r['rank'] == me['rank'])) ...[const Divider(color: Ls.border), _ResultRow(r: me, mine: true)],
-              if (me != null && me['startBonusOre'] != null && asNum(me['startBonusOre']) > 0) Text('Premia startowa: ${fmtInt(asNum(me['startBonusOre']))} rudy', style: lsMuted),
+              if (me != null && me['startBonusOre'] != null && asNum(me['startBonusOre']) > 0)
+                Text('Premia startowa: ${fmtInt(asNum(me['startBonusOre']))} rudy', style: lsMuted),
             ],
           ],
         );
@@ -128,7 +133,10 @@ class _ResultRow extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${r['nickname']}${mine ? ' (Ty)' : ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-            Text(['poz. ${r['level']}', 'siła ${fmtInt(asNum(r['power']))}', 'łup ${fmtInt(asNum(r['loot']))}', if (r['title'] != null) '${r['title']}'].join(' · '), style: lsMuted),
+            Text(
+                ['poz. ${r['level']}', 'siła ${fmtInt(asNum(r['power']))}', 'łup ${fmtInt(asNum(r['loot']))}', if (r['title'] != null) '${r['title']}']
+                    .join(' · '),
+                style: lsMuted),
           ]),
         ),
       ]),

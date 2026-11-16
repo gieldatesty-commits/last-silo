@@ -30,7 +30,21 @@ class FakeApi extends Api {
       case '/market/listings':
         return {
           'listings': [
-            {'id': '7', 'material': 'miedz', 'qty': 6, 'unitPrice': 100, 'expiresAt': now.add(const Duration(hours: 40)).toIso8601String(), 'seller': 'Rywal', 'mine': false, 'distanceKm': 18500, 'etaMinutes': 1850, 'shipPerUnit': 84, 'totalPerUnit': 184, 'ambushChance': 12, 'npcPrice': 140},
+            {
+              'id': '7',
+              'material': 'miedz',
+              'qty': 6,
+              'unitPrice': 100,
+              'expiresAt': now.add(const Duration(hours: 40)).toIso8601String(),
+              'seller': 'Rywal',
+              'mine': false,
+              'distanceKm': 18500,
+              'etaMinutes': 1850,
+              'shipPerUnit': 84,
+              'totalPerUnit': 184,
+              'ambushChance': 12,
+              'npcPrice': 140
+            },
           ],
         };
       case '/season/results':

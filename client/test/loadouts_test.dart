@@ -162,7 +162,14 @@ void main() {
       final api = FakeApi();
       final now = DateTime.now().toUtc();
       api.silo['queue'] = [
-        {'id': '1', 'routeId': 'plytki', 'startsAt': now.toIso8601String(), 'endsAt': now.add(const Duration(seconds: 120)).toIso8601String(), 'running': true, 'loadout': 2},
+        {
+          'id': '1',
+          'routeId': 'plytki',
+          'startsAt': now.toIso8601String(),
+          'endsAt': now.add(const Duration(seconds: 120)).toIso8601String(),
+          'running': true,
+          'loadout': 2
+        },
       ];
       await pump(tester, DivesScreen(state: appState(api)));
       expect(find.text('Zjazd pójdzie zestawem I'), findsOneWidget);
@@ -181,7 +188,8 @@ void main() {
       final sd = api.items['siloDefense'] as Map;
       expect(find.textContaining('atak sprzętu +${fmtDec((st['1'] as Map)['attack'] as num)}'), findsOneWidget);
       expect(find.textContaining('obrona silosu +${fmtDec(sd['1'] as num)}'), findsOneWidget); // z częścią pancerza z zestawu II
-      expect(find.textContaining('z zestawem II: atak +${fmtDec((st['2'] as Map)['attack'] as num)}, obrona silosu +${fmtDec(sd['2'] as num)}'), findsOneWidget);
+      expect(
+          find.textContaining('z zestawem II: atak +${fmtDec((st['2'] as Map)['attack'] as num)}, obrona silosu +${fmtDec(sd['2'] as num)}'), findsOneWidget);
       await tester.tap(find.text('Przełącz na zestaw II'));
       await tester.pump();
       expect(api.posts.single.$1, '/loadouts/2/activate');

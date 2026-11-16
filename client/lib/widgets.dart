@@ -122,7 +122,11 @@ class InfoBanner extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: Ls.chip, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [Icon(icon, color: Ls.amber), const SizedBox(width: 12), Expanded(child: DefaultTextStyle.merge(style: const TextStyle(color: Ls.text), child: child))]),
+        child: Row(children: [
+          Icon(icon, color: Ls.amber),
+          const SizedBox(width: 12),
+          Expanded(child: DefaultTextStyle.merge(style: const TextStyle(color: Ls.text), child: child))
+        ]),
       );
 }
 

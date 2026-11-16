@@ -24,7 +24,8 @@ void main() {
 
   testWidgets('LsResChip: ikona + tekst, czytnik ekranu dostaje sam tekst', (tester) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: Row(children: [LsResChip('ore', '150 rudy'), LsResChip(null, '4 XP'), LsResChip('siarka', '8 Siarka', ok: false)]))));
+    await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(body: Row(children: [LsResChip('ore', '150 rudy'), LsResChip(null, '4 XP'), LsResChip('siarka', '8 Siarka', ok: false)]))));
     expect(find.bySemanticsLabel('150 rudy'), findsOneWidget);
     expect(find.bySemanticsLabel('8 Siarka'), findsOneWidget);
     expect(find.byType(ResourceIcon), findsNWidgets(2));

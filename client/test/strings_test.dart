@@ -18,7 +18,13 @@ void main() {
 
   test('costText', () {
     expect(costText({'ore': 150, 'tokens': 0}), '150 rudy');
-    expect(costText({'ore': 3500, 'tokens': 25, 'materials': {'miedz': 20}}), '3 500 rudy, 25 żet., 20 Miedź');
+    expect(
+        costText({
+          'ore': 3500,
+          'tokens': 25,
+          'materials': {'miedz': 20}
+        }),
+        '3 500 rudy, 25 żet., 20 Miedź');
     expect(costText({'ore': 0}), 'za darmo');
   });
 }

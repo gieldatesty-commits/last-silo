@@ -61,7 +61,10 @@ class DivesScreen extends StatelessWidget {
                         const Icon(Icons.air, size: 18, color: Ls.amber),
                         const SizedBox(width: 8),
                         const Flexible(child: Text('Wyczerpany, nie dodasz zjazdu jeszcze przez ', style: TextStyle(color: Ls.text, fontSize: 13))),
-                        Countdown(endsAt: parseTime(s['windedUntil']), onDone: state.refresh, style: const TextStyle(color: Ls.amber, fontWeight: FontWeight.w600, fontSize: 13)),
+                        Countdown(
+                            endsAt: parseTime(s['windedUntil']),
+                            onDone: state.refresh,
+                            style: const TextStyle(color: Ls.amber, fontWeight: FontWeight.w600, fontSize: 13)),
                       ]),
                     ),
                   const SizedBox(height: 8),
@@ -142,7 +145,10 @@ class _LoadoutStrip extends StatelessWidget {
           const Text('zestaw zapisuje się przy dodaniu do kolejki', style: TextStyle(fontSize: 11, color: Ls.textMuted)),
         ]),
         OutlinedButton(
-          onPressed: state.busy ? null : () => act(state, () => state.api.post('/loadouts/$other/activate', idempotent: true), state.refresh, ctx: context, okText: 'Aktywny zestaw ${loadoutName(other)}'),
+          onPressed: state.busy
+              ? null
+              : () => act(state, () => state.api.post('/loadouts/$other/activate', idempotent: true), state.refresh,
+                  ctx: context, okText: 'Aktywny zestaw ${loadoutName(other)}'),
           style: OutlinedButton.styleFrom(
             foregroundColor: Ls.text,
             side: const BorderSide(color: Ls.locked),
@@ -174,7 +180,8 @@ class _Queue extends StatelessWidget {
       decoration: BoxDecoration(color: Ls.panel, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(14)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 4, children: [
-          Text('KOLEJKA ${queue.length} / $slots', style: const TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: Ls.copper)),
+          Text('KOLEJKA ${queue.length} / $slots',
+              style: const TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: Ls.copper)),
           const Text('zjazdy idą jeden po drugim', style: TextStyle(fontSize: 11, color: Ls.textFaint)),
         ]),
         for (var i = 0; i < slots; i++) ...[
@@ -236,8 +243,13 @@ class _QueueSlotState extends State<_QueueSlot> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text('${widget.name} · ${running ? 'w drodze' : 'czeka'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Ls.text))),
-              Countdown(endsAt: ends, onDone: widget.onDone, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c, fontFeatures: const [FontFeature.tabularFigures()])),
+              Expanded(
+                  child: Text('${widget.name} · ${running ? 'w drodze' : 'czeka'}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Ls.text))),
+              Countdown(
+                  endsAt: ends,
+                  onDone: widget.onDone,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c, fontFeatures: const [FontFeature.tabularFigures()])),
             ]),
             const SizedBox(height: 5),
             ClipRRect(
@@ -247,7 +259,8 @@ class _QueueSlotState extends State<_QueueSlot> {
             const SizedBox(height: 4),
             Wrap(spacing: 8, runSpacing: 2, children: [
               Text(running ? 'wynik po powrocie' : 'ruszy po poprzednim zjeździe', style: const TextStyle(fontSize: 11, color: Ls.textMuted)),
-              if (widget.q['loadout'] != null) Text('zestaw ${loadoutName(widget.q['loadout'])}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Ls.copper)),
+              if (widget.q['loadout'] != null)
+                Text('zestaw ${loadoutName(widget.q['loadout'])}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Ls.copper)),
             ]),
           ]),
         ),
@@ -318,7 +331,9 @@ class _ZoneLabel extends StatelessWidget {
       top: first,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-        child: Semantics(header: true, child: Text('STREFA $name', style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: color))),
+        child: Semantics(
+            header: true,
+            child: Text('STREFA $name', style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: color))),
       ),
     );
   }
@@ -357,17 +372,21 @@ class _RouteRow extends StatelessWidget {
           opacity: locked ? 0.55 : 1,
           child: Container(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(color: Ls.card, border: Border.all(color: locked ? const Color(0xFF1A2130) : Ls.border), borderRadius: BorderRadius.circular(14)),
+            decoration:
+                BoxDecoration(color: Ls.card, border: Border.all(color: locked ? const Color(0xFF1A2130) : Ls.border), borderRadius: BorderRadius.circular(14)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.end, spacing: 8, children: [
                 Text('${r['name']}', style: _display.copyWith(fontSize: 15)),
-                Text('${_dur((r['seconds'] as num).toInt())} · $cost pary', style: const TextStyle(fontSize: 11, color: Ls.textMuted, fontFeatures: [FontFeature.tabularFigures()])),
+                Text('${_dur((r['seconds'] as num).toInt())} · $cost pary',
+                    style: const TextStyle(fontSize: 11, color: Ls.textMuted, fontFeatures: [FontFeature.tabularFigures()])),
               ]),
               const SizedBox(height: 7),
               Row(children: [
                 Expanded(
                   child: ExcludeSemantics(
-                    child: ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: chance / 100, minHeight: 6, color: c, backgroundColor: Ls.border)),
+                    child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(value: chance / 100, minHeight: 6, color: c, backgroundColor: Ls.border)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -422,7 +441,8 @@ class _History extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
       decoration: BoxDecoration(color: Ls.panel, border: Border.all(color: Ls.border), borderRadius: BorderRadius.circular(14)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('OSTATNIE ZJAZDY', style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: Ls.copper)),
+        const Text('OSTATNIE ZJAZDY',
+            style: TextStyle(fontFamily: Ls.display, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.6, color: Ls.copper)),
         const SizedBox(height: 6),
         for (final h in history)
           if (h['result'] is Map) _HistoryLine(res: h['result'] as Map, name: routeName(h['routeId'] as String)),
@@ -455,7 +475,8 @@ class _HistoryLine extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$name · ${ok ? 'udany' : 'nieudany'}${res['levelUp'] == true ? ' · awans! poz. ${res['level']}' : ''}', style: const TextStyle(fontSize: 13, color: Ls.text, fontWeight: FontWeight.w600)),
+            Text('$name · ${ok ? 'udany' : 'nieudany'}${res['levelUp'] == true ? ' · awans! poz. ${res['level']}' : ''}',
+                style: const TextStyle(fontSize: 13, color: Ls.text, fontWeight: FontWeight.w600)),
             Text(parts.join(' · '), style: const TextStyle(fontSize: 12, color: Ls.textMuted)),
           ]),
         ),

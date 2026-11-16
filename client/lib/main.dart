@@ -75,11 +75,15 @@ ThemeData _theme() {
       backgroundColor: Ls.panel,
       indicatorColor: Ls.amber.withValues(alpha: 0.18),
       iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(color: s.contains(WidgetState.selected) ? Ls.amber : Ls.textMuted)),
-      labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(fontSize: 12, fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500, color: s.contains(WidgetState.selected) ? Ls.text : Ls.textMuted)),
+      labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
+          fontSize: 12,
+          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          color: s.contains(WidgetState.selected) ? Ls.text : Ls.textMuted)),
     ),
     dialogTheme: const DialogThemeData(backgroundColor: Ls.panel, surfaceTintColor: Colors.transparent),
     bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Ls.panel, surfaceTintColor: Colors.transparent),
-    snackBarTheme: const SnackBarThemeData(backgroundColor: Ls.chip, contentTextStyle: TextStyle(color: Ls.text, fontFamily: Ls.body), behavior: SnackBarBehavior.floating),
+    snackBarTheme: const SnackBarThemeData(
+        backgroundColor: Ls.chip, contentTextStyle: TextStyle(color: Ls.text, fontFamily: Ls.body), behavior: SnackBarBehavior.floating),
     appBarTheme: const AppBarTheme(backgroundColor: Ls.bg, foregroundColor: Ls.text, surfaceTintColor: Colors.transparent),
     progressIndicatorTheme: const ProgressIndicatorThemeData(color: Ls.amber),
   );

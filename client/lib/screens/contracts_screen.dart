@@ -27,7 +27,9 @@ class ContractsScreen extends StatelessWidget {
           builder: (context, _) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             children: [
-              LsHeader(null, subtitle: 'Tablica jest wspólna dla wszystkich i odnawia się o północy UTC. Kto pierwszy, ten lepszy.', trailing: LsStat('W DRODZE', '${d['active']} / ${d['maxActive']}', alignEnd: true)),
+              LsHeader(null,
+                  subtitle: 'Tablica jest wspólna dla wszystkich i odnawia się o północy UTC. Kto pierwszy, ten lepszy.',
+                  trailing: LsStat('W DRODZE', '${d['active']} / ${d['maxActive']}', alignEnd: true)),
               const SectionTitle('Dzisiejsze oferty'),
               if (offers.isEmpty) const EmptyNote('Brak ofert na dziś.'),
               for (final o in offers) _OfferCard(o: o, day: day, state: state, reload: reload),
@@ -104,7 +106,8 @@ class _OfferCard extends StatelessWidget {
                           hint: 'Ładunek ($qty × ${resName(mat)}) zejdzie z magazynu od razu. W zasadzce nagroda spada proporcjonalnie do strat.',
                         );
                         if (insure == null || !context.mounted) return;
-                        await act(state, () => state.api.post('/contracts/$day/${o['slot']}/accept', body: {'insure': insure}, idempotent: true), reload, ctx: context, okText: 'Zlecenie przyjęte');
+                        await act(state, () => state.api.post('/contracts/$day/${o['slot']}/accept', body: {'insure': insure}, idempotent: true), reload,
+                            ctx: context, okText: 'Zlecenie przyjęte');
                       },
               ),
             'mine' => const LsChip('✓ Twoje zlecenie', color: Ls.amber),
@@ -138,7 +141,8 @@ class _ContractTile extends StatelessWidget {
               Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
               Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text('w drodze${insured ? ' · ubezpieczone' : ''} · dotrze za ', style: lsMuted),
-                Countdown(endsAt: parseTime(c['arrivesAt']), onDone: reload, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Ls.amber)),
+                Countdown(
+                    endsAt: parseTime(c['arrivesAt']), onDone: reload, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Ls.amber)),
               ]),
             ]),
           ),
@@ -154,7 +158,8 @@ class _ContractTile extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Ls.text)),
-            Text('${lost ? 'Zasadzka: dostarczono ${c['deliveredQty']} z $qty szt.' : 'Dostarczono'} · nagroda ${fmtInt(asNum(c['reward'] ?? 0))} rudy', style: lsMuted),
+            Text('${lost ? 'Zasadzka: dostarczono ${c['deliveredQty']} z $qty szt.' : 'Dostarczono'} · nagroda ${fmtInt(asNum(c['reward'] ?? 0))} rudy',
+                style: lsMuted),
           ]),
         ),
       ]),
