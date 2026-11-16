@@ -131,7 +131,7 @@ items:
   sets:
     - { id: sztygar,   name: Komplet Sztygara,   pieces: [mlot_pneumatyczny, helm_wzmocniony, lampa_wibracyjna, detektor_zylowy],        bonus2: { dive_ore_pct: 5 }, bonus4: { dive_power: 0.8 } }
     - { id: rdzen,     name: Komplet Rdzenia,    pieces: [wiertlo_rdzeniowe, kombinezon_izolowany, lampa_rezonansowa, skaner_sejsmiczny], bonus2: { dive_ore_pct: 6 }, bonus4: { repair_pct: -25, dive_power: 1.2 } }
-    - { id: wartownik, name: Komplet Wartownika, pieces: [karabin_pneumatyczny, plyta_wartownika, noktowizor, celownik],                bonus2: { defense: 1.5 }, bonus4: { attack: 2.0 } }
+    - { id: wartownik, name: Komplet Wartownika, pieces: [karabin_pneumatyczny, plyta_wartownika, noktowizor, celownik],                bonus2: { defense: 1.5 }, bonus4: { attack: 0.5, defense: 1.0 } }
   # Rzadkość przy wytwarzaniu (§4.1), losowana z ziarna przedmiotu (druga liczba po jakości); kolejność = progi
   rarity:
     - { id: zwykly,      name: Zwykły,      chance: 0.70, mult: 1.00, sockets: 0 }

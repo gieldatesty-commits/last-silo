@@ -141,7 +141,7 @@ Dozwolone efekty (te same mechanizmy, co badania i zestaw): `dive_power` (stała
 |---|---|---|---|---|
 | sztygar | Komplet Sztygara | mlot_pneumatyczny, helm_wzmocniony, lampa_wibracyjna, detektor_zylowy | dive_ore_pct 5 | dive_power 0,8 |
 | rdzen | Komplet Rdzenia | wiertlo_rdzeniowe, kombinezon_izolowany, lampa_rezonansowa, skaner_sejsmiczny | dive_ore_pct 6 | repair_pct −25, dive_power 1,2 |
-| wartownik | Komplet Wartownika | karabin_pneumatyczny, plyta_wartownika, noktowizor, celownik | defense 1,5 | attack 2,0 |
+| wartownik | Komplet Wartownika | karabin_pneumatyczny, plyta_wartownika, noktowizor, celownik | defense 1,5 | attack 0,5, defense 1,0 (po symulacji §10.4; start: attack 2,0) |
 
 Progi nie sumują się z samymi sobą: 4 części dają bonus2 **i** bonus4. `dive_ore_pct` z kompletu mnoży się z mnożnikiem archetypu i badań tak jak `fx.diveOre`. `GET /items` zwraca `sets: [{id, name, pieces, have: {"1": n, "2": n}, bonus2, bonus4}]`.
 
@@ -245,3 +245,5 @@ Model: komplety z `setBonuses` (moc, atak, obrona, ruda, naprawy) jak w serwerze
 | Wartownik 2: obrona 1,5 / 4: obrona 2,0 | 7,0–8,6% | poniżej 1.5.0 (najazdy słabną) |
 
 Pozostałe kryteria przy liczbach z §6: pierwszy tier 10 u hardcore w dniu 150–164, ruda w magazynie 17–18 tys., udział zjazdów u hardcore 61–63%. Komplet Sztygara prawie nieużywany przez boty (zastępowany Rdzeniem). **Balansu nie zmieniono; decyzja u Damiana.**
+
+**Decyzja Damiana (config 1.9.0):** Wartownik 2 części: obrona 1,5; 4 części: atak 0,5 + obrona 1,0. Wyniki (3 ziarna): łupy 12,6 / 11,6 / 10,5% (w limicie), pierwszy tier 10 u hardcore w dniu 143 / 147 / 155, ruda w magazynie 17,7–18,6 tys., udział zjazdów u hardcore 61–62%, Wartownik 4/4 u 70% graczy. Kryteria §8 spełnione.
