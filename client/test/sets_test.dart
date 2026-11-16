@@ -58,6 +58,12 @@ void main() {
     expect(find.text('✓ 2 części: ruda ze zjazdów +5%'), findsOneWidget);
     expect(find.text('✓ 4 części: zjazd +0,8'), findsOneWidget);
     expect(find.text('✓ Lampa wibracyjna'), findsOneWidget);
+    // ramka kompletu na całą szerokość karty (nie dopasowana do tekstu) — na szerokim ekranie treść jest węższa niż karta
+    await pump(tester, size: const Size(600, 1000));
+    final box = find.ancestor(of: find.text('CZĘŚCI'), matching: find.byType(Container)).first;
+    // najszerszy pasek postępu to wytrzymałość na karcie: zajmuje całą szerokość wnętrza karty
+    final full = find.byType(LinearProgressIndicator).evaluate().map((e) => tester.getSize(find.byWidget(e.widget)).width).reduce((a, b) => a > b ? a : b);
+    expect(tester.getSize(box).width, closeTo(full, 1));
   });
 
   testWidgets('zestaw II: Wartownik 2 z 4, brakujące części i niespełniony próg', (tester) async {

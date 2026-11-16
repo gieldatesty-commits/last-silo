@@ -962,6 +962,7 @@ class _SetProgress extends StatelessWidget {
     }
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: const Color(0xFF141925), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3546))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
