@@ -80,6 +80,18 @@ export const GameConfigSchema = z
         growth_high: pos.default(1),
         high_tiers: z.array(z.object({ from: z.number().int().min(2), tech: z.string() })).default([]),
       }),
+      // komplety (docs/ekwipunek-v1.0.md §6): bonus za 2 i 4 części w jednym zestawie
+      sets: z
+        .array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            pieces: z.array(z.string()).length(4),
+            bonus2: z.object({ dive_power: z.number().optional(), dive_ore_pct: z.number().optional(), attack: z.number().optional(), defense: z.number().optional(), repair_pct: z.number().optional() }).strict(),
+            bonus4: z.object({ dive_power: z.number().optional(), dive_ore_pct: z.number().optional(), attack: z.number().optional(), defense: z.number().optional(), repair_pct: z.number().optional() }).strict(),
+          }),
+        )
+        .default([]),
       // rzadkość przy wytwarzaniu (§4.1): kolejność = progi losowania; suma szans = 1
       rarity: z
         .array(z.object({ id: z.string(), name: z.string(), chance: z.number().min(0).max(1), mult: pos, sockets: z.number().int().min(0).max(6) }))
@@ -265,6 +277,13 @@ export const GameConfigSchema = z
     const resourceIds = new Set(cfg.resources.map((r) => r.id));
     for (const m of cfg.geology.materials) if (!resourceIds.has(m)) ctx.addIssue({ code: 'custom', message: `geologia: brak zasobu ${m}` });
     for (const k of cfg.runes.kinds) if (k.material !== 'mix' && !cfg.geology.materials.includes(k.material)) ctx.addIssue({ code: 'custom', message: `runy: nieznany materiał ${k.material}` });
+    const inSet = new Map<string, string>();
+    for (const st of cfg.items.sets)
+      for (const pc of st.pieces) {
+        if (!cfg.items.recipes.some((r) => r.id === pc)) ctx.addIssue({ code: 'custom', message: `komplet ${st.id}: nieznana część ${pc}` });
+        if (inSet.has(pc)) ctx.addIssue({ code: 'custom', message: `komplet ${st.id}: ${pc} jest już w komplecie ${inSet.get(pc)}` });
+        inSet.set(pc, st.id);
+      }
     for (const m of cfg.geology.materials) if (!cfg.exchange.buy_ore[m]) ctx.addIssue({ code: 'custom', message: `wymiana: brak ceny ${m}` });
     for (const x of [...cfg.items.recipes, ...cfg.research.techs]) for (const m of Object.keys(x.materials)) if (!cfg.geology.materials.includes(m)) ctx.addIssue({ code: 'custom', message: `${x.id}: nieznany materiał ${m}` });
     const tids = new Set(cfg.research.techs.map((t) => t.id));

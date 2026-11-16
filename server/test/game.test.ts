@@ -7,6 +7,7 @@ import { distanceKm, placeSilo, rollLocalDeposit } from '../src/game/world.js';
 import { rng } from '../src/game/rng.js';
 import { allRuneIds, parseRune, rollRuneDrop, runeCraftCost, runesProfile, runesRepairMult, unsocketFee } from '../src/game/runes.js';
 import { resolveDive } from '../src/game/dive.js';
+import { setBonuses, setProgress } from '../src/game/sets.js';
 import { addProfiles, itemBonus, itemProfile, rarityOf, rollRarity, upgradeTierCost, ZERO_PROFILE } from '../src/game/upgrade.js';
 
 const c = parseGameConfig(readFileSync('../config/game.yaml', 'utf8'));
@@ -126,7 +127,7 @@ describe('ekwipunek: profil przedmiotu', () => {
     expect(addProfiles(ZERO_PROFILE, { dive: 1, attack: 2, defense: 3 })).toEqual({ dive: 1, attack: 2, defense: 3 });
   });
   it('config 1.6.x: 7 receptur bojowych, balistyka odblokowuje karabin i płytę', () => {
-    expect(c.version).toBe('1.8.0');
+    expect(c.version).toBe('1.9.0');
     const ids = ['lom_bojowy', 'nitownica', 'karabin_pneumatyczny', 'napiersnik', 'plyta_wartownika', 'noktowizor', 'celownik'];
     for (const id of ids) expect(c.items.recipes.some((r) => r.id === id)).toBe(true);
     const bal = c.research.techs.find((t) => t.id === 'balistyka')!;
@@ -234,5 +235,31 @@ describe('runy (czyste funkcje)', () => {
     expect(run(11)).toMatchObject({ success: true, ore: 108, tokens: 8, samples: 1, materials: { siarka: 1 }, xp: 65 });
     expect(run(777)).toMatchObject({ success: false, ore: 26, tokens: 0, samples: 0, materials: {}, xp: 20 });
     expect(run(4242)).toMatchObject({ success: true, ore: 98, tokens: 10, samples: 1, materials: {}, xp: 65 });
+  });
+});
+
+describe('komplety (czyste funkcje)', () => {
+  const sztygar = ['mlot_pneumatyczny', 'helm_wzmocniony', 'lampa_wibracyjna', 'detektor_zylowy'];
+  const rdzen = ['wiertlo_rdzeniowe', 'kombinezon_izolowany', 'lampa_rezonansowa', 'skaner_sejsmiczny'];
+  it('progi 2 i 4: 1 część nic, 2 = bonus2, 4 = bonus2 + bonus4; duplikat liczy się raz', () => {
+    expect(setBonuses(c, ['mlot_pneumatyczny']).total).toEqual({ dive_power: 0, dive_ore_pct: 0, attack: 0, defense: 0, repair_pct: 0 });
+    expect(setBonuses(c, sztygar.slice(0, 2)).total.dive_ore_pct).toBe(5);
+    expect(setBonuses(c, ['mlot_pneumatyczny', 'mlot_pneumatyczny']).total.dive_ore_pct).toBe(0);
+    const full = setBonuses(c, sztygar);
+    expect(full.total).toMatchObject({ dive_ore_pct: 5, dive_power: 0.8 });
+    expect(full.active).toEqual([{ id: 'sztygar', name: 'Komplet Sztygara', have: 4, bonus2: true, bonus4: true }]);
+    expect(setBonuses(c, rdzen).total).toMatchObject({ dive_ore_pct: 6, dive_power: 1.2, repair_pct: -25 });
+    const both = setBonuses(c, [...sztygar.slice(0, 2), 'karabin_pneumatyczny', 'plyta_wartownika']).total;
+    expect(both).toMatchObject({ dive_ore_pct: 5, defense: 1.5, attack: 0 });
+  });
+  it('postęp kompletów w obu zestawach (do GET /items)', () => {
+    const p = setProgress(c, { '1': sztygar, '2': sztygar.slice(0, 2) });
+    expect(p.find((x) => x.id === 'sztygar')).toMatchObject({ name: 'Komplet Sztygara', pieces: sztygar, have: { '1': 4, '2': 2 }, bonus2: { dive_ore_pct: 5 }, bonus4: { dive_power: 0.8 } });
+    expect(p).toHaveLength(3);
+  });
+  it('walidacja: receptura w dwóch kompletach albo nieznana część → błąd configu', () => {
+    const yaml = readFileSync('../config/game.yaml', 'utf8');
+    expect(() => parseGameConfig(yaml.replace('pieces: [karabin_pneumatyczny,', 'pieces: [mlot_pneumatyczny,'))).toThrow();
+    expect(() => parseGameConfig(yaml.replace('pieces: [karabin_pneumatyczny,', 'pieces: [nie_ma_takiej,'))).toThrow();
   });
 });
