@@ -28,7 +28,7 @@ for m in tok:
         if 'stroke-opacity' in a: parts.append(f"strokeOpacity: {a['stroke-opacity'] if not a['stroke-opacity'].startswith('.') else '0'+a['stroke-opacity']}")
         if a.get('stroke-linecap')=='round': parts.append("roundCap: true")
     out.setdefault(t,{1:[],2:[],3:[]})[tier].append('ArtShape('+', '.join(parts)+')')
-print("// WYGENEROWANE z makiety Building.dc.html (viewBox 160x120): python tool/gen_building_art.py <Building.dc.html> > lib/building_art_data.dart")
+print("// WYGENEROWANE z makiety Building.dc.html (viewBox 160x120): python tool/gen_building_art.py <Building.dc.html> > lib/building_art_data.dart && dart format lib/building_art_data.dart (CI sprawdza formatowanie)")
 print("// Nie edytuj ręcznie; zmień makietę i wygeneruj ponownie.")
 print("part of 'building_art.dart';\n")
 print("const Map<BuildingKind, List<List<ArtShape>>> _art = {")

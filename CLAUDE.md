@@ -62,7 +62,7 @@ Dla `http://` dodaj `android:usesCleartextTraffic="true"` w `AndroidManifest.xml
 Push FCM, rozliczanie subskrypcji (wygoda, nie siła), grafika i dźwięk, wersja angielska (przenieść `strings.dart` do l10n), boty treningowe jako cele najazdów, partiowanie zamykania sezonu, sprawdzenie znaku „Last Silo”, CI (GitHub Actions: typecheck + vitest + flutter analyze/test), geotermia (odłożona).
 
 ## Konwencje i pułapki
-- Commity: krótkie, po polsku, jedna zmiana logiczna. Przed commitem: `npm run typecheck`, testy, a w `client/` `flutter analyze`.
+- Commity: krótkie, po polsku, jedna zmiana logiczna. Przed commitem: `npm run typecheck`, testy, a w `client/` `dart format .` (szerokość 160), `flutter analyze --fatal-infos` i `flutter test`. CI (`.github/workflows/ci.yml`) sprawdza to samo przy pushu do `main` i w PR.
 - Zmiana balansu: uruchom `sim:world` dla kilku ziaren (`--seed=N`) i sprawdź, że zjazdy zostają głównym źródłem dochodu, a ruda nie zalega w setkach tysięcy.
 - Testy czasu używają zegara kontekstu (`ctx.now()`); znaczniki czasu zapisuj z niego, nie z `now()` bazy.
 - `insurance_fee` w configu jest sprawdzany w teście karawan; zmieniając wartość, popraw test.

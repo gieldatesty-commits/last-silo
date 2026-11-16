@@ -1,8 +1,22 @@
+# CI Last Silo: każdy krok to jedna umowa projektu, która blokuje scalenie (CLAUDE.md, „Konwencje i pułapki”).
+# Czego CI NIE sprawdza: zachowania na prawdziwym telefonie (dotyk, wydajność, czcionki), zakupów Google Play
+# i logowania Google — przed wydaniem obowiązuje ręczne przejście gry na emulatorze lub telefonie.
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
 jobs:
   server:
-    runs-on: ubuntu-latest
+    # przypięty obraz: zmiana obrazu nie zmienia wyników bez zmiany w repo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -18,6 +32,29 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: server/package-lock.json }
       - run: npm ci
+      # typy TypeScript (serwer jest autorytatywny: błąd typu to błąd reguł gry)
       - run: npm run typecheck
+      # testy na Postgresie 16: reguły gry, dziennik i audyt (portfele = suma dziennika), idempotencja, migracje
       - run: npm test
+      # obraz produkcyjny musi się zbudować
       - run: npm run build
+
+  client:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults: { run: { working-directory: client } }
+    steps:
+      - uses: actions/checkout@v4
+      # przypięty Flutter (jak lokalnie): inna wersja SDK może zmienić analizę i układ w testach
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.9'
+          cache: true
+      - run: flutter pub get
+      # formatowanie (szerokość 160 z analysis_options.yaml): CI tylko sprawdza, niczego nie poprawia
+      - run: dart format --output=none --set-exit-if-changed .
+      # analizator: także uwagi (info) blokują, inaczej narastają
+      - run: flutter analyze --fatal-infos
+      # testy widżetów na fiksturach z prawdziwego API; losowa kolejność wykrywa testy zależne od siebie
+      - run: flutter test --test-randomize-ordering-seed random --reporter expanded
