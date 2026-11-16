@@ -5,7 +5,8 @@ import type { GameConfig } from '../config.js';
 import { applyLedger, InsufficientFunds, walletBalance } from '../ledger.js';
 import { rng } from '../game/rng.js';
 import { GameError, settle, type Ctx } from './silo.js';
-import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, siloDefense, type LoadoutNo } from './gear.js';
+import { activeLoadout, isLoadoutNo, loadEffects, loadoutProfile, loadoutRecipes, loadoutSetBonus, siloDefense, type LoadoutNo } from './gear.js';
+import { setBonuses, setProgress } from '../game/sets.js';
 import { runeCatalog, runeRecipes, runeWallet } from './runes.js';
 import { parseRune, runesProfile, runesRepairMult, unsocketFee } from '../game/runes.js';
 import { addProfiles, itemProfile, rarityOf, rollRarity, tierRepairMult, upgradeTierCost } from '../game/upgrade.js';
@@ -32,6 +33,9 @@ async function workshopLevel(trx: Trx, userId: string): Promise<number> {
   return b?.level ?? 1;
 }
 
+/** Mnożnik naprawy z kompletów: najlepsza (najniższa) zniżka spośród zestawów, w których jest przedmiot. */
+const setRepairMult = (m: Membership, los: LoadoutNo[]) => 1 + Math.min(0, ...los.map((lo) => m.setRepair[lo])) / 100;
+
 /** Koszt wzmocnienia z nazwą wymaganego badania (do opisu w kliencie). */
 const withTechName = (cfg: GameConfig, c: ReturnType<typeof upgradeTierCost>, done: Set<string>) => ({
   ...c,
@@ -40,7 +44,7 @@ const withTechName = (cfg: GameConfig, c: ReturnType<typeof upgradeTierCost>, do
 });
 
 /** Zestawy, w których jest przedmiot, i aktywny zestaw gracza (do pól `inLoadouts` i `equipped`). */
-type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]>; done: Set<string>; runesOf: Map<string, { socket: number; rune_id: string }[]> };
+type Membership = { active: LoadoutNo; of: Map<string, LoadoutNo[]>; done: Set<string>; runesOf: Map<string, { socket: number; rune_id: string }[]>; setRepair: Record<LoadoutNo, number> };
 
 async function membership(db: Trx | Ctx['db'], cfg: GameConfig, userId: string): Promise<Membership> {
   const rows = await db.selectFrom('loadouts').select(['item_id', 'loadout']).where('user_id', '=', userId).orderBy('loadout').execute();
@@ -49,7 +53,9 @@ async function membership(db: Trx | Ctx['db'], cfg: GameConfig, userId: string):
   const runeRows = await db.selectFrom('item_runes').innerJoin('items', 'items.id', 'item_runes.item_id').select(['item_runes.item_id', 'item_runes.socket', 'item_runes.rune_id']).where('items.user_id', '=', userId).orderBy('item_runes.socket').execute();
   const runesOf = new Map<string, { socket: number; rune_id: string }[]>();
   for (const r of runeRows) runesOf.set(String(r.item_id), [...(runesOf.get(String(r.item_id)) ?? []), { socket: r.socket, rune_id: r.rune_id }]);
-  return { active: await activeLoadout(db, userId), of, done: (await loadEffects(db, cfg, userId)).done, runesOf };
+  // zniżka napraw z kompletów każdego zestawu (repair_pct ≤ 0)
+  const setRepair = { 1: (await loadoutSetBonus(db as never, cfg, userId, 1)).repair_pct, 2: (await loadoutSetBonus(db as never, cfg, userId, 2)).repair_pct } as Record<LoadoutNo, number>;
+  return { active: await activeLoadout(db, userId), of, done: (await loadEffects(db, cfg, userId)).done, runesOf, setRepair };
 }
 
 const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership, repairMult = 1) => {
@@ -83,7 +89,7 @@ const view = (cfg: GameConfig, it: Selectable<Database['items']>, m: Membership,
     broken: it.durability <= 0,
     equipped: inLoadouts.includes(m.active),
     inLoadouts,
-    repairCost: repairCost(cfg, rc, it.durability, it.max_durability, repairMult * runesRepairMult(cfg, runeIds), it.tier),
+    repairCost: repairCost(cfg, rc, it.durability, it.max_durability, repairMult * runesRepairMult(cfg, runeIds) * setRepairMult(m, inLoadouts), it.tier),
   };
 };
 
@@ -111,6 +117,8 @@ export async function listItems(ctx: Ctx, userId: string) {
     loadouts: { '1': slotsOf(1), '2': slotsOf(2) },
     loadoutStats: { '1': round(await loadoutProfile(ctx.db, cfg, userId, 1)), '2': round(await loadoutProfile(ctx.db, cfg, userId, 2)) },
     // obrona silosu ze sprzętu, gdyby aktywny był dany zestaw (pełna z niego + passive_defense_share z drugiego)
+    sets: setProgress(cfg, { '1': await loadoutRecipes(ctx.db, userId, 1), '2': await loadoutRecipes(ctx.db, userId, 2) }),
+    setsActive: { '1': setBonuses(cfg, await loadoutRecipes(ctx.db, userId, 1)).active, '2': setBonuses(cfg, await loadoutRecipes(ctx.db, userId, 2)).active },
     siloDefense: { '1': Math.round((await siloDefense(ctx.db, cfg, userId, 1)) * 100) / 100, '2': Math.round((await siloDefense(ctx.db, cfg, userId, 2)) * 100) / 100 },
     inventoryMax: cfg.items.inventory_max,
     workshopLevel: wl,
@@ -205,7 +213,7 @@ export async function repairTx(trx: Trx, ctx: Ctx, userId: string, id: string) {
   if (it.durability >= it.max_durability) throw new GameError(409, 'nothing_to_repair');
   const fx = await loadEffects(trx, cfg, userId);
   const itemRunes = (await trx.selectFrom('item_runes').select('rune_id').where('item_id', '=', String(it.id)).execute()).map((r) => r.rune_id);
-  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair * runesRepairMult(cfg, itemRunes), it.tier);
+  const cost = repairCost(cfg, rc, it.durability, it.max_durability, fx.repair * runesRepairMult(cfg, itemRunes) * setRepairMult(await membership(trx, cfg, userId), (await membership(trx, cfg, userId)).of.get(String(it.id)) ?? []), it.tier);
   try {
     await applyLedger(trx, userId, [{ resource: 'ore', delta: -cost, reason: 'repair_cost', ref: `repair:${it.id}:${it.durability}` }], cfg.version);
   } catch (e) {

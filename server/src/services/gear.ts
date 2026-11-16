@@ -5,6 +5,7 @@ import type { GameConfig } from '../config.js';
 import { computeEffects } from '../game/research.js';
 import { addProfiles, itemProfile, rarityOf, ZERO_PROFILE, type Profile } from '../game/upgrade.js';
 import { runesProfile } from '../game/runes.js';
+import { setBonuses, type SetBonus } from '../game/sets.js';
 
 type Trx = Transaction<Database> | Kysely<Database>;
 
@@ -39,7 +40,27 @@ export async function loadoutProfile(db: Trx, cfg: GameConfig, userId: string, l
     const rc = cfg.items.recipes.find((r) => r.id === it.recipe_id);
     if (rc) sum = addProfiles(sum, itemProfile(cfg, rc, it.quality, it.tier, rarityOf(cfg, it.rarity).mult));
   }
-  return sum;
+  // komplety z niezepsutych części tego zestawu (§6): moc zjazdu, atak, obrona
+  const set = setBonuses(cfg, rows.map((r) => r.recipe_id)).total;
+  return addProfiles(sum, { dive: set.dive_power, attack: set.attack, defense: set.defense });
+}
+
+/** Receptury niezepsutych przedmiotów zestawu (do kompletów). */
+export async function loadoutRecipes(db: Trx, userId: string, loadout: LoadoutNo): Promise<string[]> {
+  const rows = await db
+    .selectFrom('loadouts')
+    .innerJoin('items', 'items.id', 'loadouts.item_id')
+    .select('items.recipe_id')
+    .where('loadouts.user_id', '=', userId)
+    .where('loadouts.loadout', '=', loadout)
+    .where('items.durability', '>', 0)
+    .execute();
+  return rows.map((r) => r.recipe_id);
+}
+
+/** Pełne bonusy kompletów zestawu (z rudą i naprawami, których nie ma w profilu). */
+export async function loadoutSetBonus(db: Trx, cfg: GameConfig, userId: string, loadout: LoadoutNo): Promise<SetBonus> {
+  return setBonuses(cfg, await loadoutRecipes(db, userId, loadout)).total;
 }
 
 /** Obrona silosu: pełna z aktywnego zestawu + `passive_defense_share` z drugiego. `activeProfile` oszczędza zapytanie, gdy już policzony. */
