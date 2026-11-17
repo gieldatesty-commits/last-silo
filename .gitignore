@@ -4,3 +4,4 @@ dist/
 *.log
 client/build/
 client/.dart_tool/
+build-out/
