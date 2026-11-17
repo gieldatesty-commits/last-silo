@@ -83,6 +83,19 @@ Gdyby `google_sign_in` v7 nie pozwalał przekazać nonce: zostaje `aud` + `exp` 
 - Klient OAuth **Android**: nazwa pakietu `pl.lastsilo.lastsilo` + SHA-1. Osobno dla klucza debug i dla klucza podpisywania Play App Signing.
 - Klient OAuth **Web**: jego identyfikator to `serverClientId` i `GOOGLE_WEB_CLIENT_ID`.
 
+### 6.1. Krok po kroku (Damian, ok. 15 min)
+1. https://console.cloud.google.com → nowy projekt „Last Silo” (albo istniejący, w którym będzie Play Console API).
+2. **APIs & Services → OAuth consent screen** (Google Auth Platform → Branding): typ **External**, nazwa „Last Silo”, e-mail pomocy, domena i link do polityki prywatności (wymagany przed publikacją; do testów wystarczy tryb *Testing* z Twoim kontem w *Test users*). Zakresy: nic nie dodawaj (domyślne `openid`, `email`, `profile` dodaje Google; serwer czyta tylko `sub`).
+3. **Clients → Create client → Web application**, nazwa „Last Silo serwer”. Bez adresów przekierowań. Skopiuj **Client ID** (`…apps.googleusercontent.com`): to `GOOGLE_WEB_CLIENT_ID`.
+4. **Create client → Android**, nazwa „Last Silo debug”: pakiet `pl.lastsilo.lastsilo`, SHA-1 klucza debug z tego komputera:
+   `D0:A7:A1:33:3E:96:CA:92:B8:7E:E5:C9:1A:8F:51:62:69:A3:A8:9D`
+   (sprawdzenie: `keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android`, keytool z `Android Studio\jbrin`). Identyfikatora klienta Android nigdzie nie wpisujemy: Google dopasowuje go po pakiecie i SHA-1.
+5. Po założeniu aplikacji w Play Console: drugi klient **Android** „Last Silo Play” z SHA-1 z *Play Console → Test and release → App integrity → App signing key certificate* (oraz osobny dla klucza przesyłania, jeśli instalujesz podpisane AAB poza Sklepem).
+6. Serwer: `GOOGLE_WEB_CLIENT_ID=<Client ID z kroku 3>` w `.env` (lokalnie: zmienna przed `npm run dev`). Klient: `flutter run --dart-define=API_URL=http://10.0.2.2:3000 --dart-define=GOOGLE_WEB_CLIENT_ID=<ten sam Client ID>`.
+7. Test ręczny: na emulatorze dodaj konto Google (Ustawienia → Konta; obraz z Google Play/Google APIs), Więcej → Konto → „Połącz z Google” (status „✓ Google”), odinstaluj grę, zainstaluj, na ekranie tworzenia postaci „Mam już konto (Google)” → wraca ta sama postać.
+
+Typowe błędy: `google_failed` z kodem konfiguracji = brak klienta Android z właściwym SHA-1/pakietem albo Client ID typu Android zamiast Web w `GOOGLE_WEB_CLIENT_ID`; `bad_google_token` = serwer i klient mają różne `GOOGLE_WEB_CLIENT_ID`; `google_disabled` = serwer bez tej zmiennej.
+
 ## 7. Kryteria akceptacji
 Testy serwera z atrapą weryfikatora:
 1. Powiązanie: udane; ponowienie z tym samym kluczem; `account_already_linked`; `google_in_use`.
@@ -121,3 +134,6 @@ Znane ograniczenia (świadomie poza v1):
 - Usunięcie **sprzedawcy** kasuje jego transakcje (`market_trades.seller_id` ma `ON DELETE CASCADE`), więc kupujący traci ten wpis z „Ostatnich transakcji”. Kupione towary i karawany zostają (`shipments.seller_id` → NULL).
 - Najazdy z udziałem usuniętego gracza znikają z historii drugiej strony (kaskada `raids`).
 - Strona WWW do usuwania konta, ekran Konto w kliencie i konfiguracja Google Cloud: kroki 3–5 z §8.
+
+## 11. Stan wdrożenia klienta (2026-11-17)
+Zrobione (krok 4 z §8): `lib/google_auth.dart` (interfejs `GoogleAuth`, wtyczka `google_sign_in` 7.2 bez nonce, `NoGoogleAuth` bez `GOOGLE_WEB_CLIENT_ID`), `Api.signInWithGoogle`, odzyskanie konta przy `invalid_credentials` (flaga `googleLinked` w bezpiecznym magazynie → ciche logowanie → dopiero potem nowy gość z ostrzeżeniem na ekranie tworzenia postaci), ekran Więcej → Konto (status, łączenie, usuwanie z wpisaniem USUŃ i linkiem do subskrypcji w Google Play), „Mam już konto (Google)” na ekranie tworzenia postaci z ostrzeżeniem, komunikaty błędów. Testy: `client/test/account_test.dart` (14). Na emulatorze sprawdzone: ekran, dialog, anulowanie wyboru konta. Prawdziwe logowanie czeka na konfigurację z §6.1.
