@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'api.dart';
+import 'google_auth.dart';
 
 /// Stan całej aplikacji: odpowiedzi serwera + akcje. Serwer jest autorytatywny,
 /// więc po każdej akcji pobieramy świeży stan zamiast liczyć go u siebie.
@@ -17,6 +18,12 @@ class AppState extends ChangeNotifier {
 
   /// Kod ostatniego błędu (do pokazania w UI); [consumeError] go czyści.
   String? error;
+
+  /// GET /account: {userId, createdAt, google, googleLinkedAt, devices}; ładowane na ekranie Konto.
+  Map<String, dynamic>? account;
+
+  /// Serwer odrzucił zapisane konto i zaczynamy od nowej postaci (ostrzeżenie na ekranie tworzenia postaci).
+  bool get accountReset => api.accountReset;
 
   bool get hasPlayer => (me?['player'] as Map?)?['nickname'] != null;
 
@@ -60,6 +67,53 @@ class AppState extends ChangeNotifier {
         await _loadGame();
       });
 
+  Future<void> loadAccount() async {
+    account = _map(await api.get('/account'));
+    if (account!['google'] == true) await api.markGoogleLinked();
+    notifyListeners();
+  }
+
+  /// Łączy bieżące konto z Google. Anulowanie wyboru konta to nie błąd: zwraca false bez komunikatu.
+  Future<bool> linkGoogle() => _act(() async {
+        final idToken = await _googleIdToken();
+        if (idToken == null) throw const _Cancelled();
+        account = _map(await api.post('/account/google/link', body: {'idToken': idToken}, idempotent: true));
+        await api.markGoogleLinked();
+      });
+
+  /// „Mam już konto (Google)”: przełącza to urządzenie na postać połączoną z Google.
+  Future<bool> switchToGoogle() => _act(() async {
+        final idToken = await _googleIdToken();
+        if (idToken == null) throw const _Cancelled();
+        await api.signInWithGoogle(idToken);
+        api.accountReset = false;
+        account = null;
+        me = _map(await api.get('/me'));
+        if (hasPlayer) await _loadGame();
+      });
+
+  /// Usuwa konto na serwerze i zaczyna od nowego gościa (ekran tworzenia postaci).
+  Future<bool> deleteAccount() async {
+    final ok = await _act(() async {
+      await api.delete('/account', body: {'confirm': 'USUN'});
+      await api.forgetDevice();
+      await api.google.signOut();
+    });
+    if (!ok) return false;
+    me = silo = account = null;
+    routes = history = const [];
+    await bootstrap();
+    return true;
+  }
+
+  Future<String?> _googleIdToken() async {
+    try {
+      return await api.google.signIn();
+    } on GoogleAuthFailure catch (_) {
+      throw const ApiException(0, 'google_failed');
+    }
+  }
+
   Future<bool> upgrade(String type) => _act(() async {
         await api.post('/buildings/$type/upgrade', idempotent: true);
         await _loadGame();
@@ -82,6 +136,8 @@ class AppState extends ChangeNotifier {
     try {
       await f();
       if (reloadGame && hasPlayer) await _loadGame();
+    } on _Cancelled {
+      ok = false;
     } on ApiException catch (e) {
       error = e.code;
       ok = false;
@@ -105,4 +161,9 @@ class AppState extends ChangeNotifier {
 
   static Map<String, dynamic> _map(dynamic v) => Map<String, dynamic>.from(v as Map);
   static List<Map<String, dynamic>> _list(dynamic v) => (v as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+}
+
+/// Użytkownik zamknął okno wyboru konta Google: akcja przerwana bez komunikatu błędu.
+class _Cancelled implements Exception {
+  const _Cancelled();
 }

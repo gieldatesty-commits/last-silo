@@ -42,6 +42,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!ok && mounted) setState(() => _err = errorText(widget.state.consumeError() ?? 'internal'));
   }
 
+  /// „Mam już konto (Google)”: ostrzeżenie (makieta „Mam już konto”), potem logowanie na postać połączoną z Google.
+  Future<void> _switchToGoogle() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Przełączyć na konto z Google?', style: lsDisplay.copyWith(fontSize: 18)),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1410),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Ls.amber.withValues(alpha: 0.4)),
+            ),
+            child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ExcludeSemantics(child: Text('!', style: TextStyle(fontWeight: FontWeight.w700, color: Ls.amber))),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Konto gościa z tego telefonu nie jest połączone z Google. Po przełączeniu nie będzie już dostępne.',
+                    style: TextStyle(fontSize: 12, height: 1.45, color: Ls.text)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 10),
+          const Text('Konta nie łączą się: zasoby obu postaci zostają osobno.', style: TextStyle(fontSize: 12, height: 1.4, color: Ls.textMuted)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Zostań')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Przełącz')),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() => _err = null);
+    final ok = await widget.state.switchToGoogle();
+    if (!ok && mounted) {
+      final code = widget.state.consumeError();
+      setState(() => _err = code == null ? null : errorText(code));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final busy = widget.state.busy;
@@ -61,6 +103,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Ls.textMuted),
               ),
+              if (widget.state.accountReset) ...[
+                const SizedBox(height: 12),
+                Semantics(
+                  container: true,
+                  child: LsCard(
+                    border: Ls.warn.withValues(alpha: 0.6),
+                    margin: EdgeInsets.zero,
+                    child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.warning_amber_rounded, color: Ls.warnText, size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text('Nie udało się odzyskać poprzedniej postaci z tego telefonu. Zaczynasz od nowa.',
+                            style: TextStyle(fontSize: 13, height: 1.4, color: Ls.text)),
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               const Text('PSEUDONIM', style: lsLabel),
               const SizedBox(height: 8),
@@ -121,6 +181,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               const SizedBox(height: 8),
               LsButton(busy ? 'Tworzę silos…' : 'Zacznij', color: Ls.amber, onPressed: busy ? null : _submit),
+              if (widget.state.api.google.available) ...[
+                const SizedBox(height: 10),
+                LsButton('Mam już konto (Google)', color: Ls.text, secondary: true, onPressed: busy ? null : _switchToGoogle),
+                const SizedBox(height: 6),
+                const Text('Dla graczy, którzy połączyli postać z Google na innym telefonie.',
+                    textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Ls.textFaint)),
+              ],
             ],
           ),
         ),

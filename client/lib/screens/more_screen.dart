@@ -7,6 +7,7 @@ import '../resource_art.dart';
 import '../strings.dart';
 import '../ui.dart';
 import '../widgets.dart';
+import 'account_screen.dart';
 import 'art_preview_screen.dart';
 import 'contracts_screen.dart';
 import 'market_screen.dart';
@@ -68,6 +69,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _Tile(Icons.event_outlined, 'Sezon', null, Ls.teal, () => SeasonScreen(state: state), future: _season),
               _Tile(Icons.terrain_outlined, 'Geologia', deposit != null ? 'Twoje złoże: ${richnessNames[deposit] ?? deposit}' : 'czym obfituje okolica',
                   Ls.copper, () => _Geology(state: state)),
+              _Tile(Icons.shield_outlined, 'Konto', 'połączenie z Google, usuwanie', Ls.textMuted, () => AccountScreen(state: state)),
               if (kDebugMode) _Tile(Icons.grid_view, 'Grafiki budynków', 'podgląd 7 x 3 (debug)', Ls.textMuted, () => const ArtPreviewScreen()),
             ];
             return ListView(

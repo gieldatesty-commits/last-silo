@@ -70,7 +70,7 @@ class FakeApi extends Api {
   }
 
   @override
-  Future<dynamic> delete(String path) async {
+  Future<dynamic> delete(String path, {Object? body}) async {
     posts.add('DELETE $path');
     return {};
   }
