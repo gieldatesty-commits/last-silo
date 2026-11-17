@@ -60,6 +60,8 @@ Nie w v1. Bez odłączania nie da się „przerzucać” jednego konta Google mi
 ### 3.3 Gdy klient nie poda nonce
 Gdyby `google_sign_in` v7 nie pozwalał przekazać nonce: zostaje `aud` + `exp` (token żyje około 1 h). Ryzyko: ktoś, kto przechwyci token ID gracza, może się nim zalogować do końca jego ważności. Opcje: (a) akceptujemy w v1, (b) własny kanał platformowy do Credential Manager z nonce. **Decyzja po sprawdzeniu API v7.**
 
+**Decyzja Damiana (2026-11-17): (a) bez nonce w v1.** Sprawdzone: `google_sign_in` 7.2.0 przyjmuje `nonce` tylko w `initialize()` (raz na uruchomienie aplikacji), a nasz nonce jest jednorazowy na logowanie, więc działałby najwyżej przy pierwszym logowaniu w sesji. Klient nie wysyła `nonce`; serwer zostaje przy `GOOGLE_REQUIRE_NONCE=0` (sprawdza podpis, `aud`, `iss`, `exp`). Do powrotu, gdy pakiet pozwoli podać nonce przy `authenticate()`.
+
 ### 3.4 Inne
 - Tokenu ID nie logujemy (`events_log` zapisuje tylko „account_linked” bez `sub`).
 - Limit prób: np. 10 na minutę na IP dla `/auth/google`. Dziś serwer nie ma limitów; to byłby pierwszy.
