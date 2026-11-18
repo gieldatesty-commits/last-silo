@@ -19,7 +19,7 @@ import { activateLoadoutTx, craftTx, equipTx, listItems, repairTx, socketRuneTx,
 import { craftRuneTx } from './services/runes.js';
 import { BillingUnavailable } from './billing.js';
 import { subscriptionView, syncToken, verifySubscriptionTx, type Billing } from './services/subscription.js';
-import { accountView, createGuest, deleteAccount, deviceLogin, googleLogin, issueNonce, linkGoogleTx, type GoogleAuth } from './services/account.js';
+import { accountView, createGuest, deleteAccount, deleteByGoogle, deviceLogin, googleLogin, issueNonce, linkGoogleTx, requestDeletion, type GoogleAuth } from './services/account.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -175,6 +175,22 @@ export function buildApp(deps: AppDeps) {
   app.delete('/account', { onRequest: auth }, async (req) => {
     z.object({ confirm: z.literal('USUN') }).parse(req.body ?? {});
     return deleteAccount(ctx, req.user.sub);
+  });
+
+  // Strona WWW do usuwania konta (wymóg Google Play): bez JWT, z limitem prób na IP.
+  app.post('/account/delete-by-google', async (req, reply) => {
+    if (!google) return reply.code(503).send({ error: 'google_disabled' });
+    if (!limiter(`del:${req.ip}`)) return reply.code(429).send({ error: 'too_many_requests' });
+    const { idToken } = z.object({ idToken: z.string().min(1).max(4096), confirm: z.literal('USUN') }).parse(req.body ?? {});
+    return deleteByGoogle(ctx, google, idToken);
+  });
+  app.post('/account/deletion-requests', async (req, reply) => {
+    if (!limiter(`req:${req.ip}`)) return reply.code(429).send({ error: 'too_many_requests' });
+    const b = z
+      .object({ nickname: z.string().trim().min(1).max(40), code: z.string().trim().min(8).max(9), message: z.string().trim().max(1000).optional() })
+      .parse(req.body ?? {});
+    await requestDeletion(ctx, { nickname: b.nickname, code: b.code, message: b.message || null });
+    return reply.code(202).send({ received: true });
   });
 
   app.get('/me', { onRequest: auth }, async (req, reply) => {

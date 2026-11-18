@@ -16,6 +16,12 @@ const NONCE_TTL_MS = 10 * 60_000;
 /** nick w zanonimizowanych wynikach sezonów po usunięciu konta */
 export const DELETED_NICKNAME = 'Usunięty gracz';
 
+/** Kod konta do prośby o usunięcie przez WWW: pierwsze 8 znaków userId wielkimi literami, `XXXX-XXXX`. */
+export function accountCode(userId: string): string {
+  const c = userId.replace(/-/g, '').slice(0, 8).toUpperCase();
+  return `${c.slice(0, 4)}-${c.slice(4)}`;
+}
+
 /** Nowe konto gościa: użytkownik, pierwsze urządzenie i pusta postać. */
 export async function createGuest(ctx: Ctx): Promise<{ userId: string; secret: string }> {
   const secret = randomBytes(32).toString('hex');
@@ -109,7 +115,7 @@ async function accountViewTx(trx: Trx, userId: string) {
   const u = await trx.selectFrom('users').select(['id', 'google_sub', 'google_linked_at', 'created_at']).where('id', '=', userId).executeTakeFirst();
   if (!u) throw new GameError(401, 'unauthorized');
   const devices = await trx.selectFrom('user_devices').select((e) => e.fn.countAll<string>().as('n')).where('user_id', '=', userId).executeTakeFirstOrThrow();
-  return { userId: u.id, createdAt: u.created_at, google: u.google_sub !== null, googleLinkedAt: u.google_linked_at, devices: Number(devices.n) };
+  return { userId: u.id, code: accountCode(u.id), createdAt: u.created_at, google: u.google_sub !== null, googleLinkedAt: u.google_linked_at, devices: Number(devices.n) };
 }
 
 /**
@@ -136,4 +142,35 @@ export async function deleteAccount(ctx: Ctx, userId: string) {
     await trx.insertInto('events_log').values({ user_id: null, name: 'account_deleted', props: JSON.stringify({ hadActiveSubscription: !!sub }) }).execute();
     return { deleted: true, hadActiveSubscription: !!sub };
   });
+}
+
+/** POST /account/delete-by-google: usunięcie ze strony WWW po zalogowaniu Google (bez urządzenia i bez JWT). */
+export async function deleteByGoogle(ctx: Ctx, google: GoogleAuth, idToken: string) {
+  const userId = await ctx.db.transaction().execute(async (trx) => {
+    const sub = await verifiedSub(trx, ctx, google, idToken);
+    const u = await trx.selectFrom('users').select('id').where('google_sub', '=', sub).executeTakeFirst();
+    if (!u) throw new GameError(404, 'no_linked_account');
+    return u.id;
+  });
+  return deleteAccount(ctx, userId);
+}
+
+/**
+ * POST /account/deletion-requests: prośba gościa. `user_id` tylko, gdy pseudonim i kod wskazują to samo konto;
+ * odpowiedź dla wołającego jest zawsze taka sama (bez wyroczni, czy konto istnieje).
+ */
+export async function requestDeletion(ctx: Ctx, input: { nickname: string; code: string; message: string | null }) {
+  const code = input.code.replace(/-/g, '').toLowerCase();
+  const match = /^[0-9a-f]{8}$/.test(code)
+    ? await ctx.db
+        .selectFrom('players')
+        .select('user_id')
+        .where('nickname', '=', input.nickname)
+        .where(sql<boolean>`left(user_id::text, 8) = ${code}`)
+        .executeTakeFirst()
+    : undefined;
+  await ctx.db
+    .insertInto('deletion_requests')
+    .values({ user_id: match?.user_id ?? null, nickname: input.nickname, code: input.code, message: input.message, created_at: ctx.now(), handled_at: null })
+    .execute();
 }

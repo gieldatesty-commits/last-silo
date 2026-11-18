@@ -10,6 +10,7 @@ export interface Database {
   users: { id: Generated<string>; guest_secret_hash: string; google_sub: string | null; google_linked_at: Date | null; created_at: Generated<Date> };
   user_devices: { id: Generated<string>; user_id: string; secret_hash: string; created_at: Generated<Date>; last_seen_at: Generated<Date> };
   auth_nonces: { nonce: string; created_at: Date };
+  deletion_requests: { id: Generated<string>; user_id: string | null; nickname: string; code: string; message: string | null; created_at: Date; handled_at: Date | null };
   players: {
     user_id: string;
     nickname: string | null;
