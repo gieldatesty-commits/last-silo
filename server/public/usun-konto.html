@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usuń konto · Last Silo</title>
+<meta name="robots" content="noindex">
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#0A0C12;color:#E8E3D6;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:560px;margin:0 auto;padding:24px 16px 32px;display:flex;flex-direction:column;gap:14px}
+.brand{font-size:11px;font-weight:700;letter-spacing:1.6px;color:#C8794A}
+h1{margin:0;font-size:26px;line-height:1.15}
+h2{margin:0;font-size:17px}
+p{margin:0}
+.muted{color:#C9D0DC;font-size:14px}
+.small{font-size:12px;color:#A5AEC0}
+.card{padding:14px;border-radius:14px;background:#10141D;border:1px solid #222B3A;display:flex;flex-direction:column;gap:10px}
+.note{padding:12px;border-radius:12px;display:flex;gap:8px;font-size:13px;line-height:1.45}
+.warn{background:#1A1410;border:1px solid #F0B45A66}.warn b{color:#F0B45A}
+.ok{background:#12201F;border:1px solid #62C9C066}.ok b{color:#62C9C0}
+.err{border:1px solid #F0867A66;color:#F0A89E}.err b{color:#F0A89E}
+a{color:#F0B45A}a:hover{color:#F0C79A}
+label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#A5AEC0}
+input,textarea{min-height:44px;border-radius:10px;border:1px solid #46536A;background:#0F131C;color:#E8E3D6;padding:10px 12px;font:inherit;font-size:15px}
+textarea{resize:vertical}
+button{min-height:44px;border-radius:10px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:0 16px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.danger{border:0;background:#F0867A;color:#0A0C12}
+.outline{border:1px solid #F0867A;background:transparent;color:#F0A89E}
+:focus-visible{outline:2px solid #E8E3D6;outline-offset:2px}
+footer{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:#A5AEC0;border-top:1px solid #222B3A;padding-top:12px;margin-top:8px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<div style="display:flex;flex-direction:column;gap:6px">
+<span class="brand">LAST SILO</span>
+<h1>Usuń konto</h1>
+<p class="muted">Usuniemy postać, silos, przedmioty, historię i urządzenia. W rankingach sezonów zostaniesz jako „Usunięty gracz”. Tego nie da się cofnąć.</p>
+</div>
+
+<div class="note warn"><b aria-hidden="true">!</b><span>Subskrypcja w Google Play nie zostanie anulowana. <a href="https://play.google.com/store/account/subscriptions" rel="noopener">Zarządzaj subskrypcjami w Google Play</a></span></div>
+
+<p class="card muted" style="display:block;font-size:13px">Masz grę na telefonie? Najszybciej: <b style="color:#E8E3D6">Więcej → Konto → Usuń konto</b>.</p>
+
+<!--GOOGLE-->
+<section class="card" aria-labelledby="g-title" id="google" data-client-id="{{GOOGLE_WEB_CLIENT_ID}}">
+<h2 id="g-title">Konto połączone z Google</h2>
+<p class="muted" style="font-size:13px">Zaloguj się kontem Google, z którym połączyłeś postać. Konto usuniemy od razu.</p>
+<div id="g-button" style="min-height:44px"></div>
+<form id="g-confirm" class="card" style="border-color:#F0867A66;background:transparent" hidden>
+<p style="font-size:13px">Zalogowano. Usuniemy postać połączoną z tym kontem Google.</p>
+<label>Wpisz USUŃ, aby potwierdzić<input id="g-word" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+<button class="danger" type="submit" id="g-delete" disabled>Usuń na zawsze</button>
+</form>
+<div id="g-result" role="status" aria-live="polite"></div>
+</section>
+<script src="https://accounts.google.com/gsi/client" async onload="lsGoogleReady()"></script>
+<!--/GOOGLE-->
+
+<section class="card" aria-labelledby="f-title">
+<h2 id="f-title">Konto gościa</h2>
+<p class="muted" style="font-size:13px">Podaj pseudonim i kod konta z ekranu Więcej → Konto. Sprawdzimy dane i usuniemy konto w ciągu 30 dni.</p>
+<form id="request" style="display:flex;flex-direction:column;gap:10px">
+<label>Pseudonim<input name="nickname" required maxlength="40" autocomplete="off"></label>
+<label>Kod konta<input name="code" required minlength="8" maxlength="9" placeholder="1A2B-3C4D" autocomplete="off" autocapitalize="characters" spellcheck="false" style="letter-spacing:1px"></label>
+<label>Wiadomość (opcjonalnie)<textarea name="message" rows="3" maxlength="1000"></textarea></label>
+<button class="outline" type="submit">Wyślij prośbę o usunięcie</button>
+</form>
+<div id="f-result" role="status" aria-live="polite"></div>
+</section>
+
+<footer><a href="/prywatnosc">Polityka prywatności</a><span>Kontakt: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a></span></footer>
+</main>
+<script>
+const errors = {
+  no_linked_account: 'To konto Google nie jest połączone z żadną postacią. Skorzystaj z formularza poniżej.',
+  too_many_requests: 'Za dużo prób. Odczekaj minutę i spróbuj ponownie.',
+  bad_google_token: 'Google nie potwierdził logowania. Zaloguj się ponownie.',
+  google_disabled: 'Logowanie Google jest teraz niedostępne. Skorzystaj z formularza poniżej.',
+  bad_request: 'Sprawdź wpisane dane.',
+  network: 'Brak połączenia z serwerem. Spróbuj ponownie.',
+};
+function note(el, kind, text) {
+  el.replaceChildren();
+  if (!text) return;
+  const box = document.createElement('div');
+  box.className = 'note ' + kind;
+  const sign = document.createElement('b');
+  sign.setAttribute('aria-hidden', 'true');
+  sign.textContent = kind === 'ok' ? '✓' : '×';
+  const span = document.createElement('span');
+  span.textContent = text;
+  box.append(sign, span);
+  el.append(box);
+}
+async function post(url, body) {
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await r.json().catch(() => ({}));
+    return { ok: r.ok, data, error: data.error || 'http_' + r.status };
+  } catch (_) {
+    return { ok: false, data: {}, error: 'network' };
+  }
+}
+const errorText = (code) => errors[code] || 'Coś poszło nie tak (' + code + '). Spróbuj ponownie.';
+
+// Konto Google: token z Google Identity Services trafia tylko do naszego serwera.
+let idToken = null;
+function lsGoogleReady() {
+  const section = document.getElementById('google');
+  google.accounts.id.initialize({
+    client_id: section.dataset.clientId,
+    callback: (res) => {
+      idToken = res.credential;
+      document.getElementById('g-confirm').hidden = false;
+      note(document.getElementById('g-result'), '', '');
+      document.getElementById('g-word').focus();
+    },
+  });
+  google.accounts.id.renderButton(document.getElementById('g-button'), { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill', locale: 'pl' });
+}
+const word = document.getElementById('g-word');
+if (word) {
+  const btn = document.getElementById('g-delete');
+  word.addEventListener('input', () => (btn.disabled = !['USUŃ', 'USUN'].includes(word.value.trim())));
+  document.getElementById('g-confirm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!idToken || btn.disabled) return;
+    btn.disabled = true;
+    const r = await post('/account/delete-by-google', { idToken, confirm: 'USUN' });
+    const out = document.getElementById('g-result');
+    if (r.ok) {
+      document.getElementById('g-confirm').hidden = true;
+      idToken = null;
+      note(out, 'ok', r.data.hadActiveSubscription
+        ? 'Konto usunięte. Masz aktywną subskrypcję: anuluj ją w Google Play, inaczej Google dalej będzie ją pobierać.'
+        : 'Konto usunięte.');
+    } else {
+      btn.disabled = false;
+      if (r.error === 'no_linked_account' || r.error === 'bad_google_token') document.getElementById('g-confirm').hidden = true;
+      note(out, 'err', errorText(r.error));
+    }
+  });
+}
+
+// Konto gościa: prośba z pseudonimem i kodem; odpowiedź zawsze ta sama.
+document.getElementById('request').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const btn = form.querySelector('button');
+  const f = new FormData(form);
+  btn.disabled = true;
+  const r = await post('/account/deletion-requests', { nickname: f.get('nickname').trim(), code: f.get('code').trim(), message: f.get('message').trim() || undefined });
+  btn.disabled = false;
+  const out = document.getElementById('f-result');
+  if (r.ok) {
+    form.reset();
+    note(out, 'ok', 'Przyjęliśmy prośbę. Usuniemy konto w ciągu 30 dni, jeśli dane się zgadzają.');
+  } else {
+    note(out, 'err', errorText(r.error));
+  }
+});
+</script>
+</body>
+</html>

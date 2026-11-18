@@ -20,6 +20,8 @@ const EnvSchema = z.object({
   GOOGLE_WEB_CLIENT_ID: z.string().min(1).optional(),
   /** 1 = token ID bez nonce jest odrzucany (§3.3) */
   GOOGLE_REQUIRE_NONCE: z.enum(['0', '1']).default('0'),
+  /** adres kontaktowy na stronach /usun-konto i /prywatnosc */
+  CONTACT_EMAIL: z.string().email().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

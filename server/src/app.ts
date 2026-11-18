@@ -1,6 +1,8 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Transaction } from 'kysely';
 import type { Database, Db } from './db.js';
 import { BUILDING_TYPES, type GameConfig } from './config.js';
@@ -41,6 +43,10 @@ export interface AppDeps {
   google?: GoogleAuth | null;
   /** limit prób logowania/powiązania Google na minutę (na IP albo konto) */
   authRateLimitPerMinute?: number;
+  /** identyfikator klienta OAuth Web dla strony /usun-konto (bez niego strona nie pokazuje logowania Google) */
+  googleWebClientId?: string;
+  /** adres kontaktowy na stronach WWW (CONTACT_EMAIL) */
+  contactEmail?: string;
 }
 
 const GoogleBody = z.object({ idToken: z.string().min(20).max(8192) });
@@ -176,6 +182,16 @@ export function buildApp(deps: AppDeps) {
     z.object({ confirm: z.literal('USUN') }).parse(req.body ?? {});
     return deleteAccount(ctx, req.user.sub);
   });
+
+  // Strony WWW: usuwanie konta (wymóg Google Play) i polityka prywatności; wartości podstawiane raz, przy starcie.
+  const clientId = google ? deps.googleWebClientId : undefined;
+  const pages = {
+    '/usun-konto': renderPage('usun-konto.html', { clientId, contactEmail: deps.contactEmail }),
+    '/prywatnosc': renderPage('prywatnosc.html', { clientId, contactEmail: deps.contactEmail }),
+  };
+  for (const [path, html] of Object.entries(pages)) {
+    app.get(path, async (_req, reply) => reply.header('content-type', 'text/html; charset=utf-8').header('cache-control', 'no-cache').send(html));
+  }
 
   // Strona WWW do usuwania konta (wymóg Google Play): bez JWT, z limitem prób na IP.
   app.post('/account/delete-by-google', async (req, reply) => {
@@ -436,4 +452,16 @@ export function buildApp(deps: AppDeps) {
   });
 
   return app;
+}
+
+const PUBLIC_DIR = join(import.meta.dirname, '..', 'public');
+const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+/** Strona z `public/`: bez identyfikatora klienta Google wycina sekcję `<!--GOOGLE-->…<!--/GOOGLE-->`. */
+function renderPage(file: string, v: { clientId?: string; contactEmail?: string }): string {
+  let html = readFileSync(join(PUBLIC_DIR, file), 'utf8');
+  if (!v.clientId) html = html.replace(/<!--GOOGLE-->[\s\S]*?<!--\/GOOGLE-->/g, '');
+  return html
+    .replaceAll('{{GOOGLE_WEB_CLIENT_ID}}', escapeHtml(v.clientId ?? ''))
+    .replaceAll('{{CONTACT_EMAIL}}', escapeHtml(v.contactEmail ?? 'kontakt@example.com'));
 }

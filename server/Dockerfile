@@ -13,6 +13,7 @@ COPY server/package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/server/dist ./dist
 COPY server/migrations ./migrations
+COPY server/public ./public
 COPY config /app/config
 ENV GAME_CONFIG_PATH=/app/config/game.yaml
 EXPOSE 3000

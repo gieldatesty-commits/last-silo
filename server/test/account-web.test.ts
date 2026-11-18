@@ -15,15 +15,17 @@ const clock = new Date('2026-04-01T10:00:00Z');
 const verifier = new FakeGoogleIdVerifier();
 const google = { verifier, requireNonce: false };
 const deps = { db, config, jwtSecret: 'test-secret-1234567890', now: () => clock, seed: () => 1, google, authRateLimitPerMinute: 1000 };
-const app = buildApp(deps);
+const CLIENT_ID = '123-test.apps.googleusercontent.com';
+const app = buildApp({ ...deps, googleWebClientId: CLIENT_ID });
 const limited = buildApp({ ...deps, authRateLimitPerMinute: 2 });
+const noGoogle = buildApp({ ...deps, google: null, contactEmail: 'pomoc@lastsilo.test' });
 
 beforeAll(async () => {
   await migrate(pool);
 });
 beforeEach(() => verifier.tokens.clear());
 afterAll(async () => {
-  for (const a of [app, limited]) await a.close();
+  for (const a of [app, limited, noGoogle]) await a.close();
   await db.destroy();
 });
 
@@ -135,5 +137,38 @@ describe('POST /account/deletion-requests', () => {
   it('limit prób na IP → 429', async () => {
     for (let i = 0; i < 2; i++) expect((await request({ nickname: 'Ktoś', code: '1A2B-3C4D' }, limited)).statusCode).toBe(202);
     expect((await request({ nickname: 'Ktoś', code: '1A2B-3C4D' }, limited)).statusCode).toBe(429);
+  });
+});
+
+describe('strony WWW', () => {
+  it('/usun-konto: HTML z identyfikatorem klienta Google i domyślnym kontaktem', async () => {
+    const r = await app.inject({ url: '/usun-konto' });
+    expect(r.statusCode).toBe(200);
+    expect(r.headers['content-type']).toBe('text/html; charset=utf-8');
+    expect(r.body).toContain('accounts.google.com/gsi/client');
+    expect(r.body).toContain(CLIENT_ID);
+    expect(r.body).toContain('kontakt@example.com');
+    expect(r.body).toContain('/account/deletion-requests');
+    expect(r.body).not.toContain('{{');
+  });
+
+  it('bez Google: bez skryptu GIS i sekcji Google, własny kontakt; delete-by-google → 503', async () => {
+    const r = await noGoogle.inject({ url: '/usun-konto' });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).not.toContain('accounts.google.com/gsi/client');
+    expect(r.body).not.toContain('Konto połączone z Google');
+    expect(r.body).toContain('pomoc@lastsilo.test');
+    expect(r.body).toContain('Konto gościa');
+    const d = await noGoogle.inject({ method: 'POST', url: '/account/delete-by-google', payload: { idToken: 'x', confirm: 'USUN' } });
+    expect(d.statusCode).toBe(503);
+  });
+
+  it('/prywatnosc: HTML z linkiem do /usun-konto i kontaktem', async () => {
+    const r = await noGoogle.inject({ url: '/prywatnosc' });
+    expect(r.statusCode).toBe(200);
+    expect(r.headers['content-type']).toBe('text/html; charset=utf-8');
+    expect(r.body).toContain('href="/usun-konto"');
+    expect(r.body).toContain('pomoc@lastsilo.test');
+    expect(r.body).not.toContain('{{');
   });
 });
