@@ -12,6 +12,7 @@
     "test": "vitest run",
     "sim": "tsx src/sim/sim.ts",
     "audit": "tsx src/audit.ts",
+    "deletion-requests": "tsx src/deletion-requests.ts",
     "sim:world": "tsx src/sim/world-sim.ts"
   },
   "dependencies": {

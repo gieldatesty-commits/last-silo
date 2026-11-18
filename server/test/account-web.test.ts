@@ -6,6 +6,7 @@ import { createDb } from '../src/db.js';
 import { FakeGoogleIdVerifier } from '../src/google-id.js';
 import { migrate } from '../src/migrate.js';
 import { accountCode } from '../src/services/account.js';
+import { handleRequest, listRequests } from '../src/services/deletion-requests.js';
 
 /** Usuwanie konta przez stronę WWW (docs/superpowers/specs/2026-11-18-usuwanie-konta-www-design.md). */
 const url = process.env.TEST_DATABASE_URL ?? 'postgres://lastsilo:lastsilo@localhost:5432/lastsilo_test';
@@ -170,5 +171,40 @@ describe('strony WWW', () => {
     expect(r.body).toContain('href="/usun-konto"');
     expect(r.body).toContain('pomoc@lastsilo.test');
     expect(r.body).not.toContain('{{');
+  });
+});
+
+describe('obsługa próśb (skrypt deletion-requests)', () => {
+  const ctx = { db, config, now: () => clock, scheduler: { schedule: async () => undefined } };
+  const open = async (nickname: string) => (await listRequests(ctx)).find((r) => r.nickname === nickname);
+
+  it('delete dla dopasowanej: konto usunięte, prośba obsłużona i znika z listy', async () => {
+    const p = await player();
+    await request({ nickname: p.nickname, code: accountCode(p.id) });
+    const row = await open(p.nickname);
+    expect(row?.userId).toBe(p.id);
+    expect(await handleRequest(ctx, row!.id, 'delete')).toBe('deleted');
+    expect(await userExists(p.id)).toBe(false);
+    expect(await open(p.nickname)).toBeUndefined();
+    expect((await db.selectFrom('deletion_requests').select('handled_at').where('id', '=', row!.id).executeTakeFirstOrThrow()).handled_at).not.toBeNull();
+  });
+
+  it('delete dla niedopasowanej: no_match, nic nie znika, prośba zostaje otwarta', async () => {
+    const p = await player();
+    await request({ nickname: p.nickname, code: '0000-0000' });
+    const row = await open(p.nickname);
+    expect(row?.userId).toBeNull();
+    expect(await handleRequest(ctx, row!.id, 'delete')).toBe('no_match');
+    expect(await userExists(p.id)).toBe(true);
+    expect(await open(p.nickname)).toBeDefined();
+  });
+
+  it('reject: obsłużona bez usuwania', async () => {
+    const p = await player();
+    await request({ nickname: p.nickname, code: accountCode(p.id) });
+    const row = await open(p.nickname);
+    expect(await handleRequest(ctx, row!.id, 'reject')).toBe('rejected');
+    expect(await userExists(p.id)).toBe(true);
+    expect(await open(p.nickname)).toBeUndefined();
   });
 });
