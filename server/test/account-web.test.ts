@@ -20,13 +20,14 @@ const CLIENT_ID = '123-test.apps.googleusercontent.com';
 const app = buildApp({ ...deps, googleWebClientId: CLIENT_ID });
 const limited = buildApp({ ...deps, authRateLimitPerMinute: 2 });
 const noGoogle = buildApp({ ...deps, google: null, contactEmail: 'pomoc@lastsilo.test' });
+const proxied = buildApp({ ...deps, authRateLimitPerMinute: 2, trustProxy: true });
 
 beforeAll(async () => {
   await migrate(pool);
 });
 beforeEach(() => verifier.tokens.clear());
 afterAll(async () => {
-  for (const a of [app, limited, noGoogle]) await a.close();
+  for (const a of [app, limited, noGoogle, proxied]) await a.close();
   await db.destroy();
 });
 
@@ -125,6 +126,21 @@ describe('POST /account/deletion-requests', () => {
     expect(bad.json()).toEqual(ok.json());
     expect((await requestRow(a.nickname, accountCode(b.id))).user_id).toBeNull();
     expect((await requestRow(a.nickname, accountCode(a.id).replace('-', ''))).user_id).toBe(a.id);
+  });
+
+  it('pseudonim bez względu na wielkość liter (jak unikalność pseudonimów)', async () => {
+    const p = await player();
+    const code = accountCode(p.id);
+    await request({ nickname: p.nickname.toUpperCase(), code });
+    expect((await requestRow(p.nickname.toUpperCase(), code)).user_id).toBe(p.id);
+  });
+
+  it('za proxy (trustProxy): limit liczony osobno dla każdego klienta z X-Forwarded-For', async () => {
+    const send = (ip: string) =>
+      proxied.inject({ method: 'POST', url: '/account/deletion-requests', headers: { 'x-forwarded-for': ip }, payload: { nickname: 'Ktoś', code: '1A2B-3C4D' } });
+    for (let i = 0; i < 2; i++) expect((await send('203.0.113.1')).statusCode).toBe(202);
+    expect((await send('203.0.113.1')).statusCode).toBe(429);
+    expect((await send('203.0.113.2')).statusCode).toBe(202);
   });
 
   it('puste pola i za długa wiadomość → 400 bad_request', async () => {

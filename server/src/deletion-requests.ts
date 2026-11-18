@@ -3,6 +3,7 @@
  *   npm run -s deletion-requests                 lista otwartych próśb
  *   npm run -s deletion-requests -- --delete ID  usuwa dopasowane konto i zamyka prośbę
  *   npm run -s deletion-requests -- --reject ID  zamyka prośbę bez usuwania
+ * Na VPS (obraz bez tsx): docker compose exec api npm run -s deletion-requests:prod [-- --delete ID]
  */
 import { loadGameConfig } from './config.js';
 import { createDb } from './db.js';

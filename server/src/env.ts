@@ -22,6 +22,8 @@ const EnvSchema = z.object({
   GOOGLE_REQUIRE_NONCE: z.enum(['0', '1']).default('0'),
   /** adres kontaktowy na stronach /usun-konto i /prywatnosc */
   CONTACT_EMAIL: z.string().email().optional(),
+  /** 1 = serwer stoi za reverse proxy (Caddy w docker-compose): adres klienta z X-Forwarded-For */
+  TRUST_PROXY: z.enum(['0', '1']).default('0'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

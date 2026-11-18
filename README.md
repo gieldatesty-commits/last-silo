@@ -64,7 +64,7 @@ docker compose up -d --build
 | POST | `/account/delete-by-google` | ze strony WWW: `{idToken, confirm: "USUN"}`, usuwa konto połączone z Google (bez JWT, limit na IP) |
 | POST | `/account/deletion-requests` | ze strony WWW: prośba gościa `{nickname, code, message?}`, zawsze `202`; obsługa `npm run deletion-requests` |
 
-Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy), `npm run -s deletion-requests [-- --delete ID | --reject ID]` (prośby o usunięcie konta ze strony WWW).
+Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy), `npm run -s deletion-requests [-- --delete ID | --reject ID]` (prośby o usunięcie konta ze strony WWW; na VPS `docker compose exec api npm run -s deletion-requests:prod`).
 
 ## Status
 - [x] Karawany (docs/karawany-v1.0.md): kupno z rynku to dostawa (czas, opłata, zasadzka, ubezpieczenie), rynek regionalny; handel bez kopania na razie nieopłacalny w symulacji, opisane warianty zmian

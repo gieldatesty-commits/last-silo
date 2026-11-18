@@ -47,6 +47,8 @@ export interface AppDeps {
   googleWebClientId?: string;
   /** adres kontaktowy na stronach WWW (CONTACT_EMAIL) */
   contactEmail?: string;
+  /** za reverse proxy (Caddy): req.ip z X-Forwarded-For, inaczej limity prób liczyłyby wszystkich jako jeden adres */
+  trustProxy?: boolean;
 }
 
 const GoogleBody = z.object({ idToken: z.string().min(20).max(8192) });
@@ -100,7 +102,7 @@ const PlayerBody = z.object({
 export function buildApp(deps: AppDeps) {
   const { db, config, jwtSecret } = deps;
   const ctx: Ctx = { db, config, now: deps.now ?? (() => new Date()), scheduler: deps.scheduler ?? { schedule: async () => undefined }, seed: deps.seed };
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, trustProxy: deps.trustProxy ?? false });
   app.register(jwt, { secret: jwtSecret, sign: { expiresIn: '30d' } });
 
   app.setErrorHandler((err, _req, reply) => {

@@ -17,6 +17,6 @@ const be = billingEnv(env);
 const billing: Billing | null = be ? { client: new GooglePlayBillingClient(be), accountKey: be.accountKey, packageName: be.packageName } : null;
 const google: GoogleAuth | null = env.GOOGLE_WEB_CLIENT_ID ? { verifier: new GoogleOAuthIdVerifier(env.GOOGLE_WEB_CLIENT_ID), requireNonce: env.GOOGLE_REQUIRE_NONCE === '1' } : null;
 const scheduler = await startScheduler({ db, config, now: () => new Date() }, env.DATABASE_URL, billing);
-const app = buildApp({ db, config, jwtSecret: env.JWT_SECRET, scheduler, billing, google, googleWebClientId: env.GOOGLE_WEB_CLIENT_ID, contactEmail: env.CONTACT_EMAIL });
+const app = buildApp({ db, config, jwtSecret: env.JWT_SECRET, scheduler, billing, google, googleWebClientId: env.GOOGLE_WEB_CLIENT_ID, contactEmail: env.CONTACT_EMAIL, trustProxy: env.TRUST_PROXY === '1' });
 await app.listen({ port: env.PORT, host: '0.0.0.0' });
 console.log(`Last Silo server: :${env.PORT}, config ${config.version}, płatności: ${billing ? 'włączone' : 'wyłączone'}, Google: ${google ? 'włączony' : 'wyłączony'}`);

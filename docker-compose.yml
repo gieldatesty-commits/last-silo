@@ -33,6 +33,9 @@ services:
       # logowanie Google (opcjonalne)
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:-}
       GOOGLE_REQUIRE_NONCE: ${GOOGLE_REQUIRE_NONCE:-0}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      # api jest dostępne tylko przez Caddy (port 3000 nie jest wystawiony), więc ufamy jednemu proxy
+      TRUST_PROXY: "1"
 
   caddy:
     image: caddy:2

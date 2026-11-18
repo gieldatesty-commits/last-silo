@@ -13,6 +13,7 @@
     "sim": "tsx src/sim/sim.ts",
     "audit": "tsx src/audit.ts",
     "deletion-requests": "tsx src/deletion-requests.ts",
+    "deletion-requests:prod": "node dist/deletion-requests.js",
     "sim:world": "tsx src/sim/world-sim.ts"
   },
   "dependencies": {

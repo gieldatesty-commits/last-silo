@@ -165,7 +165,7 @@ export async function requestDeletion(ctx: Ctx, input: { nickname: string; code:
     ? await ctx.db
         .selectFrom('players')
         .select('user_id')
-        .where('nickname', '=', input.nickname)
+        .where(sql<string>`lower(nickname)`, '=', input.nickname.toLowerCase())
         .where(sql<boolean>`left(user_id::text, 8) = ${code}`)
         .executeTakeFirst()
     : undefined;
