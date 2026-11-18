@@ -11,7 +11,7 @@ Szczegóły: spec `docs/glebia-mvp-spec.md`, systemy i balans `docs/*-v1.0.md` (
 4. **Losowość tylko z ziarna** (mulberry32 w `src/game`), ziarno zapisane przy zdarzeniu. Zero `Math.random()` w logice gry.
 5. **Pieniądze/zasoby tylko przez niezmienny dziennik** (`ledger.ts`, `applyLedger`). Po zmianach w ekonomii `npm run audit` musi dawać 0 różnic.
 6. **Akcje mutujące wymagają `Idempotency-Key`**; rozliczenia są leniwe i idempotentne w `settle()` (kolejność: najazdy → karawany → zlecenia → rdzeń; blokada wiersza `silos FOR UPDATE`).
-7. Nowa tabela/kolumna = nowa migracja SQL w `server/migrations/` (kolejne numery, aktualnie do 019). Nie edytuj starych po wdrożeniu.
+7. Nowa tabela/kolumna = nowa migracja SQL w `server/migrations/` (kolejne numery, aktualnie do 020). Nie edytuj starych po wdrożeniu.
 
 ## Struktura
 - `server/` — Node 22, TypeScript (ESM, NodeNext), Fastify 5, Kysely + pg, PostgreSQL 16, pg-boss 12, zod 4, vitest.
@@ -40,6 +40,7 @@ npm run dev                              # :3000, migracje odpalają się przy s
 # 3) narzędzia
 npm run -s sim:world -- 180 --traders=5  # symulacja świata (`--` po nazwie skryptu jest wymagane)
 npm run audit                            # portfele vs dziennik, kod 1 przy różnicy
+npm run -s deletion-requests             # prośby o usunięcie konta z /usun-konto (-- --delete ID / --reject ID)
 
 # 4) klient
 cd ../client
@@ -50,14 +51,14 @@ flutter run --dart-define=API_URL=http://10.0.2.2:3000   # emulator; telefon: IP
 Dla `http://` dodaj `android:usesCleartextTraffic="true"` w `AndroidManifest.xml` (tylko dev).
 
 ## Stan (listopad 2026)
-- **Serwer**: zjazdy, budynki, Warsztat, Laboratorium, Kodeks, Radio, najazdy, ranking, rynek, karawany, zlecenia NPC, sezony 180 dni; subskrypcja „Wygoda” (Google Play Billing, RTDN, `subscription-sync`) i konto Google (Sign-In, wiele urządzeń, usuwanie konta) — tylko serwer.
+- **Serwer**: zjazdy, budynki, Warsztat, Laboratorium, Kodeks, Radio, najazdy, ranking, rynek, karawany, zlecenia NPC, sezony 180 dni; subskrypcja „Wygoda” (Google Play Billing, RTDN, `subscription-sync`, tylko serwer), konto Google (Sign-In, wiele urządzeń, usuwanie konta; klient gotowy), strony WWW `/usun-konto` i `/prywatnosc` (`server/public/`).
 - **Ekwipunek** (`docs/ekwipunek-v1.0.md`, wszystkie 4 etapy): dwa zestawy (aktywny działa w zjazdach, atakach i obronie; zrzut mocy przy dodaniu zjazdu / wysłaniu najazdu), profil zjazd/atak/obrona i bronie, rzadkość z ziarna + tiery do 10 (Kuźnie), runy (portfel, gniazda, łup III), komplety. Ruda ponad pojemność Magazynu nie jest chroniona przed najazdem. Balans 1.9.0.
-- **Klient działa** (sprawdzony na emulatorze): wszystkie ekrany API w nowej warstwie wizualnej, start i onboarding, zestawy, rzadkość, runy, komplety. Nie ma jeszcze ekranów konta Google ani subskrypcji.
+- **Klient działa** (sprawdzony na emulatorze): wszystkie ekrany API w nowej warstwie wizualnej, start i onboarding, zestawy, rzadkość, runy, komplety. Konto Google (Więcej → Konto, „Mam już konto”) sprawdzone na telefonie. Nie ma jeszcze ekranu subskrypcji.
 - **CI** (`.github/workflows/ci.yml`): serwer (typecheck, vitest na Postgresie, build) i klient (format 160, `analyze --fatal-infos`, testy w losowej kolejności); przypięte `ubuntu-24.04`, Node 22, Flutter 3.47.9.
 - Makiety: artefakt Design „Last Silo: warstwa wizualna” (https://claude.ai/artifact/4uLiaBVPYtTnnFZRjrturM). Nowy ekran: najpierw makieta, potem kod.
 
 ## Do zrobienia później
-Klient konta Google i subskrypcji (+ konfiguracja Play Console/Google Cloud po stronie Damiana), strona WWW do usuwania konta (wymóg Sklepu Play), build wydania (podpisany AAB, testy wewnętrzne), push FCM, boty treningowe jako cele najazdów, partiowanie zamykania sezonu, komplet Sztygara prawie nieużywany w symulacji (Rdzeń go wypiera), dźwięk, wersja angielska (przenieść `strings.dart` do l10n), sprawdzenie znaku „Last Silo”, geotermia (odłożona).
+Klient subskrypcji (+ Play Console po stronie Damiana), `CONTACT_EMAIL` i treść polityki prywatności do uzupełnienia, build wydania (podpisany AAB, testy wewnętrzne), push FCM, boty treningowe jako cele najazdów, partiowanie zamykania sezonu, komplet Sztygara prawie nieużywany w symulacji (Rdzeń go wypiera), dźwięk, wersja angielska (przenieść `strings.dart` do l10n), sprawdzenie znaku „Last Silo”, geotermia (odłożona).
 
 ## Konwencje i pułapki
 - Commity: krótkie, po polsku, jedna zmiana logiczna. Przed commitem: `npm run typecheck`, testy, a w `client/` `dart format .` (szerokość 160), `flutter analyze --fatal-infos` i `flutter test`. CI (`.github/workflows/ci.yml`) sprawdza to samo przy pushu do `main` i w PR.

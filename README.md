@@ -57,8 +57,14 @@ docker compose up -d --build
 | GET | `/research` | drzewo badań Laboratorium: stan, wymogi, koszt, czas (skracany poziomem Laboratorium) |
 | POST | `/research/:id/start` | start badania (jedno naraz); `Idempotency-Key` |
 | POST | `/players/stats` | rozdanie wolnych punktów statystyk |
+| GET | `/account` | konto: `userId`, `code` (kod konta `XXXX-XXXX` do prośby o usunięcie), `google`, `devices` |
+| POST | `/auth/google` · `/account/google/link` | logowanie na postać połączoną z Google · połączenie (`Idempotency-Key`) |
+| DELETE | `/account` | usunięcie konta `{confirm: "USUN"}` |
+| GET | `/usun-konto` · `/prywatnosc` | strony WWW: usuwanie konta (wymóg Google Play) i polityka prywatności |
+| POST | `/account/delete-by-google` | ze strony WWW: `{idToken, confirm: "USUN"}`, usuwa konto połączone z Google (bez JWT, limit na IP) |
+| POST | `/account/deletion-requests` | ze strony WWW: prośba gościa `{nickname, code, message?}`, zawsze `202`; obsługa `npm run deletion-requests` |
 
-Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy).
+Narzędzia: `npm run sim [dni] [--deposit=N] [--check=godz]` (jeden gracz: złoże i ulepszenia), `npm run sim:world [dni] [--players=N]` (świat ze wspólnymi pulami i stylami gry), `npm run audit` (portfele vs dziennik, kod 1 przy różnicy), `npm run -s deletion-requests [-- --delete ID | --reject ID]` (prośby o usunięcie konta ze strony WWW).
 
 ## Status
 - [x] Karawany (docs/karawany-v1.0.md): kupno z rynku to dostawa (czas, opłata, zasadzka, ubezpieczenie), rynek regionalny; handel bez kopania na razie nieopłacalny w symulacji, opisane warianty zmian
