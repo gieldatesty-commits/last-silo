@@ -38,7 +38,9 @@ class FakeApi extends Api {
   var markedLinked = false;
   String? googleLoginToken;
 
-  Map<String, dynamic> get accountJson => {'userId': 'u1', 'createdAt': '2026-11-01T10:00:00Z', 'google': linked, 'googleLinkedAt': null, 'devices': 1};
+  String? code = '1A2B-3C4D';
+  Map<String, dynamic> get accountJson =>
+      {'userId': 'u1', if (code != null) 'code': code, 'createdAt': '2026-11-01T10:00:00Z', 'google': linked, 'googleLinkedAt': null, 'devices': 1};
 
   @override
   Future<void> signInAsGuest() async {}
@@ -203,6 +205,15 @@ void main() {
       expect(state.hasPlayer, isFalse, reason: 'po usunięciu nowy gość bez postaci');
     });
 
+    testWidgets('kod konta do strony usuwania konta; bez pola code linijki nie ma', (tester) async {
+      await pump(tester, AccountScreen(state: playerState(FakeApi())));
+      await tester.scrollUntilVisible(find.text('1A2B-3C4D'), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text('Kod konta'), findsOneWidget);
+      expect(find.textContaining('stronie usuwania konta'), findsOneWidget);
+      await pump(tester, AccountScreen(state: playerState(FakeApi()..code = null)));
+      expect(find.text('Kod konta', skipOffstage: false), findsNothing);
+    });
+
     testWidgets('usuwanie: „Anuluj” nic nie wysyła', (tester) async {
       final api = FakeApi();
       await pump(tester, AccountScreen(state: playerState(api)));
@@ -217,6 +228,9 @@ void main() {
     for (final scale in [1.0, 1.5]) {
       testWidgets('bez przepełnień i ucinania: 320x640, tekst x$scale (ekran i dialog)', (tester) async {
         await pump(tester, AccountScreen(state: playerState(FakeApi())), size: const Size(320, 640), textScale: scale);
+        expect(tester.takeException(), isNull);
+        expectNoClippedText(tester);
+        await tester.scrollUntilVisible(find.text('1A2B-3C4D'), 200, scrollable: find.byType(Scrollable).first);
         expect(tester.takeException(), isNull);
         expectNoClippedText(tester);
         await tester.scrollUntilVisible(find.text('Usuń konto…'), 200, scrollable: find.byType(Scrollable).first);
